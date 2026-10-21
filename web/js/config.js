@@ -41,21 +41,14 @@ window.MLNG_CONFIG = {
     VB_WARN: 0.35,            // 주의 기준
     LATE_RATIO: 1.2,          // 최종 VB 가 교체 기준의 이 배수를 넘으면 «늦은 교체»
   },
-  // 구매·발주 — 알림에서 바로 발주하고 3단계 결재 후 발주서를 출력한다
+  // 공구 주문 — 등록 품목은 js/catalog.js. 추천이 없어도 골라서 발주할 수 있다
   BUY: {
-    COMPANY: 'MLNG 데모 공장',          // 발주서의 «발주처»
-    ADDRESS: '부산광역시 (데모)',
+    COMPANY: 'MLNG 데모 공장',          // 발주서 머리
+    LINE: '시트 트랙 스토퍼 브래킷 라인',
+    DEPT: '생산기술팀',                 // 요청부서
     STEPS: ['담당', '검토', '승인'],     // 결재 단계 (순서대로)
-    MACH_STOCK: 12,                     // 밀링 인서트 현재 재고 (데모값)
-    MACH_WEEKS: 2,                      // 인서트는 «최근 7일 교체 횟수 × N주» 만큼 확보
-    // 품목 — 단가는 예시값. 현장 단가로 바꿔 쓴다
-    ITEMS: [
-      { code: 'MC-INS-01', name: '정면 밀링 인서트', spec: '초경 코팅 · 정면 밀링 커터용', unit: '개', price: 12000, vendor: '공구 협력사 A', proc: 'mach', per_change: 6 },
-      { code: 'SP-TIP-01', name: '점용접 전극 팁', spec: 'Cu-Cr · 돔형', unit: '개', price: 4500, vendor: '용접 협력사 D', proc: 'weld', on: 'weld_home', qty: 20 },
-      { code: 'PR-PUN-01', name: '프레스 금형 펀치 예비품', spec: '브래킷 성형 금형용', unit: '개', price: 380000, vendor: '금형 협력사 B', proc: 'press', on: 'press_equip', qty: 1 },
-      { code: 'HT-HTR-01', name: '소입로 히터 엘리먼트', spec: '존별 교체용', unit: '개', price: 450000, vendor: '설비 협력사 C', proc: 'heat', on: 'heat_equip', qty: 1 },
-      { code: 'IN-SEN-01', name: '검사 셀 변위 센서', spec: '정밀가공 검사용 · 축 측정', unit: '개', price: 210000, vendor: '설비 협력사 C', proc: 'insp', on: 'insp_signal', qty: 1 },
-    ],
+    MACH_STOCK: 12,                     // 페이스커터 인서트 현재 재고 (데모값)
+    MACH_WEEKS: 2,                      // 인서트는 «최근 7일 공구 교체 횟수 × 날 수 × N주» 만큼 확보
   },
   // 질의응답 (Claude API) — 키는 Supabase Edge Function 에만 둔다 (supabase/functions/mlng-ask)
   //   'off' = 규칙 기반만. 함수를 배포한 뒤 '' 로 바꾸면 `${SUPABASE_URL}/functions/v1/mlng-ask` 를 자동으로 쓴다

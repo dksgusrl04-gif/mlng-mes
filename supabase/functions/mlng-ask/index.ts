@@ -53,8 +53,8 @@ const TOOLS = [
   { name: 'line_status', description: '라인 운영: 목표 대비 하루 가능 산출, 병목 공정, 설비 능력 한계, 공정 사이 재공 증감', input_schema: { type: 'object', properties: {} } },
   { name: 'mach_tools', description: 'MCT 최근 공구 10개의 재질·가공 조건·최종 마모(VB)·마모 속도·가공 횟수', input_schema: { type: 'object', properties: {} } },
   { name: 'plan_status', description: '생산 계획 품목별 마감 재고, 최근 7일 평균 수주·생산', input_schema: { type: 'object', properties: {} } },
-  { name: 'purchase_orders', description: '발주 목록(거래처·품목·금액·결재 단계·상태)과 최근 활동 기록. status: pending(결재 대기) · approved(결재 완료·미입고) · received(입고 완료)', input_schema: { type: 'object', properties: { status: { type: 'string', enum: ['pending', 'approved', 'received'] } } } },
-  { name: 'buy_recommendations', description: '알림·사용량에서 계산한 발주 추천 품목(수량·사유·거래처)', input_schema: { type: 'object', properties: {} } },
+  { name: 'purchase_orders', description: '발주 목록(품목·수량·결재 단계·상태)과 최근 활동 기록. status: pending(결재 대기) · approved(결재 완료·미입고) · received(입고 완료)', input_schema: { type: 'object', properties: { status: { type: 'string', enum: ['pending', 'approved', 'received'] } } } },
+  { name: 'buy_recommendations', description: '알림·사용량에서 계산한 발주 추천 품목(수량·사유)과 공구 주문에 등록된 전체 품목 목록', input_schema: { type: 'object', properties: {} } },
 ];
 
 const hits = new Map<string, number[]>();

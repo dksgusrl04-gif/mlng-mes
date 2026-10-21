@@ -4,3 +4,4 @@ _build/
 *.xlsx
 preview.html
 __pycache__/
+supabase/.temp/

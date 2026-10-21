@@ -43,9 +43,10 @@
         return { item: it.code, name: it.name, last_date: last.date, closing_inventory: last.inv_close, avg_order_7d: Math.round(rec.reduce((s, d) => s + d.order, 0) / Math.max(1, rec.length)), avg_prod_7d: Math.round(rec.reduce((s, d) => s + d.prod, 0) / Math.max(1, rec.length)) }; }) }; },
     purchase_orders: i => { if (!M.buyApi) return { error: '구매 모듈 없음' };
       const st = i && i.status, B = M.buyApi;
-      return { orders: B.orders().filter(o => !st || o.status === st).slice(0, 20).map(o => ({ id: o.id, vendor: o.vendor, status: o.status, next_step: B.nextStep(o) || null, amount_krw: B.total(o), created_at: o.created_at, items: o.lines.map(l => `${l.name} ×${l.qty}`), signed: Object.fromEntries(Object.entries(o.signs || {}).map(([k, v]) => [k, `${v.by} ${v.at}`])) })),
+      return { orders: B.orders().filter(o => !st || o.status === st).slice(0, 20).map(o => ({ id: o.id, vendor: o.vendor, status: o.status, next_step: B.nextStep(o) || null, total_qty: B.total(o), created_at: o.created_at, items: o.lines.map(l => `${l.name} ×${l.qty}`), signed: Object.fromEntries(Object.entries(o.signs || {}).map(([k, v]) => [k, `${v.by} ${v.at}`])) })),
         recent_activity: B.audit().slice(0, 10) }; },
-    buy_recommendations: () => M.buyApi ? { recommendations: M.buyApi.recs().map(r => ({ item: r.it.name, code: r.it.code, qty: r.qty, unit: r.it.unit, level: r.level, reason: r.reason, vendor: r.it.vendor })) } : { error: '구매 모듈 없음' },
+    buy_recommendations: () => M.buyApi ? { recommendations: M.buyApi.recs().map(r => ({ item: r.it.name, code: r.it.code, process: M.PROC[r.it.proc] || r.it.proc, class: r.it.cls, qty: r.qty, unit: r.it.unit, level: r.level, reason: r.reason })),
+      registered_items: M.buyApi.catalog().map(i => `${i.code} ${i.name} (${M.PROC[i.proc] || i.proc}·${i.cls})`) } : { error: '구매 모듈 없음' },
   };
   async function runTool(name, input) {
     try { const fn = TOOLS[name]; const out = fn ? fn(input || {}) : { error: `모르는 도구 ${name}` }; const s = JSON.stringify(out); return s.length > MAX_RESULT ? s.slice(0, MAX_RESULT) + '…(생략)' : s; }

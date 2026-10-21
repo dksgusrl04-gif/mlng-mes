@@ -452,3 +452,7 @@ ul.plain{list-style:none;margin:0;padding:0;font-size:13px}ul.plain li{padding:5
 .alinks{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:12.5px}.alinks a{color:var(--brand);font-weight:650;text-decoration:none}
 .askin{display:flex;gap:8px;margin-top:12px;align-items:stretch}.askin textarea{flex:1;resize:vertical}
 @media (max-width:720px){.signs{grid-template-columns:1fr}.msg{max-width:100%}}
+.tb tr.sel td{background:var(--brand-soft)}
+.qlist{display:flex;flex-direction:column;gap:8px}
+.qrow{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;background:var(--raise)}
+.qrow .nm{flex:1;font-size:13px;line-height:1.5}
