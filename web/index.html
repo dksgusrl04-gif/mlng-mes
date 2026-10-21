@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MLNG MES</title>
+<link rel="stylesheet" href="css/style.css">
+<script>/* 화면을 그리기 전에 저장된 테마를 적용 — 깜빡임 방지 */
+try{var t=localStorage.getItem("mlng_theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body>
+<div id="app">
+  <aside id="rail">
+    <div class="brand"><div class="mark">MLNG</div><div class="nm">MES</div></div>
+    <div class="plant" id="plant"></div>
+    <nav id="nav"></nav>
+    <div class="rfoot"><div id="who"></div><button class="out" id="logout">로그아웃</button></div>
+  </aside>
+  <main id="main">
+    <header id="top">
+      <div><div class="crumb" id="crumb"></div><h1 id="ttl"></h1></div>
+      <div class="sp"></div>
+      <div class="upd" id="upd"></div>
+      <button class="themebtn" id="themebtn" title="화면 테마 바꾸기"></button>
+    </header>
+    <section id="view"></section>
+  </main>
+</div>
+
+<aside id="drawer"><div class="dhead"><div><div class="crumb" id="dsub"></div><h3 id="dttl"></h3></div><button class="x" id="dclose" aria-label="닫기">×</button></div><div id="dbody"></div></aside>
+<div id="shade"></div>
+
+<div id="login"><div class="box">
+  <div class="lmark">MLNG</div>
+  <h1>MLNG MES</h1><p>MCT MES 와 같은 계정으로 로그인합니다</p>
+  <label for="l-id">아이디</label><input class="in" id="l-id" autocomplete="username">
+  <label for="l-pw">비밀번호</label><input class="in" id="l-pw" type="password" autocomplete="current-password">
+  <div class="err" id="l-err"></div>
+  <button class="btn pri" id="l-go" style="width:100%;margin-top:6px;padding:10px">로그인</button>
+</div></div>
+
+<div id="dlg"><div class="box">
+  <h3>검사 결과 기록</h3>
+  <div class="row"><label for="d-proc">공정</label><select class="in" id="d-proc"></select></div>
+  <div class="row"><label for="d-lot">LOT</label><input class="in" id="d-lot" placeholder="HT-102410"></div>
+  <div class="row"><label for="d-target">대상</label><input class="in" id="d-target" placeholder="타점·부품 번호 (선택)"></div>
+  <div class="row"><label for="d-res">결과</label><select class="in" id="d-res"><option>불량</option><option>양호</option></select></div>
+  <div class="row"><label for="d-code">불량 코드</label><select class="in" id="d-code"></select></div>
+  <div class="row"><label for="d-qty">수량</label><input class="in" id="d-qty" type="number" min="1" value="1"></div>
+  <div class="row"><label for="d-note">메모</label><input class="in" id="d-note"></div>
+  <div class="err" id="d-msg" style="color:var(--danger);font-size:12.5px;min-height:16px"></div>
+  <div class="act"><button class="btn" id="d-cancel">취소</button><button class="btn pri" id="d-save">저장</button></div>
+</div></div>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/core.js"></script>
+<script src="js/mod_common.js"></script>
+<script src="js/mod_line.js"></script>
+<script src="js/mod_press.js"></script>
+<script src="js/mod_weld.js"></script>
+<script src="js/mod_heat.js"></script>
+<script src="js/mod_mach.js"></script>
+<script src="js/mod_insp.js"></script>
+<script src="js/mod_plan.js"></script>
+<script src="js/boot.js"></script>
+</body>
+</html>

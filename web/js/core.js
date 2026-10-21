@@ -1,0 +1,219 @@
+/* MLNG MES 공용 화면 틀
+ * ───────────────────────────────────────────────────────────────
+ * 공정 모듈은 MLNG.mod({...}) 로 자기를 등록만 한다. 메뉴·알림·검사 기록·테마·상세 서랍은 여기서 같이 쓴다.
+ *
+ *   MLNG.mod({
+ *     id: 'heat', proc: 'heat', group: '열처리', order: 30,
+ *     menu: [['heat_home', '열처리 현황', 'flame'], ...],
+ *     views: { heat_home: () => html, ... },
+ *     alerts: S => [{ level, title, body, proc, at, go }],   // 현장 알림
+ *     summary: S => ({ kpi, note, st }),                     // 공장 현황의 공정 카드
+ *     drawers: { 'heat:': id => ... },                       // data-row="heat:HT-1" → 상세 서랍
+ *   })
+ */
+(function () {
+  'use strict';
+  const CFG = window.MLNG_CONFIG || {};
+  const D = window.MLNGData;
+  const M = window.MLNG = { S: null, cur: 'overview', mods: [], CFG, D };
+  const $ = M.$ = s => document.querySelector(s);
+
+  // ── 형식
+  M.esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  M.f = (v, d = 1) => (v == null || v === '' || isNaN(v)) ? '—' : Number(v).toLocaleString('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  M.pct = (v, d = 1) => (v == null || isNaN(v)) ? '—' : (Number(v) * 100).toFixed(d) + '%';
+  M.median = a => { const b = a.filter(x => x != null && !isNaN(x)).sort((x, y) => x - y); if (!b.length) return null; const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+  M.toDate = s => new Date(String(s || '').replace(' ', 'T'));
+  // 데모는 «데이터의 마지막 시각» 을 지금으로 본다 (스냅샷). 실시간은 실제 지금.
+  M.now = () => (D.LIVE || !M.S || !M.S.asof) ? new Date() : M.toDate(M.S.asof);
+  M.daysAgo = n => new Date(M.now().getTime() - n * 86400000);
+  M.sinceDay = n => { const t = M.daysAgo(n); t.setHours(0, 0, 0, 0); return t; };   // «최근 N일» = N일 전 0시부터 (모든 화면 공통)
+  const { esc, f } = M;
+
+  // ── 공정 표시
+  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획' };
+  M.procTag = p => `<span class="proc p-${esc(p)}">${esc(M.PROC[p] || p)}</span>`;
+  M.tag = (t, cls) => `<span class="tag ${cls || 't-' + esc(t)}">${esc(t)}</span>`;
+  M.dot = (st, t) => `<span class="dot ${st}"></span>${esc(t)}`;
+
+  const IC = {
+    home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>', bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+    trace: '<circle cx="5" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="12" r="2"/><path d="M7 6h4a3 3 0 0 1 3 3v0a3 3 0 0 0 3 3M7 18h4a3 3 0 0 0 3-3v0a3 3 0 0 1 3-3"/>',
+    book: '<path d="M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3z"/><path d="M4 17a3 3 0 0 1 3-3h11"/>', check: '<path d="M4 12l5 5L20 6"/>',
+    press: '<path d="M5 3h14v4H5zM12 7v6M7 13h10l-1 4H8zM4 21h16"/>',
+    wave: '<path d="M2 12c3-6 5-6 8 0s5 6 8 0 3-4 4-2"/>',
+    spark: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+    flame: '<path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-7 2 1 3 3 3 5 1-1 1-3 0-8z"/>', list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    range: '<path d="M3 12h18M7 8v8M17 8v8"/>', gauge: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/>', out: '<path d="M14 3h7v7M21 3l-9 9M10 5H5v14h14v-5"/>',
+  };
+  M.ic = k => `<svg class="ic" viewBox="0 0 24 24">${IC[k] || ''}</svg>`;
+
+  // ── 모듈 등록
+  M.mod = m => { M.mods.push(m); M.mods.sort((a, b) => (a.order || 0) - (b.order || 0)); };
+  M.views = () => Object.assign({}, ...M.mods.map(m => m.views || {}));
+  // LOT 이력: mlng_trace 를 따라 위(조상)·아래(자손)로
+  M.lineage = id => {
+    const T = M.S.trace || [], up = [], down = [], seen = new Set([id]);
+    const walk = (cur, dir, acc) => T.filter(t => (dir === 'up' ? t.child_lot : t.parent_lot) === cur).forEach(t => {
+      const nx = dir === 'up' ? t.parent_lot : t.child_lot; if (seen.has(nx)) return; seen.add(nx); acc.push(nx); walk(nx, dir, acc); });
+    walk(id, 'up', up); walk(id, 'down', down);
+    const L = id2 => (M.S.lots || []).find(l => l.id === id2);
+    return { up: up.map(L).filter(Boolean), down: down.map(L).filter(Boolean) };
+  };
+  M.inspections = () => D.LIVE ? (M.S.inspections || []) : D.demoInspections();
+
+  // 알림 = 저장된 알림(mlng_alerts) + 각 모듈이 데이터에서 찾은 현장 알림
+  M.alerts = () => {
+    const rank = { danger: 0, warn: 1, info: 2 };
+    const stored = (M.S.alerts || []).map(a => Object.assign({ proc: a.proc || 'data' }, a));
+    const found = [].concat(...M.mods.map(m => { try { return m.alerts ? m.alerts(M.S) : []; } catch (e) { console.warn(e); return []; } }));
+    return stored.concat(found).sort((a, b) => (rank[a.level] ?? 3) - (rank[b.level] ?? 3) || String(b.at || '').localeCompare(String(a.at || '')));
+  };
+
+  // ── 표
+  M.table = (head, rows, opt = {}) => {
+    if (!rows.length) return `<div class="empty">${opt.empty || '표시할 자료가 없습니다'}</div>`;
+    return `<div class="${opt.wrap === false ? 'tbx' : 'tbwrap'}"><table class="tb"><thead><tr>${head.map(h => `<th class="${h[2] || ''}">${h[0]}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r => `<tr class="${opt.hl && opt.hl(r) ? 'hl' : ''} ${opt.click ? 'click' : ''}" ${opt.click ? `data-row="${esc(opt.click(r))}"` : ''}>${head.map(h => `<td class="${h[2] || ''}">${typeof h[1] === 'function' ? h[1](r) : esc(r[h[1]])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  };
+  M.legend = items => `<div class="legend">${items.map(([c, t]) => `<span><i class="${c}"></i>${t}</span>`).join('')}</div>`;
+  M.seg = (attr, cur, opts) => `<div class="seg sm">${opts.map(([k, t]) => `<button data-${attr}="${esc(k)}" class="${String(k) === String(cur) ? 'on' : ''}">${esc(t)}</button>`).join('')}</div>`;
+
+  // ── 그림: 시계열 선 (여러 줄 + 허용 띠)
+  //   series: [{ v:[..], cls:'s1', label }], band:{lo,hi}, opt:{ h, d, xlab:[[i,'text']], yfix:[lo,hi] }
+  M.lineChart = (series, band, opt = {}) => {
+    const W = opt.w || 640, H = opt.h || 200, L = 52, R = 10, T = 10, B = opt.xlab ? 24 : 10;
+    const all = [].concat(...series.map(s => s.v)).filter(v => v != null && !isNaN(v));
+    if (!all.length) return '<div class="empty">값이 없습니다</div>';
+    let lo = Math.min(...all), hi = Math.max(...all);
+    if (band) { lo = Math.min(lo, band.lo); hi = Math.max(hi, band.hi); }
+    (opt.refs || []).forEach(r => { lo = Math.min(lo, r.y); hi = Math.max(hi, r.y); });
+    if (opt.yfix) { lo = opt.yfix[0]; hi = opt.yfix[1]; }
+    const pad = (hi - lo) * 0.08 || 1; const nonneg = lo >= 0; lo -= pad; hi += pad; if (nonneg && lo < 0) lo = 0;
+    const n = Math.max(...series.map(s => s.v.length));
+    const X = i => L + (W - L - R) * i / Math.max(1, n - 1), Y = y => T + (H - T - B) * (1 - (Math.min(hi, Math.max(lo, y)) - lo) / (hi - lo));
+    const ticks = [0, 1, 2, 3].map(i => lo + (hi - lo) * i / 3);
+    const path = v => { let d = '', pen = false; v.forEach((y, i) => { if (y == null || isNaN(y)) { pen = false; return; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(y).toFixed(1); pen = true; }); return d; };
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img">
+      ${ticks.map(t => `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(t)}" y2="${Y(t)}"/><text class="ax" x="${L - 7}" y="${Y(t) + 4}" text-anchor="end">${f(t, opt.d ?? 1)}</text>`).join('')}
+      ${band ? `<rect class="band" x="${L}" width="${W - L - R}" y="${Y(band.hi)}" height="${Math.max(1, Y(band.lo) - Y(band.hi))}"/>
+        <line class="lim" x1="${L}" x2="${W - R}" y1="${Y(band.hi)}" y2="${Y(band.hi)}"/><line class="lim" x1="${L}" x2="${W - R}" y1="${Y(band.lo)}" y2="${Y(band.lo)}"/>` : ''}
+      ${series.map(s => `<path class="ln ${s.cls || ''}" d="${path(s.v)}"/>`).join('')}
+      ${(opt.refs || []).map(r => `<line class="lim ${r.cls || ''}" x1="${L}" x2="${W - R}" y1="${Y(r.y)}" y2="${Y(r.y)}"/>${r.label ? `<text class="ax ref" x="${W - R}" y="${Y(r.y) - 5}" text-anchor="end">${esc(r.label)}</text>` : ''}`).join('')}
+      ${(opt.dots || []).map(p => `<circle class="pt ${p.cls || ''}" cx="${X(p.i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="${p.r || 2.4}"><title>${esc(p.t || '')}</title></circle>`).join('')}
+      ${(opt.xlab || []).map(([i, t], k, a) => `<text class="ax" x="${X(i)}" y="${H - 7}" text-anchor="${k === 0 ? 'start' : k === a.length - 1 ? 'end' : 'middle'}">${esc(t)}</text>`).join('')}
+    </svg>`;
+  };
+  // ── 그림: 막대 (값 + 기준선)
+  M.barChart = (rows, opt = {}) => {
+    const W = opt.w || 640, H = opt.h || 190, L = 52, R = 10, T = 12, B = 24;
+    const vals = rows.map(r => r.v || 0), hi = Math.max(opt.ref || 0, ...vals) * 1.12 || 1;
+    const bw = (W - L - R) / Math.max(1, rows.length), Y = y => T + (H - T - B) * (1 - y / hi);
+    const ticks = [0, 1, 2, 3].map(i => hi * i / 3), every = Math.ceil(rows.length / 8);
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img">
+      ${ticks.map(t => `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(t)}" y2="${Y(t)}"/><text class="ax" x="${L - 7}" y="${Y(t) + 4}" text-anchor="end">${f(t, 0)}</text>`).join('')}
+      ${rows.map((r, i) => `<rect class="bar ${r.cls || ''}" x="${(L + i * bw + bw * 0.18).toFixed(1)}" width="${(bw * 0.64).toFixed(1)}" y="${Y(r.v || 0).toFixed(1)}" height="${Math.max(0, Y(0) - Y(r.v || 0)).toFixed(1)}"><title>${esc(r.t || '')}</title></rect>`).join('')}
+      ${opt.ref ? `<line class="lim" x1="${L}" x2="${W - R}" y1="${Y(opt.ref)}" y2="${Y(opt.ref)}"/><text class="ax ref" x="${W - R}" y="${Y(opt.ref) - 5}" text-anchor="end">${esc(opt.refLabel || '')}</text>` : ''}
+      ${rows.map((r, i) => i % every ? '' : `<text class="ax" x="${(L + i * bw + bw / 2).toFixed(1)}" y="${H - 7}" text-anchor="middle">${esc(r.x)}</text>`).join('')}
+    </svg>`;
+  };
+
+  // ── 왼쪽 기둥
+  function rail() {
+    const n = M.alerts().filter(a => a.level === 'danger').length;
+    const groups = [];
+    M.mods.forEach(m => (m.menu || []).forEach(([k, t, i, g]) => {
+      const name = g || m.group; let grp = groups.find(x => x.name === name);
+      if (!grp) groups.push(grp = { name, items: [] });
+      grp.items.push([k, t, i]);
+    }));
+    $('#plant').textContent = `${M.S.factory.name}${M.S.factory.line ? ' · ' + M.S.factory.line : ''}`;
+    $('#nav').innerHTML = groups.map(g => `<div class="ngrp">${esc(g.name)}</div>` + g.items.map(([k, t, i]) =>
+      `<button data-k="${k}" class="${k === M.cur ? 'on' : ''}" title="${esc(t)}">${M.ic(i)}<span>${esc(t)}</span>${k === 'alerts' && n ? `<span class="pill-n">${n}</span>` : ''}</button>`).join('')).join('')
+      + Object.entries(CFG.LINKS || {}).filter(([, u]) => u).map(([p, u]) => `<a class="ext" href="${esc(u)}" target="_blank" rel="noopener">${M.ic('out')}<span>${esc(M.PROC[p] || p)} 열기</span></a>`).join('');
+    $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => M.go(b.dataset.k));
+    const u = D.user();
+    $('#who').textContent = u ? `${u.name} · ${u.role === 'manager' ? '관리자' : '작업자'}` : '';
+  }
+  M.go = k => { M.cur = k; rail(); M.render(); $('#view').scrollTop = 0; };
+
+  M.render = () => {
+    let title = M.cur, grp = '';
+    M.mods.forEach(m => (m.menu || []).forEach(([k, t, , g]) => { if (k === M.cur) { title = t; grp = g || m.group; } }));
+    $('#ttl').textContent = title; $('#crumb').textContent = grp;
+    $('#upd').innerHTML = `<span class="dot ok"></span>${D.LIVE ? '갱신' : '데이터 기준'} ${esc(D.LIVE ? M.S.built : (M.S.asof || ''))}`;
+    const v = M.views()[M.cur];
+    $('#view').innerHTML = v ? v() : '';
+    bind($('#view'));
+  };
+  // 화면 안의 공통 동작: data-go(화면 이동) · data-row(상세) · data-insp(검사 기록) · data-set(모듈 상태 바꾸고 다시 그리기)
+  function bind(root) {
+    root.querySelectorAll('[data-go]').forEach(a => a.onclick = e => { e.preventDefault(); M.nav(a.dataset.go); });
+    root.querySelectorAll('[data-row]').forEach(r => r.onclick = e => { if (e.target.closest('button,a,input,select')) return; M.nav(r.dataset.row); });
+    root.querySelectorAll('[data-insp]').forEach(b => b.onclick = e => { e.stopPropagation(); M.openInsp(...b.dataset.insp.split('|')); });
+    M.mods.forEach(m => m.bind && m.bind(root));
+  }
+  M.bind = bind;
+  M.nav = k => {
+    if (k.startsWith('link:')) { const u = (CFG.LINKS || {})[k.slice(5)]; if (u) window.open(u, '_blank', 'noopener'); return; }
+    for (const m of M.mods) for (const [pre, fn] of Object.entries(m.drawers || {})) if (k.startsWith(pre)) return fn(k.slice(pre.length));
+    if (M.views()[k]) M.go(k);
+  };
+
+  // ── 상세 서랍
+  M.drawer = (sub, title, html) => {
+    $('#dsub').textContent = sub; $('#dttl').textContent = title; $('#dbody').innerHTML = html;
+    $('#drawer').classList.add('on'); $('#shade').classList.add('on'); $('#dbody').scrollTop = 0;
+    bind($('#dbody'));
+  };
+  M.closeDrawer = () => { $('#drawer').classList.remove('on'); $('#shade').classList.remove('on'); };
+
+  // ── 검사 기록 창 (모든 공정 공용 → mlng_inspections)
+  M.openInsp = (proc, lot, target) => {
+    const procs = [...new Set(M.S.masters.equipment.map(e => e.proc))];
+    $('#d-proc').innerHTML = procs.map(p => `<option value="${p}">${esc(M.PROC[p] || p)}</option>`).join('');
+    $('#d-proc').value = proc || procs[0];
+    const codes = () => { const p = $('#d-proc').value; $('#d-code').innerHTML = '<option value="">—</option>' + M.S.masters.defect_codes.filter(c => c.proc === p).map(c => `<option value="${esc(c.code)}">${esc(c.name)} (${esc(c.code)})</option>`).join(''); };
+    $('#d-proc').onchange = codes; codes();
+    $('#d-lot').value = lot || ''; $('#d-target').value = target || ''; $('#d-res').value = '불량'; $('#d-qty').value = 1; $('#d-note').value = ''; $('#d-msg').textContent = '';
+    $('#dlg').style.display = 'flex';
+  };
+  async function saveInsp() {
+    const rec = { proc: $('#d-proc').value, lot_id: $('#d-lot').value.trim() || null, target: $('#d-target').value.trim() || null, result: $('#d-res').value, defect_code: $('#d-code').value || null,
+      qty: Math.max(1, parseInt($('#d-qty').value, 10) || 1), note: $('#d-note').value.trim() || null };
+    if (!rec.lot_id) { $('#d-msg').textContent = 'LOT 을 적어 주세요'; return; }
+    try { const r = await D.addInspection(rec); if (D.LIVE) M.S.inspections = [r].concat(M.S.inspections || []); $('#dlg').style.display = 'none'; M.closeDrawer(); rail(); M.render(); }
+    catch (e) { $('#d-msg').textContent = '저장 실패: ' + e.message; }
+  }
+
+  // ── 테마: 시스템 → 라이트 → 다크
+  const THEME_IC = { system: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+    light: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    dark: '<svg viewBox="0 0 24 24"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></svg>' };
+  const THEME_TXT = { system: '시스템', light: '라이트', dark: '다크' };
+  const getTheme = () => { try { const t = localStorage.getItem('mlng_theme'); return t === 'light' || t === 'dark' ? t : 'system'; } catch (e) { return 'system'; } };
+  function setTheme(t) {
+    if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+    try { t === 'system' ? localStorage.removeItem('mlng_theme') : localStorage.setItem('mlng_theme', t); } catch (e) { /* 저장 못 해도 화면은 바뀐다 */ }
+    $('#themebtn').innerHTML = THEME_IC[t] + THEME_TXT[t];
+  }
+
+  M.start = async () => {
+    if (D.needLogin()) { $('#login').style.display = 'flex'; return; }
+    $('#login').style.display = 'none';
+    try { M.S = await D.load(); } catch (e) { $('#view').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 — ${esc(e.message)}</div>`; return; }
+    rail(); M.render();
+  };
+  M.init = () => {
+    $('#l-go').onclick = async () => { $('#l-err').textContent = ''; try { await D.login($('#l-id').value.trim(), $('#l-pw').value); M.start(); } catch (e) { $('#l-err').textContent = e.message; } };
+    $('#l-pw').onkeydown = e => { if (e.key === 'Enter') $('#l-go').click(); };
+    $('#logout').style.display = 'none';
+    $('#d-cancel').onclick = () => { $('#dlg').style.display = 'none'; };
+    $('#d-save').onclick = saveInsp;
+    setTheme(getTheme());
+    $('#themebtn').onclick = () => setTheme({ system: 'light', light: 'dark', dark: 'system' }[getTheme()]);
+    $('#dclose').onclick = M.closeDrawer; $('#shade').onclick = M.closeDrawer;
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { M.closeDrawer(); $('#dlg').style.display = 'none'; } });
+    M.start();
+  };
+})();

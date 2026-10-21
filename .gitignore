@@ -1,0 +1,6 @@
+_build/
+*.mat
+*.csv
+*.xlsx
+preview.html
+__pycache__/
