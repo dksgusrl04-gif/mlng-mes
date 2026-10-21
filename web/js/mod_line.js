@@ -70,6 +70,10 @@
   }
 
   // ── 조정 제안
+  // 질의응답에서 쓰는 요약 (지금 화면의 속도·목표 기준)
+  M.lineSummary = () => { const m = model(); return { target_per_day: Math.round(m.target), possible_per_day: Math.round(m.lim.t), bottleneck: M.PROC[m.lim.p] || m.lim.p,
+    capacity_limit_per_day: Math.round(m.capT.t), capacity_bottleneck: M.PROC[m.capT.p] || m.capT.p,
+    wip_gaps_per_day: Object.values(m.gaps).map(g => ({ between: g.label, gap: Math.round(g.d) })) }; };
   function advice(m) {
     const out = [], name = p => (STEPS.find(s => s.proc === p) || {}).name || p, al = M.alerts();
     const hot = p => al.filter(a => a.proc === p && a.level === 'danger');

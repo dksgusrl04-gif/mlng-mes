@@ -4,7 +4,8 @@
  *   SUPABASE_URL·ANON_KEY 가 비어 있으면  → 데모 스냅샷
  *   채워져 있고 mlng_lots 에 행이 있으면   → 실시간
  *   채워져 있지만 표가 비었거나 못 읽으면 → 데모 스냅샷 (연결 상태는 «데이터 상태» 화면에 표시)
- * 쓰는 것 (실시간일 때만): mlng_inspections · mlng_work_orders 추가
+ * 쓰는 것 (실시간일 때만): mlng_inspections · mlng_work_orders 추가 · mlng_purchase_orders 추가/결재 · mlng_audit 추가
+ * 질의응답: Supabase Edge Function(mlng-ask) 이 Claude API 를 중계 — API 키는 브라우저에 없다
  */
 (function () {
   'use strict';
@@ -15,9 +16,10 @@
   let MODE = 'demo';            // 'live' | 'demo'
   let DBSTATE = CONNECTED ? '확인 전' : '연결 안 함';
 
-  const hdr = () => ({ apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' });
+  // 예전 anon 키(JWT)만 Authorization 에 싣는다 — 새 publishable 키(sb_publishable_…)는 apikey 헤더만
+  const hdr = () => Object.assign({ apikey: KEY, 'Content-Type': 'application/json' }, KEY.startsWith('eyJ') ? { Authorization: 'Bearer ' + KEY } : {});
   async function db(method, path, body) {
-    const r = await fetch(`${BASE}/rest/v1${path}`, { method, headers: Object.assign(hdr(), method === 'POST' ? { Prefer: 'return=representation' } : {}),
+    const r = await fetch(`${BASE}/rest/v1${path}`, { method, headers: Object.assign(hdr(), method === 'POST' || method === 'PATCH' ? { Prefer: 'return=representation' } : {}),
       body: body ? JSON.stringify(body) : undefined });
     if (!r.ok) { const t = await r.text(); throw new Error(`${r.status} ${t.slice(0, 200)}`); }
     return r.status === 204 ? null : r.json();
@@ -34,11 +36,12 @@
   // 실시간: 표 → 데모와 같은 모양으로
   async function loadLive() {
     const since = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10);
-    const [items, equip, rout, codes, workers, wos, lots, trace, alerts, insp, recipe, jobs] = await Promise.all([
+    const [items, equip, rout, codes, workers, wos, lots, trace, alerts, insp, recipe, jobs, pos, audit] = await Promise.all([
       '/mlng_items?select=*', '/mlng_equipment?select=*', '/mlng_routings?select=*&order=seq.asc', '/mlng_defect_codes?select=*', '/mlng_workers?select=*',
       `/mlng_work_orders?select=*&created_at=gte.${since}&order=created_at.desc&limit=1000`, `/mlng_lots?select=*&order=start_at.desc&limit=3000`,
       '/mlng_trace?select=*&order=at.desc&limit=3000', '/mlng_alerts?select=*&order=at.desc&limit=100', '/mlng_inspections?select=*&order=at.desc&limit=1000',
       '/heat_recipes?select=*', `/heat_jobs?select=*&start_at=gte.${since}&order=start_at.asc&limit=2000`,
+      '/mlng_purchase_orders?select=*&order=created_at.desc&limit=300', '/mlng_audit?select=*&order=at.desc&limit=500',
     ].map(p => soft(db('GET', p))));
     if (!lots) { DBSTATE = '연결 실패 — 표를 읽지 못함 (SQL 실행·키 확인)'; return null; }
     if (!lots.length) { DBSTATE = '연결됨 — 표가 비어 있어 데모 스냅샷 표시'; return null; }
@@ -58,6 +61,7 @@
         { key: 'op1', label: '소입로 1존' }, { key: 'op2', label: '소입로 2존' }, { key: 'op3', label: '소입로 3존' }, { key: 'op4', label: '소입로 4존' },
         { key: 'opd1', label: '건조로 1존' }, { key: 'opd2', label: '건조로 2존' }], lots: hl, profiles: {}, rel: [], source: '설비 수집' },
       alerts: alerts || [], inspections: insp || [],
+      purchase: { orders: pos || [], audit: audit || [] },
     };
   }
   async function profile(id) {           // 실시간 모드에서 LOT 상세를 열 때만 읽는다
@@ -93,6 +97,22 @@
       return r && r[0] ? r[0] : row;
     },
     demoInspections: () => memInsp,
+    // 구매·발주 — 데모면 화면 메모리에만 (새로고침하면 처음 상태)
+    async savePO(po, isNew) {
+      if (MODE !== 'live') return po;
+      const r = isNew ? await db('POST', '/mlng_purchase_orders', po)
+        : await db('PATCH', `/mlng_purchase_orders?id=eq.${encodeURIComponent(po.id)}`, { signs: po.signs, status: po.status, received_at: po.received_at || null });
+      return r && r[0] ? r[0] : po;
+    },
+    async addAudit(rec) { if (MODE === 'live') await db('POST', '/mlng_audit', rec).catch(e => console.warn('[mlng] 기록 실패', e.message)); },
+    // 질의응답 — Claude API 중계 함수 주소 (없으면 규칙 기반)
+    askUrl: () => CFG.ASK_URL || (BASE ? `${BASE}/functions/v1/mlng-ask` : ''),
+    async ask(body) {
+      const r = await fetch(window.MLNGData.askUrl(), { method: 'POST', headers: KEY ? hdr() : { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || `${r.status}`);
+      return j;
+    },
     async addWorkOrder(wo) {                                            // 작업지시 초안 — 실시간이면 mlng_work_orders
       if (MODE !== 'live') return wo;
       const r = await db('POST', '/mlng_work_orders', wo);

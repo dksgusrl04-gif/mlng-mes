@@ -150,7 +150,7 @@
     ];
     return `<div class="card"><h2>데이터 원천</h2>${M.table([['원천', r => `<b>${esc(r.src)}</b>`], ['최근', 'upd'], ['양', 'amt'], ['상태', r => r.s]], rows, { wrap: false })}</div>
       <div class="card" style="margin-top:16px"><h2>연결</h2>${M.table([['항목', 'k'], ['값', 'v']], [
-        { k: '연결', v: M.D.LIVE ? '실시간 (Supabase)' : '데모 스냅샷' }, { k: 'Supabase', v: M.D.dbState() }, { k: '데이터 기준 시각', v: S.asof || '—' },
+        { k: '연결', v: M.D.LIVE ? '실시간 (Supabase)' : '데모 스냅샷' }, { k: 'Supabase', v: M.D.dbState() }, { k: 'Claude 질의', v: M.D.askUrl() ? '연결 — Edge Function mlng-ask' : '규칙 기반 (중계 함수 미연결)' }, { k: '데이터 기준 시각', v: S.asof || '—' },
         { k: '공정 모듈', v: M.mods.filter(m => m.proc && !['data'].includes(m.proc)).map(m => m.group).join(' · ') },
         { k: '샘플 데이터 출처 (열처리)', v: H.source || '—' }, ...(S.press ? [{ k: '샘플 데이터 출처 (프레스)', v: S.press.source }] : []),
         ...(S.insp ? [{ k: '샘플 데이터 출처 (검사)', v: S.insp.source }] : []), ...(S.weld ? [{ k: '샘플 데이터 출처 (점용접)', v: S.weld.source }] : []),

@@ -547,6 +547,39 @@ begin
   end if;
 end $$;
 
+-- ─────────────── buy_schema.sql ───────────────
+-- ═══════════════════════════════════════════════════════════════
+-- 구매·발주 (mlng_purchase_orders) · 활동 기록 (mlng_audit)
+--   발주 1건 = 거래처 1곳. 품목은 lines(jsonb), 결재는 signs(jsonb: {"담당":{"by","at"}, ...})
+--   상태: pending(결재 대기) → approved(결재 완료·미입고) → received(입고 완료)
+-- ═══════════════════════════════════════════════════════════════
+create table if not exists mlng_purchase_orders (
+  id          text primary key,            -- PO-220719-01
+  created_at  text not null,
+  by          text,
+  vendor      text not null,
+  lines       jsonb not null default '[]', -- [{code,name,spec,unit,qty,price,reason}]
+  signs       jsonb not null default '{}',
+  status      text not null default 'pending' check (status in ('pending','approved','received')),
+  note        text,
+  received_at text
+);
+create index if not exists mlng_po_status_idx on mlng_purchase_orders (status);
+
+create table if not exists mlng_audit (
+  id     bigserial primary key,
+  at     text not null,
+  kind   text not null default 'po',       -- po · …
+  ref    text,                             -- 발주 번호 등
+  action text not null,                    -- 발주 등록 · 담당 결재 (이름) · 결재 물림 · 발주서 출력 · 입고 처리
+  by     text,
+  detail jsonb
+);
+create index if not exists mlng_audit_ref_idx on mlng_audit (ref);
+
+alter table mlng_purchase_orders enable row level security;
+alter table mlng_audit enable row level security;
+
 
 -- ═══════════════════════════════════════════════════════════════
 -- 로그인 없는 접근 — anon 키로 읽기 · 검사 기록/작업지시 초안은 추가만
@@ -570,6 +603,17 @@ drop policy if exists anon_insp_insert on mlng_inspections;
 create policy anon_insp_insert on mlng_inspections for insert to anon with check (true);
 drop policy if exists anon_wo_insert on mlng_work_orders;
 create policy anon_wo_insert on mlng_work_orders for insert to anon with check (true);
+
+-- 구매·발주: 로그인 없는 시연이라 anon 이 발주 추가·결재(수정)·기록 추가를 할 수 있다 (삭제는 불가)
+grant insert, update on mlng_purchase_orders to anon;
+grant insert on mlng_audit to anon;
+grant usage, select on sequence mlng_audit_id_seq to anon;
+drop policy if exists anon_po_insert on mlng_purchase_orders;
+create policy anon_po_insert on mlng_purchase_orders for insert to anon with check (true);
+drop policy if exists anon_po_update on mlng_purchase_orders;
+create policy anon_po_update on mlng_purchase_orders for update to anon using (true) with check (true);
+drop policy if exists anon_audit_insert on mlng_audit;
+create policy anon_audit_insert on mlng_audit for insert to anon with check (true);
 
 -- 확인: 만들어진 표
 select tablename from pg_tables where schemaname = 'public' order by tablename;

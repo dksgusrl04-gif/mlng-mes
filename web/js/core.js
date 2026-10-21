@@ -31,7 +31,7 @@
   const { esc, f } = M;
 
   // ── 공정 표시
-  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획' };
+  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획', buy: '구매' };
   M.procTag = p => `<span class="proc p-${esc(p)}">${esc(M.PROC[p] || p)}</span>`;
   M.tag = (t, cls) => `<span class="tag ${cls || 't-' + esc(t)}">${esc(t)}</span>`;
   M.dot = (st, t) => `<span class="dot ${st}"></span>${esc(t)}`;
@@ -45,6 +45,9 @@
     spark: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
     flame: '<path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-7 2 1 3 3 3 5 1-1 1-3 0-8z"/>', list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
     range: '<path d="M3 12h18M7 8v8M17 8v8"/>', gauge: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/>', out: '<path d="M14 3h7v7M21 3l-9 9M10 5H5v14h14v-5"/>',
+    cart: '<path d="M3 4h2l2.4 11h11l2-8H6.2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
+    sign: '<path d="M4 20h16"/><path d="M14.5 4.5l5 5L9 20H4v-5z"/>',
+    chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
   };
   M.ic = k => `<svg class="ic" viewBox="0 0 24 24">${IC[k] || ''}</svg>`;
 
