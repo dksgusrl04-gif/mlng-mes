@@ -106,7 +106,7 @@
     },
     async addAudit(rec) { if (MODE === 'live') await db('POST', '/mlng_audit', rec).catch(e => console.warn('[mlng] 기록 실패', e.message)); },
     // 질의응답 — Claude API 중계 함수 주소 (없으면 규칙 기반)
-    askUrl: () => CFG.ASK_URL || (BASE ? `${BASE}/functions/v1/mlng-ask` : ''),
+    askUrl: () => CFG.ASK_URL === 'off' ? '' : (CFG.ASK_URL || (BASE ? `${BASE}/functions/v1/mlng-ask` : '')),
     async ask(body) {
       const r = await fetch(window.MLNGData.askUrl(), { method: 'POST', headers: KEY ? hdr() : { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json().catch(() => ({}));

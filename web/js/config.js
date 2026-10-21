@@ -6,8 +6,8 @@
  * anon 키는 공개돼도 되는 키다. 절대 넣으면 안 되는 것: service_role 키
  */
 window.MLNG_CONFIG = {
-  SUPABASE_URL: '',          // https://<프로젝트>.supabase.co
-  SUPABASE_ANON_KEY: '',     // Project Settings → API → anon public
+  SUPABASE_URL: 'https://vwgfeutvcvogutxuhcxt.supabase.co',   // MLNG MES 전용 프로젝트
+  SUPABASE_ANON_KEY: 'sb_publishable_7FxcyivB8vrrJJdrWTSl9g_FZUiEV17',   // Publishable key (공개용)
 
   // 아직 이 셸에 합치지 않은 모듈 — 공정 흐름에서 누르면 새 탭으로 연다 (비우면 링크 없음)
   LINKS: {
@@ -58,7 +58,7 @@ window.MLNG_CONFIG = {
     ],
   },
   // 질의응답 (Claude API) — 키는 Supabase Edge Function 에만 둔다 (supabase/functions/mlng-ask)
-  //   비워 두면 SUPABASE_URL 이 있을 때 `${SUPABASE_URL}/functions/v1/mlng-ask` 를 쓰고, 그것도 없으면 규칙 기반으로만 답한다
-  ASK_URL: '',
+  //   'off' = 규칙 기반만. 함수를 배포한 뒤 '' 로 바꾸면 `${SUPABASE_URL}/functions/v1/mlng-ask` 를 자동으로 쓴다
+  ASK_URL: 'off',
   RETRAIN_MIN_RECORDS: 50,
 };
