@@ -122,7 +122,7 @@
         <input class="in lw" type="number" min="0" step="100" placeholder="현재 재공" data-lw="${p}" value="${st.wip[p] ?? ''}"></div>`; };
     const inspLimit = Math.min(m.plan.mach * m.y('mach'), m.plan.insp);
     return `
-    <div class="kstrip">
+    <div class="kstrip nside">
       <div class="kpi click" data-row="k:line:target"><div class="lab">목표 산출 (열처리 양품)</div><div class="val"><input class="in tgt" type="number" min="0" step="100" data-ltgt="1" value="${Math.round(m.target)}"><small>개/일</small></div>
         <div class="foot">기본값 = 최근 열처리 속도 × 수율</div></div>
       <div class="kpi click" data-row="k:line:lim"><div class="lab">지금 계획으로 가능한 산출</div><div class="val" style="color:${m.lim.t < m.target * 0.995 ? 'var(--danger-ink)' : 'var(--ok)'}">${f(m.lim.t, 0)}<small>개/일</small></div>

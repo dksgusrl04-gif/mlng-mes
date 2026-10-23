@@ -147,8 +147,20 @@
     updBar();
     const v = M.views()[M.cur];
     $('#view').innerHTML = v ? v() : '';
+    sideLayout($('#view'));
     bind($('#view'));
   };
+  // 요약 띠가 있는 화면은 «본문 + 오른쪽 요약 목록» 으로 배치한다 (항목을 누르면 지금처럼 상세 서랍)
+  function sideLayout(v) {
+    const ks = v.querySelector(':scope > .kstrip:not(.nside)');
+    v.classList.toggle('hasside', !!ks);
+    if (!ks) return;
+    const main = document.createElement('div'), side = document.createElement('aside');
+    main.className = 'vmain'; side.className = 'vside';
+    ks.classList.add('kside'); side.innerHTML = '<div class="vsh">요약</div>'; side.appendChild(ks);
+    while (v.firstChild) main.appendChild(v.firstChild);
+    v.append(main, side);
+  }
   // 화면 안의 공통 동작: data-go(화면 이동) · data-row(상세) · data-insp(검사 기록) · data-set(모듈 상태 바꾸고 다시 그리기)
   function bind(root) {
     root.querySelectorAll('[data-go]').forEach(a => a.onclick = e => { e.preventDefault(); M.nav(a.dataset.go); });

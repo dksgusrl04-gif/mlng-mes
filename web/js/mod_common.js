@@ -58,7 +58,7 @@
         const e = eq(r.equipment_id), st = e.status || 'planned', [cls] = STATUS[st], m = modOf(r.proc), sm = st === 'live' && m && m.summary ? m.summary(S) : null;
         const go = sm ? sm.go : st === 'external' && (M.CFG.LINKS || {})[r.proc] ? 'link:' + r.proc : '';
         return `${i ? '<div class="arrow" aria-hidden="true"></div>' : ''}<div class="step st-${cls} ${go ? 'click' : ''}" ${go ? `data-go="${esc(go)}"` : ''} title="${esc(sm ? sm.sub : '')}">
-          <div class="nm"><span class="dot ${sm ? sm.st : 'off'}"></span>${esc(r.step_name)}</div>
+          <div class="nm"><span class="dot ${sm ? (['warn', 'danger'].includes(sm.st) ? sm.st : 'ok') : 'off'}"></span>${esc(r.step_name)}</div>
           ${sm ? `<div class="kv ${sm.st}">${esc(sm.kpi)}</div>` : `<div class="sb">${st === 'external' ? '별도 시스템' : '준비 중'}</div>`}</div>`;
       }).join('')}</div></div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
