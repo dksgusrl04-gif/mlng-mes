@@ -47,11 +47,11 @@
     const xl = [0, Math.floor(hrs.length / 2), hrs.length - 1].filter((v, i, a) => a.indexOf(v) === i).map(i => [i, hrs[i].h.slice(5).replace(' ', ' ') + '시']);
     const cyc = M.median(I().lots.map(l => l.cycle_s));
     return `
-    <div class="grid g4">
-      <div class="card kpi"><div class="lab">검사 부품 · 최근 ${RD()}일</div><div class="val">${f(ps.length, 0)}<small>개</small></div><div class="foot">검사 기록 ${f(recs.length, 0)}건</div></div>
-      <div class="card kpi click" data-go="insp_parts:ng"><div class="lab">불합격 기록이 있는 부품</div><div class="val" style="color:${nBad ? 'var(--danger-ink)' : 'inherit'}">${nBad}<small>개</small></div><div class="foot">부품 기준 ${pct(ps.length ? nBad / ps.length : null, 1)} · 그중 확정 필요 ${ps.filter(p => !p.ok && p.conflict).length}</div></div>
-      <div class="card kpi click" data-go="insp_parts:conflict"><div class="lab">판정 확정 필요</div><div class="val" style="color:${nCon ? 'var(--warn-ink)' : 'inherit'}">${nCon}<small>개</small></div><div class="foot">합격·불합격이 함께 기록된 부품</div></div>
-      <div class="card kpi"><div class="lab">사이클 타임</div><div class="val">${f(cyc, 0)}<small>초</small></div><div class="foot">부품 한 개 검사 간격 (중앙값)</div></div>
+    <div class="kstrip">
+      <div class="kpi"><div class="lab">검사 부품 · 최근 ${RD()}일</div><div class="val">${f(ps.length, 0)}<small>개</small></div><div class="foot">검사 기록 ${f(recs.length, 0)}건</div></div>
+      <div class="kpi click" data-go="insp_parts:ng"><div class="lab">불합격 기록이 있는 부품</div><div class="val" style="color:${nBad ? 'var(--danger-ink)' : 'inherit'}">${nBad}<small>개</small></div><div class="foot">부품 기준 ${pct(ps.length ? nBad / ps.length : null, 1)} · 그중 확정 필요 ${ps.filter(p => !p.ok && p.conflict).length}</div></div>
+      <div class="kpi click" data-go="insp_parts:conflict"><div class="lab">판정 확정 필요</div><div class="val" style="color:${nCon ? 'var(--warn-ink)' : 'inherit'}">${nCon}<small>개</small></div><div class="foot">합격·불합격이 함께 기록된 부품</div></div>
+      <div class="kpi"><div class="lab">사이클 타임</div><div class="val">${f(cyc, 0)}<small>초</small></div><div class="foot">부품 한 개 검사 간격 (중앙값)</div></div>
     </div>
     <div class="card" style="margin-top:16px"><h2>시간대별 불합격률 <span class="h2sub">p 관리도 · 평균 ${pct(pbar, 1)} · 관리 상한은 검사 수에 따라 달라짐</span></h2>
       ${hrs.length ? M.lineChart([{ v: rate, cls: 's1' }, { v: ucl, cls: 's4' }], null, { h: 250, w: 1000, d: 0, xlab: xl, refs: [{ y: pbar * 100, label: '평균' }],

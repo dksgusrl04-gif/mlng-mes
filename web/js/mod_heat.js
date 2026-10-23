@@ -82,11 +82,11 @@
     const dc = {}; recent(30).forEach(l => Object.entries(l.defects || {}).forEach(([c, n]) => dc[c] = (dc[c] || 0) + n));
     const dcs = Object.entries(dc).sort((a, b) => b[1] - a[1]), dmax = Math.max(1, ...dcs.map(x => x[1])), dsum = dcs.reduce((s, x) => s + x[1], 0);
     return `
-    <div class="grid g4">
-      <div class="card kpi"><div class="lab">처리 수량 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.qty, 0), 0)}<small>개</small></div><div class="foot">${rl.length}작업 · 평균 ${f(M.median(rl.map(l => l.dur_h)), 1)}시간</div></div>
-      <div class="card kpi"><div class="lab">불량률 · 최근 ${RD()}일</div><div class="val" style="color:${p >= t ? 'var(--warn-ink)' : 'inherit'}">${ppmTxt(p)}<small>PPM</small></div><div class="foot">관리 기준 ${f(t, 0)} PPM</div></div>
-      <div class="card kpi click" data-go="heat_lots"><div class="lab">기준 초과 작업</div><div class="val" style="color:${over ? 'var(--warn-ink)' : 'inherit'}">${over}<small>/ ${rl.length}</small></div><div class="foot">불량률 ${f(t, 0)} PPM 이상</div></div>
-      <div class="card kpi click" data-go="heat_recipe"><div class="lab">조건 이탈 작업</div><div class="val">${dev}<small>/ ${rl.length}</small></div><div class="foot">허용 범위 밖 시간 ${pct(HC().DEVIATION_RATE, 0)} 이상</div></div>
+    <div class="kstrip">
+      <div class="kpi"><div class="lab">처리 수량 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.qty, 0), 0)}<small>개</small></div><div class="foot">${rl.length}작업 · 평균 ${f(M.median(rl.map(l => l.dur_h)), 1)}시간</div></div>
+      <div class="kpi"><div class="lab">불량률 · 최근 ${RD()}일</div><div class="val" style="color:${p >= t ? 'var(--warn-ink)' : 'inherit'}">${ppmTxt(p)}<small>PPM</small></div><div class="foot">관리 기준 ${f(t, 0)} PPM</div></div>
+      <div class="kpi click" data-go="heat_lots"><div class="lab">기준 초과 작업</div><div class="val" style="color:${over ? 'var(--warn-ink)' : 'inherit'}">${over}<small>/ ${rl.length}</small></div><div class="foot">불량률 ${f(t, 0)} PPM 이상</div></div>
+      <div class="kpi click" data-go="heat_recipe"><div class="lab">조건 이탈 작업</div><div class="val">${dev}<small>/ ${rl.length}</small></div><div class="foot">허용 범위 밖 시간 ${pct(HC().DEVIATION_RATE, 0)} 이상</div></div>
     </div>
     <div class="card" style="margin-top:16px"><h2>라인 상태 <span class="h2sub">${last ? `마지막 작업 ${esc(last.id)} · ${esc(hm(last.start))} ~ ${esc(String(last.end).slice(11))} · ${esc(last.worker)}` : ''}</span>
       ${last ? `<a class="more" href="#" data-row="heat:${esc(last.id)}">작업 상세 →</a>` : ''}</h2>${lineFlow(last)}

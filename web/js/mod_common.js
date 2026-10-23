@@ -33,11 +33,11 @@
     const qty = lots.filter(l => l.proc === lastProc).reduce((s, l) => s + (l.qty || 0), 0), bad = lots.reduce((s, l) => s + (l.bad || 0), 0);
     const byProc = p => lots.filter(l => l.proc === p);
     return `
-    <div class="grid g4">
-      <div class="card kpi"><div class="lab">완료 작업 · 최근 ${RD()}일</div><div class="val">${lots.length}<small>건</small></div><div class="foot">${liveProcs.map(p => `${esc(M.PROC[p])} ${byProc(p).length}`).join(' · ')}</div></div>
-      <div class="card kpi"><div class="lab">생산 수량 · 최근 ${RD()}일</div><div class="val">${f(qty, 0)}<small>개</small></div><div class="foot">${esc(M.PROC[lastProc] || '')} 완료 기준 · ${esc(item((S.masters.items[0] || {}).code))}</div></div>
-      <div class="card kpi"><div class="lab">공정 불량 · 최근 ${RD()}일</div><div class="val">${f(bad, 0)}<small>개</small></div><div class="foot">${liveProcs.filter(p => byProc(p).some(l => l.bad != null)).map(p => `${esc(M.PROC[p])} ${f(byProc(p).reduce((s, l) => s + (l.bad || 0), 0), 0)}`).join(' · ')}</div></div>
-      <div class="card kpi click" data-go="alerts"><div class="lab">조치 필요 알림</div><div class="val" style="color:${al.some(a => a.level === 'danger') ? 'var(--danger-ink)' : 'inherit'}">${act.length}<small>건</small></div><div class="foot">긴급 ${al.filter(a => a.level === 'danger').length} · 주의 ${al.filter(a => a.level === 'warn').length}</div></div>
+    <div class="kstrip">
+      <div class="kpi"><div class="lab">완료 작업 · 최근 ${RD()}일</div><div class="val">${lots.length}<small>건</small></div><div class="foot">${liveProcs.map(p => `${esc(M.PROC[p])} ${byProc(p).length}`).join(' · ')}</div></div>
+      <div class="kpi"><div class="lab">생산 수량 · 최근 ${RD()}일</div><div class="val">${f(qty, 0)}<small>개</small></div><div class="foot">${esc(M.PROC[lastProc] || '')} 완료 기준 · ${esc(item((S.masters.items[0] || {}).code))}</div></div>
+      <div class="kpi"><div class="lab">공정 불량 · 최근 ${RD()}일</div><div class="val">${f(bad, 0)}<small>개</small></div><div class="foot">${liveProcs.filter(p => byProc(p).some(l => l.bad != null)).map(p => `${esc(M.PROC[p])} ${f(byProc(p).reduce((s, l) => s + (l.bad || 0), 0), 0)}`).join(' · ')}</div></div>
+      <div class="kpi click" data-go="alerts"><div class="lab">조치 필요 알림</div><div class="val" style="color:${al.some(a => a.level === 'danger') ? 'var(--danger-ink)' : 'inherit'}">${act.length}<small>건</small></div><div class="foot">긴급 ${al.filter(a => a.level === 'danger').length} · 주의 ${al.filter(a => a.level === 'warn').length}</div></div>
     </div>
     <div class="card" style="margin-top:16px"><h2>공정 흐름 <span class="h2sub">${esc(item((S.masters.items[0] || {}).code))} · ${esc(S.factory.line || '')}</span></h2>
       <div class="route">${rout.map((r, i) => {

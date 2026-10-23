@@ -36,11 +36,11 @@
     const last = daysOf(pit).slice(-14).reverse();
     const nextOrder = d => { const a = daysOf(d.item), i = a.findIndex(x => x.date === d.date); return a[i + 1] ? a[i + 1].order : null; };
     return `<div class="tools">${M.seg('pit', pit, items.map(i => [i.code, `${i.code} ${i.name}`]))}<span class="tsum">SB-01 염욕 열처리로 · 기준 ${esc(s.last.date || '')}</span></div>
-    <div class="grid g4">
-      <div class="card kpi"><div class="lab">수주 · 최근 ${rec.length}작업일</div><div class="val">${f(rec.reduce((t, d) => t + d.order, 0), 0)}<small>개</small></div><div class="foot">하루 평균 ${f(s.avg, 0)}개</div></div>
-      <div class="card kpi"><div class="lab">생산 · 최근 ${rec.length}작업일</div><div class="val">${f(rec.reduce((t, d) => t + d.prod, 0), 0)}<small>개</small></div><div class="foot">하루 ${f(s.std, 0)}개 · ${f(s.std / s.lot, 0)}회 × ${s.lot}</div></div>
-      <div class="card kpi"><div class="lab">마감 재고</div><div class="val" style="color:${s.short ? 'var(--warn-ink)' : 'inherit'}">${f(s.last.inv_close, 0)}<small>개</small></div><div class="foot">재고 일수 ${f(s.cover, 1)}일</div></div>
-      <div class="card kpi"><div class="lab">내일 필요 생산</div><div class="val">${f(s.need, 0)}<small>개</small></div><div class="foot">예상 수주 ${f(s.avg, 0)} + 안전재고 ${pct(PCF().SAFETY_DAYS, 0)} − 재고</div></div>
+    <div class="kstrip">
+      <div class="kpi"><div class="lab">수주 · 최근 ${rec.length}작업일</div><div class="val">${f(rec.reduce((t, d) => t + d.order, 0), 0)}<small>개</small></div><div class="foot">하루 평균 ${f(s.avg, 0)}개</div></div>
+      <div class="kpi"><div class="lab">생산 · 최근 ${rec.length}작업일</div><div class="val">${f(rec.reduce((t, d) => t + d.prod, 0), 0)}<small>개</small></div><div class="foot">하루 ${f(s.std, 0)}개 · ${f(s.std / s.lot, 0)}회 × ${s.lot}</div></div>
+      <div class="kpi"><div class="lab">마감 재고</div><div class="val" style="color:${s.short ? 'var(--warn-ink)' : 'inherit'}">${f(s.last.inv_close, 0)}<small>개</small></div><div class="foot">재고 일수 ${f(s.cover, 1)}일</div></div>
+      <div class="kpi"><div class="lab">내일 필요 생산</div><div class="val">${f(s.need, 0)}<small>개</small></div><div class="foot">예상 수주 ${f(s.avg, 0)} + 안전재고 ${pct(PCF().SAFETY_DAYS, 0)} − 재고</div></div>
     </div>
     <div class="grid g21" style="margin-top:16px">
       <div class="card"><h2>수주 · 생산 · 재고 <span class="h2sub">${esc(pit)} · 최근 45작업일</span></h2>
@@ -70,11 +70,11 @@
     const since = M.sinceDay(M.CFG.RECENT_DAYS || 7).getTime(), rec = all.filter(w => M.toDate(w.created_at).getTime() >= since);
     const lotOf = w => (M.S.lots || []).find(x => x.wo_id === w.id);
     const procs = [...new Set(all.map(woProc).filter(Boolean))];
-    return `<div class="grid g4">
-      <div class="card kpi"><div class="lab">작업지시 · 최근 ${M.CFG.RECENT_DAYS || 7}일</div><div class="val">${rec.length}<small>건</small></div><div class="foot">${procs.map(p => `${esc(M.PROC[p])} ${rec.filter(w => woProc(w) === p).length}`).join(' · ')}</div></div>
-      <div class="card kpi"><div class="lab">완료</div><div class="val">${rec.filter(w => w.status === 'done').length}<small>건</small></div><div class="foot">실적 LOT 이 연결된 작업지시</div></div>
-      <div class="card kpi click" data-wf="draft"><div class="lab">초안 (발행 전)</div><div class="val" style="color:${drafts().length ? 'var(--warn-ink)' : 'inherit'}">${drafts().length}<small>건</small></div><div class="foot">생산 계획에서 만든 것</div></div>
-      <div class="card kpi"><div class="lab">전체</div><div class="val">${f(all.length, 0)}<small>건</small></div><div class="foot">품목 ${new Set(all.map(w => w.item_code)).size}개</div></div>
+    return `<div class="kstrip">
+      <div class="kpi"><div class="lab">작업지시 · 최근 ${M.CFG.RECENT_DAYS || 7}일</div><div class="val">${rec.length}<small>건</small></div><div class="foot">${procs.map(p => `${esc(M.PROC[p])} ${rec.filter(w => woProc(w) === p).length}`).join(' · ')}</div></div>
+      <div class="kpi"><div class="lab">완료</div><div class="val">${rec.filter(w => w.status === 'done').length}<small>건</small></div><div class="foot">실적 LOT 이 연결된 작업지시</div></div>
+      <div class="kpi click" data-wf="draft"><div class="lab">초안 (발행 전)</div><div class="val" style="color:${drafts().length ? 'var(--warn-ink)' : 'inherit'}">${drafts().length}<small>건</small></div><div class="foot">생산 계획에서 만든 것</div></div>
+      <div class="kpi"><div class="lab">전체</div><div class="val">${f(all.length, 0)}<small>건</small></div><div class="foot">품목 ${new Set(all.map(w => w.item_code)).size}개</div></div>
     </div>
     <div class="card" style="margin-top:16px"><div class="tools">${M.seg('wf', wf, [['all', '전체'], ['draft', '초안']].concat(procs.map(p => [p, M.PROC[p]])))}
       <input class="in" id="wq" placeholder="작업지시 · 품목" value="${esc(wq)}" style="width:200px"><span class="tsum">${f(rows.length, 0)}건</span></div>

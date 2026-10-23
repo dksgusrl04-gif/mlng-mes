@@ -122,13 +122,13 @@
         <input class="in lw" type="number" min="0" step="100" placeholder="현재 재공" data-lw="${p}" value="${st.wip[p] ?? ''}"></div>`; };
     const inspLimit = Math.min(m.plan.mach * m.y('mach'), m.plan.insp);
     return `
-    <div class="grid g4">
-      <div class="card kpi"><div class="lab">목표 산출 (열처리 양품)</div><div class="val"><input class="in tgt" type="number" min="0" step="100" data-ltgt="1" value="${Math.round(m.target)}"><small>개/일</small></div>
+    <div class="kstrip">
+      <div class="kpi"><div class="lab">목표 산출 (열처리 양품)</div><div class="val"><input class="in tgt" type="number" min="0" step="100" data-ltgt="1" value="${Math.round(m.target)}"><small>개/일</small></div>
         <div class="foot">기본값 = 최근 열처리 속도 × 수율</div></div>
-      <div class="card kpi"><div class="lab">지금 계획으로 가능한 산출</div><div class="val" style="color:${m.lim.t < m.target * 0.995 ? 'var(--danger-ink)' : 'var(--ok)'}">${f(m.lim.t, 0)}<small>개/일</small></div>
+      <div class="kpi"><div class="lab">지금 계획으로 가능한 산출</div><div class="val" style="color:${m.lim.t < m.target * 0.995 ? 'var(--danger-ink)' : 'var(--ok)'}">${f(m.lim.t, 0)}<small>개/일</small></div>
         <div class="foot">목표 대비 ${pct(m.lim.t / m.target, 0)} · 제약 ${esc(name(m.lim.p))}</div></div>
-      <div class="card kpi"><div class="lab">설비 능력 한계 (관측 최대 기준)</div><div class="val">${f(m.capT.t, 0)}<small>개/일</small></div><div class="foot">병목 ${esc(name(m.capT.p))} — 이 이상은 가동 시간 연장 필요</div></div>
-      <div class="card kpi"><div class="lab">누적 수율 (주 흐름)</div><div class="val">${pct(m.rty, 2)}</div><div class="foot">검사 셀 양품 ${f(m.insp_good, 0)}개/일 · 검사 수율 ${pct(m.y('insp'), 1)}</div></div>
+      <div class="kpi"><div class="lab">설비 능력 한계 (관측 최대 기준)</div><div class="val">${f(m.capT.t, 0)}<small>개/일</small></div><div class="foot">병목 ${esc(name(m.capT.p))} — 이 이상은 가동 시간 연장 필요</div></div>
+      <div class="kpi"><div class="lab">누적 수율 (주 흐름)</div><div class="val">${pct(m.rty, 2)}</div><div class="foot">검사 셀 양품 ${f(m.insp_good, 0)}개/일 · 검사 수율 ${pct(m.y('insp'), 1)}</div></div>
     </div>
     <div class="card" style="margin-top:16px"><h2>공정 흐름 조정 <span class="h2sub">속도를 움직이거나 계획 수량을 입력하면 앞뒤 공정 수급이 바로 다시 계산됩니다</span>
       <div style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-lauto="target">목표에 맞춤</button><button class="btn sm" data-lauto="cap">능력 한계에 맞춤</button><button class="btn sm" data-lauto="reset">현재로</button></div></h2>

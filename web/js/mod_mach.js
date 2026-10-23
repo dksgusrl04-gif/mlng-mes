@@ -51,11 +51,11 @@
     const t = cur(), rt = recentTools(), runsN = rt.reduce((s, x) => s + x.runs, 0), rm = remain(t), lt = rt.filter(late);
     const rates = D().tools.filter(x => x.rate).slice(-10);
     return `
-    <div class="grid g4">
-      <div class="card kpi click" data-row="mach:${esc(t.id)}"><div class="lab">현재 공구 ${esc(t.id || '')} 마모</div><div class="val" style="color:${vbState(t.vb_last)[0] === 'danger' ? 'var(--danger-ink)' : vbState(t.vb_last)[0] === 'warn' ? 'var(--warn-ink)' : 'inherit'}">${f(t.vb_last, 2)}<small>mm</small></div><div class="foot">플랭크 마모 VB · 교체 기준 ${f(MC().VB_LIMIT, 2)} mm</div></div>
-      <div class="card kpi"><div class="lab">남은 공구 수명</div><div class="val">${rm == null ? '—' : rm <= 0 ? '<span style="color:var(--danger-ink)">교체</span>' : f(rm, 0) + '<small>분</small>'}</div><div class="foot">${t.rate ? `마모 속도 ${f(t.rate * 1000, 1)} µm/분 기준` : '측정값 부족'}</div></div>
-      <div class="card kpi"><div class="lab">가공 · 최근 ${RD()}일</div><div class="val">${runsN}<small>회</small></div><div class="foot">공구 ${rt.length}개 · 부품 약 ${f(runsN * D().parts_per_run, 0)}개</div></div>
-      <div class="card kpi click" data-go="mach_tools"><div class="lab">교체 기준 넘겨 가공</div><div class="val" style="color:${lt.length ? 'var(--warn-ink)' : 'inherit'}">${overRuns(rt)}<small>회</small></div><div class="foot">공구 ${lt.length}개 · 부품 약 ${f(overRuns(rt) * D().parts_per_run, 0)}개 검사 강화</div></div>
+    <div class="kstrip">
+      <div class="kpi click" data-row="mach:${esc(t.id)}"><div class="lab">현재 공구 ${esc(t.id || '')} 마모</div><div class="val" style="color:${vbState(t.vb_last)[0] === 'danger' ? 'var(--danger-ink)' : vbState(t.vb_last)[0] === 'warn' ? 'var(--warn-ink)' : 'inherit'}">${f(t.vb_last, 2)}<small>mm</small></div><div class="foot">플랭크 마모 VB · 교체 기준 ${f(MC().VB_LIMIT, 2)} mm</div></div>
+      <div class="kpi"><div class="lab">남은 공구 수명</div><div class="val">${rm == null ? '—' : rm <= 0 ? '<span style="color:var(--danger-ink)">교체</span>' : f(rm, 0) + '<small>분</small>'}</div><div class="foot">${t.rate ? `마모 속도 ${f(t.rate * 1000, 1)} µm/분 기준` : '측정값 부족'}</div></div>
+      <div class="kpi"><div class="lab">가공 · 최근 ${RD()}일</div><div class="val">${runsN}<small>회</small></div><div class="foot">공구 ${rt.length}개 · 부품 약 ${f(runsN * D().parts_per_run, 0)}개</div></div>
+      <div class="kpi click" data-go="mach_tools"><div class="lab">교체 기준 넘겨 가공</div><div class="val" style="color:${lt.length ? 'var(--warn-ink)' : 'inherit'}">${overRuns(rt)}<small>회</small></div><div class="foot">공구 ${lt.length}개 · 부품 약 ${f(overRuns(rt) * D().parts_per_run, 0)}개 검사 강화</div></div>
     </div>
     <div class="grid g21" style="margin-top:16px">
       <div class="card"><h2>현재 공구 마모 <span class="h2sub">${esc(t.id || '')} · ${esc(t.material || '')} · 절삭깊이 ${t.DOC} mm · 이송 ${t.feed} mm/rev · ${t.runs}회 ${f(t.minutes, 0)}분</span> <a class="more" href="#" data-row="mach:${esc(t.id)}">공구 상세 →</a></h2>

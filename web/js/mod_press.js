@@ -71,11 +71,11 @@
     const dc = {}; recent(30).forEach(l => Object.entries(l.defects).forEach(([c, k]) => dc[c] = (dc[c] || 0) + k));
     const dcs = Object.entries(dc).sort((a, b) => b[1] - a[1]), dmax = Math.max(1, ...dcs.map(x => x[1])), dsum = dcs.reduce((s, x) => s + x[1], 0);
     return `
-    <div class="grid g4">
-      <div class="card kpi"><div class="lab">타발 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.strokes, 0), 0)}<small>회</small></div><div class="foot">${rl.length}작업일 · 하루 평균 ${f(rl.length ? rl.reduce((s, l) => s + l.strokes, 0) / rl.length : 0, 0)}회</div></div>
-      <div class="card kpi"><div class="lab">생산 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.qty, 0), 0)}<small>개</small></div><div class="foot">취수 ${P().cav} (타발 1회당 부품 수)</div></div>
-      <div class="card kpi click" data-go="press_lots"><div class="lab">불량률 · 최근 ${RD()}일</div><div class="val" style="color:${p >= t ? 'var(--warn-ink)' : 'inherit'}">${ppmTxt(p)}<small>PPM</small></div><div class="foot">불량 ${rl.reduce((s, l) => s + l.bad, 0)}개 · 기준 ${f(t, 0)} PPM</div></div>
-      <div class="card kpi click" data-go="press_equip"><div class="lab">설비 진단 · 최근 ${RD()}일</div><div class="val" style="color:${ev.length ? 'var(--danger-ink)' : 'var(--ok)'}">${ev.length ? `이상 ${ev.length}` : '정상'}</div><div class="foot">${ev.length ? `${esc(ev[0].start.slice(5, 16))} 진동 ${f(ev[0].ratio, 1)}배` : '진동·전류 기준 안'}</div></div>
+    <div class="kstrip">
+      <div class="kpi"><div class="lab">타발 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.strokes, 0), 0)}<small>회</small></div><div class="foot">${rl.length}작업일 · 하루 평균 ${f(rl.length ? rl.reduce((s, l) => s + l.strokes, 0) / rl.length : 0, 0)}회</div></div>
+      <div class="kpi"><div class="lab">생산 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.qty, 0), 0)}<small>개</small></div><div class="foot">취수 ${P().cav} (타발 1회당 부품 수)</div></div>
+      <div class="kpi click" data-go="press_lots"><div class="lab">불량률 · 최근 ${RD()}일</div><div class="val" style="color:${p >= t ? 'var(--warn-ink)' : 'inherit'}">${ppmTxt(p)}<small>PPM</small></div><div class="foot">불량 ${rl.reduce((s, l) => s + l.bad, 0)}개 · 기준 ${f(t, 0)} PPM</div></div>
+      <div class="kpi click" data-go="press_equip"><div class="lab">설비 진단 · 최근 ${RD()}일</div><div class="val" style="color:${ev.length ? 'var(--danger-ink)' : 'var(--ok)'}">${ev.length ? `이상 ${ev.length}` : '정상'}</div><div class="foot">${ev.length ? `${esc(ev[0].start.slice(5, 16))} 진동 ${f(ev[0].ratio, 1)}배` : '진동·전류 기준 안'}</div></div>
     </div>
     <div class="grid g21" style="margin-top:16px">
       <div class="card"><h2>작업일별 불량률 <span class="h2sub">막대에 마우스를 올리면 타발 수</span></h2>${M.barChart(days, { ref: t, refLabel: `기준 ${f(t, 0)}` })}
@@ -117,11 +117,11 @@
     const vb = P().vib, b = vb.base, ev = vb.events[0];
     const nx = vb.normal.v0.length, nxl = [0, Math.floor(nx / 2), nx - 1].map(i => [i, new Date(M.toDate(vb.normal.t0).getTime() + i * vb.normal.step * 1000).toTimeString().slice(0, 5)]);
     const ex = vb.event.v0.length, exl = [0, Math.floor(ex / 2), ex - 1].map(i => [i, vb.event.t[i].slice(0, 5)]);
-    return `<div class="grid g4">
-      <div class="card kpi"><div class="lab">진동 1 정상 기준 (상위 1%)</div><div class="val">${f(b.v0.p99, 3)}</div><div class="foot">중앙값 ${f(b.v0.p50, 3)} · 1초 RMS</div></div>
-      <div class="card kpi"><div class="lab">진동 2 정상 기준 (상위 1%)</div><div class="val">${f(b.v1.p99, 3)}</div><div class="foot">중앙값 ${f(b.v1.p50, 3)}</div></div>
-      <div class="card kpi"><div class="lab">전류 정상 기준 (상위 1%)</div><div class="val">${f(b.c.p99, 0)}</div><div class="foot">중앙값 ${f(b.c.p50, 0)}</div></div>
-      <div class="card kpi"><div class="lab">이상 구간</div><div class="val" style="color:${ev ? 'var(--danger-ink)' : 'var(--ok)'}">${vb.events.length}<small>건</small></div><div class="foot">${ev ? `최대 진동 기준의 ${f(ev.ratio, 1)}배` : '없음'}</div></div>
+    return `<div class="kstrip">
+      <div class="kpi"><div class="lab">진동 1 정상 기준 (상위 1%)</div><div class="val">${f(b.v0.p99, 3)}</div><div class="foot">중앙값 ${f(b.v0.p50, 3)} · 1초 RMS</div></div>
+      <div class="kpi"><div class="lab">진동 2 정상 기준 (상위 1%)</div><div class="val">${f(b.v1.p99, 3)}</div><div class="foot">중앙값 ${f(b.v1.p50, 3)}</div></div>
+      <div class="kpi"><div class="lab">전류 정상 기준 (상위 1%)</div><div class="val">${f(b.c.p99, 0)}</div><div class="foot">중앙값 ${f(b.c.p50, 0)}</div></div>
+      <div class="kpi"><div class="lab">이상 구간</div><div class="val" style="color:${ev ? 'var(--danger-ink)' : 'var(--ok)'}">${vb.events.length}<small>건</small></div><div class="foot">${ev ? `최대 진동 기준의 ${f(ev.ratio, 1)}배` : '없음'}</div></div>
     </div>
     <div class="grid g2" style="margin-top:16px">
       <div class="card"><h2>정상 운전 <span class="h2sub">PR-01 · ${esc(vb.normal.t0.slice(0, 16))} · 10초 평균 RMS</span></h2>

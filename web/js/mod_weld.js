@@ -95,11 +95,11 @@
     const past = W().lots.filter(l => l.bad != null), pastPpm = past.reduce((t, l) => t + l.bad, 0) / Math.max(1, past.reduce((t, l) => t + l.welds, 0)) * 1e6;
     const days = W().lots.map(l => ({ x: l.date.slice(5), v: l.bad == null ? l.est / l.welds * 1e6 : lotPpm(l), cls: l.bad == null ? 'est' : '', t: `${l.id} · ${f(l.welds, 0)}타점 · ${l.bad == null ? `예상 ${f(l.est, 1)}건` : `불량 ${l.bad}건`}` }));
     return `
-    <div class="grid g4">
-      <div class="card kpi click" data-go="weld_window"><div class="lab">관리 기준 적합률</div><div class="val">${f(confC * 100, 1)}<small>%</small></div><div class="foot">전류·가압력 기준 · 목표 구간 안 ${pct(confS, 0)}</div></div>
-      <div class="card kpi click" data-go="weld_queue"><div class="lab">예상 불량률 · ${esc((d.date || '').slice(5))}</div><div class="val">${f(s.expected / s.welds * 1e6, 0)}<small>PPM</small></div><div class="foot">${f(s.expected, 1)}건 / ${f(s.welds, 0)}타점 · 95% ${f(s.ci[0], 1)}~${f(s.ci[1], 1)}건</div></div>
-      <div class="card kpi click" data-go="weld_queue"><div class="lab">1순위 검사</div><div class="val" style="color:${s.pred_defect ? 'var(--danger-ink)' : 'inherit'}">${s.pred_defect}<small>타점</small></div><div class="foot">경보 ${f(s.tiers['경보'], 0)} · 가압 이상 ${f(s.excursion, 0)}타점</div></div>
-      <div class="card kpi click" data-go="weld_days"><div class="lab">이전 ${past.length}작업일 실측 불량률</div><div class="val">${f(pastPpm, 0)}<small>PPM</small></div><div class="foot">불량 ${past.reduce((t, l) => t + l.bad, 0)}건 / ${f(past.reduce((t, l) => t + l.welds, 0), 0)}타점</div></div>
+    <div class="kstrip">
+      <div class="kpi click" data-go="weld_window"><div class="lab">관리 기준 적합률</div><div class="val">${f(confC * 100, 1)}<small>%</small></div><div class="foot">전류·가압력 기준 · 목표 구간 안 ${pct(confS, 0)}</div></div>
+      <div class="kpi click" data-go="weld_queue"><div class="lab">예상 불량률 · ${esc((d.date || '').slice(5))}</div><div class="val">${f(s.expected / s.welds * 1e6, 0)}<small>PPM</small></div><div class="foot">${f(s.expected, 1)}건 / ${f(s.welds, 0)}타점 · 95% ${f(s.ci[0], 1)}~${f(s.ci[1], 1)}건</div></div>
+      <div class="kpi click" data-go="weld_queue"><div class="lab">1순위 검사</div><div class="val" style="color:${s.pred_defect ? 'var(--danger-ink)' : 'inherit'}">${s.pred_defect}<small>타점</small></div><div class="foot">경보 ${f(s.tiers['경보'], 0)} · 가압 이상 ${f(s.excursion, 0)}타점</div></div>
+      <div class="kpi click" data-go="weld_days"><div class="lab">이전 ${past.length}작업일 실측 불량률</div><div class="val">${f(pastPpm, 0)}<small>PPM</small></div><div class="foot">불량 ${past.reduce((t, l) => t + l.bad, 0)}건 / ${f(past.reduce((t, l) => t + l.welds, 0), 0)}타점</div></div>
     </div>
     <div class="grid g21" style="margin-top:16px">
       <div class="card"><h2>공정 모니터 <span class="h2sub">SP-01 · ${esc(d.id || '')} · ${f(rows.length, 0)}타점</span>
@@ -127,11 +127,11 @@
     let rows = W().preds.slice().sort((a, b) => a.inspection_rank - b.inspection_rank);
     if (qTier === 'defect') rows = rows.filter(r => r.pred_defect); else if (qTier !== 'all') rows = rows.filter(r => r.risk_tier === qTier);
     if (qText) rows = rows.filter(r => String(r.idx).includes(qText));
-    return `<div class="grid g4">
-      <div class="card kpi"><div class="lab">예상 불량 · ${esc(d.id || '')}</div><div class="val">${f(s.expected, 1)}<small>건</small></div><div class="foot">95% 구간 ${f(s.ci[0], 1)}~${f(s.ci[1], 1)}</div></div>
-      <div class="card kpi"><div class="lab">불량 판정 (1순위 검사)</div><div class="val" style="color:var(--danger-ink)">${s.pred_defect}<small>타점</small></div><div class="foot">예상 불량 수만큼 위험 상위 타점</div></div>
-      <div class="card kpi"><div class="lab">경보 · 주의 (2순위)</div><div class="val">${s.tiers['경보']}<small>/ ${s.tiers['주의']}</small></div><div class="foot">위험 상위 10% / 70~90%</div></div>
-      <div class="card kpi"><div class="lab">검사 기록</div><div class="val">${W().preds.filter(r => done.has(ptId(r))).length}<small>타점</small></div><div class="foot">기록이 쌓이면 타점 단위 학습</div></div></div>
+    return `<div class="kstrip">
+      <div class="kpi"><div class="lab">예상 불량 · ${esc(d.id || '')}</div><div class="val">${f(s.expected, 1)}<small>건</small></div><div class="foot">95% 구간 ${f(s.ci[0], 1)}~${f(s.ci[1], 1)}</div></div>
+      <div class="kpi"><div class="lab">불량 판정 (1순위 검사)</div><div class="val" style="color:var(--danger-ink)">${s.pred_defect}<small>타점</small></div><div class="foot">예상 불량 수만큼 위험 상위 타점</div></div>
+      <div class="kpi"><div class="lab">경보 · 주의 (2순위)</div><div class="val">${s.tiers['경보']}<small>/ ${s.tiers['주의']}</small></div><div class="foot">위험 상위 10% / 70~90%</div></div>
+      <div class="kpi"><div class="lab">검사 기록</div><div class="val">${W().preds.filter(r => done.has(ptId(r))).length}<small>타점</small></div><div class="foot">기록이 쌓이면 타점 단위 학습</div></div></div>
     <div class="card" style="margin-top:16px"><div class="tools">${M.seg('wqt', qTier, [['all', '전체'], ['defect', '불량 판정'], ['경보', '경보'], ['주의', '주의'], ['안정', '안정']])}
       <input class="in" id="wqtext" placeholder="타점 번호" value="${esc(qText)}" style="width:160px"><span class="tsum">${rows.length}타점</span></div>
       ${M.table([['순위', 'inspection_rank', 'n'], ['타점', r => `<b>#${r.idx}</b>`], ['가압력', r => f(r.force, 2), 'n'], ['전류', r => f(r.current, 2), 'n'], ['전압', r => f(r.voltage, 3), 'n'],

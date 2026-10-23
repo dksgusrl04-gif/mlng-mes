@@ -238,11 +238,11 @@
     const r = recMap(), rc = Object.keys(r).length, os = P().orders, rows = catRows();
     const pend = os.filter(o => o.status === 'pending'), notIn = os.filter(o => o.status === 'approved');
     const cnt = k => CAT().filter(it => it.proc === k).length;
-    return `<div class="grid g4">
-      <div class="card kpi click" data-cf="rec"><div class="lab">발주 추천</div><div class="val" style="color:${Object.values(r).some(x => x.level === 'danger') ? 'var(--danger-ink)' : rc ? 'var(--warn-ink)' : 'inherit'}">${rc}<small>종</small></div><div class="foot">공정 알림 · 사용량 기준</div></div>
-      <div class="card kpi click" data-of="pending"><div class="lab">결재 대기</div><div class="val" style="color:${pend.length ? 'var(--warn-ink)' : 'inherit'}">${pend.length}<small>건</small></div><div class="foot">${esc(STEPS().join(' → '))}</div></div>
-      <div class="card kpi click" data-of="approved"><div class="lab">결재 완료 · 미입고</div><div class="val">${notIn.length}<small>건</small></div><div class="foot">발주서 출력 · 입고 대기</div></div>
-      <div class="card kpi"><div class="lab">등록 품목</div><div class="val">${CAT().length}<small>종</small></div><div class="foot">${PROCS.map(([k, t]) => `${t} ${cnt(k)}`).join(' · ')}</div></div>
+    return `<div class="kstrip">
+      <div class="kpi click" data-cf="rec"><div class="lab">발주 추천</div><div class="val" style="color:${Object.values(r).some(x => x.level === 'danger') ? 'var(--danger-ink)' : rc ? 'var(--warn-ink)' : 'inherit'}">${rc}<small>종</small></div><div class="foot">공정 알림 · 사용량 기준</div></div>
+      <div class="kpi click" data-of="pending"><div class="lab">결재 대기</div><div class="val" style="color:${pend.length ? 'var(--warn-ink)' : 'inherit'}">${pend.length}<small>건</small></div><div class="foot">${esc(STEPS().join(' → '))}</div></div>
+      <div class="kpi click" data-of="approved"><div class="lab">결재 완료 · 미입고</div><div class="val">${notIn.length}<small>건</small></div><div class="foot">발주서 출력 · 입고 대기</div></div>
+      <div class="kpi"><div class="lab">등록 품목</div><div class="val">${CAT().length}<small>종</small></div><div class="foot">${PROCS.map(([k, t]) => `${t} ${cnt(k)}`).join(' · ')}</div></div>
     </div>
     <div class="card" style="margin-top:16px">
       <div class="tools">${M.seg('cf', cf, [['all', `전체 ${CAT().length}`], ['rec', `추천 ${rc}`], ['sel', `선택 ${sel.size}`]].concat(PROCS.map(([k, t]) => [k, t])))}
