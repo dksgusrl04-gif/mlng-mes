@@ -472,3 +472,33 @@ ul.plain{list-style:none;margin:0;padding:0;font-size:13px}ul.plain li{padding:5
 .kstrip .kpi.click:hover .lab::after{color:var(--brand);opacity:1}
 @media(max-width:1180px){.kstrip{flex-wrap:wrap;row-gap:10px}.kstrip > .kpi{flex:1 1 45%}.kstrip > .kpi:nth-child(odd){border-left:0;padding-left:4px}}
 @media(max-width:640px){.kstrip > .kpi{flex:1 1 100%;border-left:0;padding-left:4px}}
+
+/* ── 공장 현황: 지금 조치할 것 */
+.todo h2 .more{margin-left:auto}
+.tlist{display:flex;flex-direction:column}
+.trow{display:flex;align-items:center;gap:12px;padding:10px 4px 10px 0;border-bottom:1px solid var(--line-2);border-left:3px solid transparent}
+.trow:last-child{border-bottom:0}
+.trow.danger{border-left-color:var(--danger)}.trow.warn{border-left-color:var(--warn)}
+.trow .tn{width:22px;text-align:right;font-size:12px;font-weight:700;color:var(--faint);font-variant-numeric:tabular-nums}
+.trow .tm{flex:1;min-width:0}.trow .tm.click{cursor:pointer}.trow .tm.click:hover .tt{color:var(--brand)}
+.trow .tt{font-weight:650;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow.danger .tt{color:var(--danger-ink)}
+.trow .ts{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.trow .ta{display:flex;gap:6px;flex:none}
+.tmore{padding:8px 0 0 37px;font-size:12.5px}
+/* 공정 흐름 — 간결형 */
+.route.compact .step{min-width:120px;padding:9px 12px;background:transparent}
+.route.compact .step .nm{font-size:13px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.route.compact .step .kv{font-size:15px;margin-top:3px}
+.route.compact .arrow{min-width:18px}
+@media(max-width:900px){.trow{flex-wrap:wrap}.trow .ta{width:100%;padding-left:34px}}
+
+/* ── 실시간 반영 단추 */
+.livebtn{border:1px solid var(--line-in);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;margin-right:8px}
+.livebtn i{width:8px;height:8px;border-radius:50%;background:var(--faint);display:block}
+.livebtn.on{border-color:var(--ok-line);color:var(--ok)}.livebtn.on i{background:var(--ok);animation:lpulse 1.6s infinite}
+.livebtn:disabled{opacity:.55;cursor:default}
+.livebtn:not(:disabled):hover{background:var(--line-2)}
+.dot.pulse{animation:lpulse 1.6s infinite}
+@keyframes lpulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.45)}70%{box-shadow:0 0 0 6px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}
+@media(prefers-reduced-motion:reduce){.livebtn.on i,.dot.pulse{animation:none}}

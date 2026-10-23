@@ -17,6 +17,7 @@ window.MLNG_CONFIG = {
   // 운영 기준 — 현장에서 정해 바꾼다
   OUTPUT_PROC: 'heat',        // 공장 «생산 수량» 을 세는 공정 (검사 셀은 가공 사양 부품만 거치므로 열처리 완료 기준)
   RECENT_DAYS: 7,             // «최근» 으로 보는 기간 (알림·KPI)
+  LIVE_SEC: 30,               // 실시간 반영: 서버에서 다시 읽는 간격 (초) — 상단 「실시간 반영」 단추로 켜고 끈다
   STALE_HOURS: 24,            // 실시간 모드에서 이 시간 넘게 새 작업이 없으면 알림
   HEAT: {
     TARGET_PPM: null,         // 불량률 관리 기준. 비우면 데이터에 담긴 값(450 PPM)
@@ -51,7 +52,7 @@ window.MLNG_CONFIG = {
     MACH_WEEKS: 2,                      // 인서트는 «최근 7일 공구 교체 횟수 × 날 수 × N주» 만큼 확보
   },
   // 질의응답 (Claude API) — 키는 Supabase Edge Function 에만 둔다 (supabase/functions/mlng-ask)
-  //   'off' = 규칙 기반만. 함수를 배포한 뒤 '' 로 바꾸면 `${SUPABASE_URL}/functions/v1/mlng-ask` 를 자동으로 쓴다
-  ASK_URL: 'off',
+  //   '' = `${SUPABASE_URL}/functions/v1/mlng-ask` 를 쓴다 (배포 완료) · 'off' = 규칙 기반만
+  ASK_URL: '',
   RETRAIN_MIN_RECORDS: 50,
 };

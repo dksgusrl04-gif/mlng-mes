@@ -53,8 +53,8 @@
     return `
     <div class="kstrip">
       <div class="kpi click" data-row="mach:${esc(t.id)}"><div class="lab">현재 공구 ${esc(t.id || '')} 마모</div><div class="val" style="color:${vbState(t.vb_last)[0] === 'danger' ? 'var(--danger-ink)' : vbState(t.vb_last)[0] === 'warn' ? 'var(--warn-ink)' : 'inherit'}">${f(t.vb_last, 2)}<small>mm</small></div><div class="foot">플랭크 마모 VB · 교체 기준 ${f(MC().VB_LIMIT, 2)} mm</div></div>
-      <div class="kpi"><div class="lab">남은 공구 수명</div><div class="val">${rm == null ? '—' : rm <= 0 ? '<span style="color:var(--danger-ink)">교체</span>' : f(rm, 0) + '<small>분</small>'}</div><div class="foot">${t.rate ? `마모 속도 ${f(t.rate * 1000, 1)} µm/분 기준` : '측정값 부족'}</div></div>
-      <div class="kpi"><div class="lab">가공 · 최근 ${RD()}일</div><div class="val">${runsN}<small>회</small></div><div class="foot">공구 ${rt.length}개 · 부품 약 ${f(runsN * D().parts_per_run, 0)}개</div></div>
+      <div class="kpi click" data-row="mach:${esc(t.id)}"><div class="lab">남은 공구 수명</div><div class="val">${rm == null ? '—' : rm <= 0 ? '<span style="color:var(--danger-ink)">교체</span>' : f(rm, 0) + '<small>분</small>'}</div><div class="foot">${t.rate ? `마모 속도 ${f(t.rate * 1000, 1)} µm/분 기준` : '측정값 부족'}</div></div>
+      <div class="kpi click" data-row="k:mc:runs"><div class="lab">가공 · 최근 ${RD()}일</div><div class="val">${runsN}<small>회</small></div><div class="foot">공구 ${rt.length}개 · 부품 약 ${f(runsN * D().parts_per_run, 0)}개</div></div>
       <div class="kpi click" data-go="mach_tools"><div class="lab">교체 기준 넘겨 가공</div><div class="val" style="color:${lt.length ? 'var(--warn-ink)' : 'inherit'}">${overRuns(rt)}<small>회</small></div><div class="foot">공구 ${lt.length}개 · 부품 약 ${f(overRuns(rt) * D().parts_per_run, 0)}개 검사 강화</div></div>
     </div>
     <div class="grid g21" style="margin-top:16px">
@@ -121,10 +121,19 @@
         <button class="btn pri" data-insp="mach|${esc(t.lot)}|${esc(t.id)}" style="margin-top:8px">검사 결과 기록</button></div>`);
   }
 
+  // ── 요약 띠 상세
+  function kd(k) {
+    if (k !== 'runs') return;
+    const rt = recentTools().slice().reverse(), n = rt.reduce((s, x) => s + x.runs, 0);
+    return M.kdrawer(`MCT 가공 · 최근 ${RD()}일`, `공구 ${rt.length}개 · ${n}회 가공 · 부품 약 ${f(n * D().parts_per_run, 0)}개`, [
+      { html: M.table([['공구', x => `<b>${esc(x.id)}</b>`], ['작업일', 'date'], ['재질', 'material'], ['가공', x => x.runs + '회', 'n'], ['부품', x => f(x.runs * D().parts_per_run, 0), 'n'], ['최종 VB', x => f(x.vb_last, 2), 'n'], ['상태', x => vbTag(x.vb_last)]], rt, { click: x => 'mach:' + x.id, wrap: false }) },
+      { html: `<p class="note">가공 1회 = 부품 ${D().parts_per_run}개. 행을 누르면 공구 마모 곡선과 센서 추이가 열립니다.</p>` }]);
+  }
+
   M.mod({
     id: 'mach', proc: 'mach', group: 'MCT 가공', order: 40,
     menu: [['mach_home', 'MCT 현황', 'gauge'], ['mach_tools', '공구 수명', 'list'], ['mach_cond', '가공 조건', 'range']],
     views: V, alerts, summary,
-    drawers: { 'mach:': id => { if (id.startsWith('MC-')) { const t = D().tools.find(x => x.lot === id); return t ? toolDrawer(t.id) : M.go('mach_tools'); } return toolDrawer(id); } },
+    drawers: { 'k:mc:': kd, 'mach:': id => { if (id.startsWith('MC-')) { const t = D().tools.find(x => x.lot === id); return t ? toolDrawer(t.id) : M.go('mach_tools'); } return toolDrawer(id); } },
   });
 })();

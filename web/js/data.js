@@ -84,6 +84,8 @@
     get LIVE() { return MODE === 'live'; },
     CONNECTED,
     dbState: () => DBSTATE,
+    // 데모로 떠 있는 동안 표에 데이터가 들어왔는지만 가볍게 확인 (실시간 반영 켜짐일 때)
+    async probe() { if (!CONNECTED) return false; const r = await soft(db('GET', '/mlng_lots?select=id&limit=1')); return !!(r && r.length); },
     user: () => USER,
     needLogin: () => false,
     login: async () => USER, logout: () => {},

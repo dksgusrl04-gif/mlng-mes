@@ -140,6 +140,7 @@
   };
 
   M.PROC.ask = '질의';
+  M.askApi = { ask: q => { M.closeDrawer(); M.go('ask'); send(q); } };
   M.mod({
     id: 'ask', group: '현황', order: 1,
     menu: [['ask', '질의응답', 'chat']],

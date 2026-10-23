@@ -83,8 +83,8 @@
     const dcs = Object.entries(dc).sort((a, b) => b[1] - a[1]), dmax = Math.max(1, ...dcs.map(x => x[1])), dsum = dcs.reduce((s, x) => s + x[1], 0);
     return `
     <div class="kstrip">
-      <div class="kpi"><div class="lab">처리 수량 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.qty, 0), 0)}<small>개</small></div><div class="foot">${rl.length}작업 · 평균 ${f(M.median(rl.map(l => l.dur_h)), 1)}시간</div></div>
-      <div class="kpi"><div class="lab">불량률 · 최근 ${RD()}일</div><div class="val" style="color:${p >= t ? 'var(--warn-ink)' : 'inherit'}">${ppmTxt(p)}<small>PPM</small></div><div class="foot">관리 기준 ${f(t, 0)} PPM</div></div>
+      <div class="kpi click" data-row="k:ht:jobs"><div class="lab">처리 수량 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.qty, 0), 0)}<small>개</small></div><div class="foot">${rl.length}작업 · 평균 ${f(M.median(rl.map(l => l.dur_h)), 1)}시간</div></div>
+      <div class="kpi click" data-row="k:ht:ppm"><div class="lab">불량률 · 최근 ${RD()}일</div><div class="val" style="color:${p >= t ? 'var(--warn-ink)' : 'inherit'}">${ppmTxt(p)}<small>PPM</small></div><div class="foot">관리 기준 ${f(t, 0)} PPM</div></div>
       <div class="kpi click" data-go="heat_lots"><div class="lab">기준 초과 작업</div><div class="val" style="color:${over ? 'var(--warn-ink)' : 'inherit'}">${over}<small>/ ${rl.length}</small></div><div class="foot">불량률 ${f(t, 0)} PPM 이상</div></div>
       <div class="kpi click" data-go="heat_recipe"><div class="lab">조건 이탈 작업</div><div class="val">${dev}<small>/ ${rl.length}</small></div><div class="foot">허용 범위 밖 시간 ${pct(HC().DEVIATION_RATE, 0)} 이상</div></div>
     </div>
@@ -212,10 +212,24 @@
         <button class="btn pri" data-insp="heat|${esc(l.id)}" style="margin-top:8px">검사 결과 기록</button></div>`);
   }
 
+  // ── 요약 띠 상세
+  function kd(k) {
+    const rl = recent().slice(), t = target();
+    const cols = [['작업', l => `<b>${esc(l.id)}</b>`], ['종료', l => esc(hm(l.end))], ['수량', l => f(l.qty, 0), 'n'], ['불량', l => f(l.bad, 0), 'n'], ['PPM', l => ppmTxt(l.ppm), 'n'], ['판정', jTag]];
+    if (k === 'jobs') return M.kdrawer(`열처리 · 최근 ${RD()}일`, `${rl.length}작업 · ${f(rl.reduce((s, l) => s + l.qty, 0), 0)}개`, [
+      { html: M.table(cols, rl.sort((a, b) => String(b.end).localeCompare(String(a.end))), { click: l => 'heat:' + l.id, wrap: false }) },
+      { html: '<p class="note">행을 누르면 그 작업의 온도·카본·히터 출력 프로파일이 열립니다.</p>' }]);
+    if (k === 'ppm') { const by = {}; rl.forEach(l => { const d = by[l.date] = by[l.date] || { date: l.date, q: 0, b: 0, n: 0 }; d.q += l.qty; d.b += l.bad; d.n++; });
+      const days = Object.values(by).sort((a, b) => b.date.localeCompare(a.date));
+      return M.kdrawer(`열처리 · 최근 ${RD()}일`, `불량률 ${ppmTxt(sumPpm(rl))} PPM (기준 ${f(t, 0)})`, [
+        { h: '일별', html: M.table([['날짜', d => `<b>${esc(d.date)}</b>`], ['작업', 'n', 'n'], ['수량', d => f(d.q, 0), 'n'], ['불량', d => f(d.b, 0), 'n'], ['PPM', d => { const v = d.b / d.q * 1e6; return `<b style="color:${v >= t ? 'var(--warn-ink)' : 'inherit'}">${ppmTxt(v)}</b>`; }, 'n']], days, { wrap: false }) },
+        { h: '불량률 높은 작업', html: M.table(cols, rl.filter(l => l.ppm != null).sort((a, b) => b.ppm - a.ppm).slice(0, 8), { click: l => 'heat:' + l.id, wrap: false }) }]); }
+  }
+
   M.mod({
     id: 'heat', proc: 'heat', group: '열처리', order: 30,
     menu: [['heat_home', '열처리 현황', 'flame'], ['heat_lots', '작업 실적', 'list'], ['heat_recipe', '공정 조건', 'range'], ['heat_equip', '설비 상태', 'gauge']],
-    views: V, alerts, summary, drawers: { 'heat:': lotDrawer },
+    views: V, alerts, summary, drawers: { 'heat:': lotDrawer, 'k:ht:': kd },
     bind(root) {
       root.querySelectorAll('[data-hlf]').forEach(b => b.onclick = () => { lf = b.dataset.hlf; M.render(); });
       root.querySelectorAll('[data-hz]').forEach(b => b.onclick = () => { hz = b.dataset.hz; M.render(); });

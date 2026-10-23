@@ -72,8 +72,8 @@
     const dcs = Object.entries(dc).sort((a, b) => b[1] - a[1]), dmax = Math.max(1, ...dcs.map(x => x[1])), dsum = dcs.reduce((s, x) => s + x[1], 0);
     return `
     <div class="kstrip">
-      <div class="kpi"><div class="lab">타발 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.strokes, 0), 0)}<small>회</small></div><div class="foot">${rl.length}작업일 · 하루 평균 ${f(rl.length ? rl.reduce((s, l) => s + l.strokes, 0) / rl.length : 0, 0)}회</div></div>
-      <div class="kpi"><div class="lab">생산 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.qty, 0), 0)}<small>개</small></div><div class="foot">취수 ${P().cav} (타발 1회당 부품 수)</div></div>
+      <div class="kpi click" data-row="k:pr:days"><div class="lab">타발 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.strokes, 0), 0)}<small>회</small></div><div class="foot">${rl.length}작업일 · 하루 평균 ${f(rl.length ? rl.reduce((s, l) => s + l.strokes, 0) / rl.length : 0, 0)}회</div></div>
+      <div class="kpi click" data-row="k:pr:days"><div class="lab">생산 · 최근 ${RD()}일</div><div class="val">${f(rl.reduce((s, l) => s + l.qty, 0), 0)}<small>개</small></div><div class="foot">취수 ${P().cav} (타발 1회당 부품 수)</div></div>
       <div class="kpi click" data-go="press_lots"><div class="lab">불량률 · 최근 ${RD()}일</div><div class="val" style="color:${p >= t ? 'var(--warn-ink)' : 'inherit'}">${ppmTxt(p)}<small>PPM</small></div><div class="foot">불량 ${rl.reduce((s, l) => s + l.bad, 0)}개 · 기준 ${f(t, 0)} PPM</div></div>
       <div class="kpi click" data-go="press_equip"><div class="lab">설비 진단 · 최근 ${RD()}일</div><div class="val" style="color:${ev.length ? 'var(--danger-ink)' : 'var(--ok)'}">${ev.length ? `이상 ${ev.length}` : '정상'}</div><div class="foot">${ev.length ? `${esc(ev[0].start.slice(5, 16))} 진동 ${f(ev[0].ratio, 1)}배` : '진동·전류 기준 안'}</div></div>
     </div>
@@ -118,10 +118,10 @@
     const nx = vb.normal.v0.length, nxl = [0, Math.floor(nx / 2), nx - 1].map(i => [i, new Date(M.toDate(vb.normal.t0).getTime() + i * vb.normal.step * 1000).toTimeString().slice(0, 5)]);
     const ex = vb.event.v0.length, exl = [0, Math.floor(ex / 2), ex - 1].map(i => [i, vb.event.t[i].slice(0, 5)]);
     return `<div class="kstrip">
-      <div class="kpi"><div class="lab">진동 1 정상 기준 (상위 1%)</div><div class="val">${f(b.v0.p99, 3)}</div><div class="foot">중앙값 ${f(b.v0.p50, 3)} · 1초 RMS</div></div>
-      <div class="kpi"><div class="lab">진동 2 정상 기준 (상위 1%)</div><div class="val">${f(b.v1.p99, 3)}</div><div class="foot">중앙값 ${f(b.v1.p50, 3)}</div></div>
-      <div class="kpi"><div class="lab">전류 정상 기준 (상위 1%)</div><div class="val">${f(b.c.p99, 0)}</div><div class="foot">중앙값 ${f(b.c.p50, 0)}</div></div>
-      <div class="kpi"><div class="lab">이상 구간</div><div class="val" style="color:${ev ? 'var(--danger-ink)' : 'var(--ok)'}">${vb.events.length}<small>건</small></div><div class="foot">${ev ? `최대 진동 기준의 ${f(ev.ratio, 1)}배` : '없음'}</div></div>
+      <div class="kpi click" data-row="k:pr:vib"><div class="lab">진동 1 정상 기준 (상위 1%)</div><div class="val">${f(b.v0.p99, 3)}</div><div class="foot">중앙값 ${f(b.v0.p50, 3)} · 1초 RMS</div></div>
+      <div class="kpi click" data-row="k:pr:vib"><div class="lab">진동 2 정상 기준 (상위 1%)</div><div class="val">${f(b.v1.p99, 3)}</div><div class="foot">중앙값 ${f(b.v1.p50, 3)}</div></div>
+      <div class="kpi click" data-row="k:pr:vib"><div class="lab">전류 정상 기준 (상위 1%)</div><div class="val">${f(b.c.p99, 0)}</div><div class="foot">중앙값 ${f(b.c.p50, 0)}</div></div>
+      <div class="kpi click" data-row="k:pr:vib"><div class="lab">이상 구간</div><div class="val" style="color:${ev ? 'var(--danger-ink)' : 'var(--ok)'}">${vb.events.length}<small>건</small></div><div class="foot">${ev ? `최대 진동 기준의 ${f(ev.ratio, 1)}배` : '없음'}</div></div>
     </div>
     <div class="grid g2" style="margin-top:16px">
       <div class="card"><h2>정상 운전 <span class="h2sub">PR-01 · ${esc(vb.normal.t0.slice(0, 16))} · 10초 평균 RMS</span></h2>
@@ -155,9 +155,28 @@
         <button class="btn pri" data-insp="press|${esc(l.id)}" style="margin-top:8px">검사 결과 기록</button></div>`);
   }
 
+  // ── 요약 띠 상세
+  function kd(k) {
+    if (k === 'days') {
+      const rl = recent().slice().sort((a, b) => b.date.localeCompare(a.date));
+      return M.kdrawer(`프레스 · 최근 ${RD()}일`, `작업일 ${rl.length}일 — 타발 ${f(rl.reduce((s, l) => s + l.strokes, 0), 0)}회 · 생산 ${f(rl.reduce((s, l) => s + l.qty, 0), 0)}개`, [
+        { html: M.table([['작업일', l => `<b>${esc(l.date)}</b>`], ['타발', l => f(l.strokes, 0), 'n'], ['생산', l => f(l.qty, 0), 'n'], ['불량', l => f(l.bad, 0), 'n'], ['PPM', l => ppmTxt(l.ppm), 'n'], ['판정', jTag]], rl, { click: l => 'press:' + l.id, wrap: false }) },
+        { html: `<p class="note">생산 = 타발 × 취수 ${P().cav}. 행을 누르면 그날 작업 상세가 열립니다.</p>` }]);
+    }
+    if (k === 'vib') {
+      const vb = P().vib, b = vb.base;
+      return M.kdrawer('프레스 · 설비 진단', `정상 기준과 이상 구간 ${vb.events.length}건`, [
+        { h: '정상 기준 (1초 RMS)', html: M.table([['신호', r => r[0]], ['중앙값', r => r[1], 'n'], ['정상 상위 1%', r => `<b>${r[2]}</b>`, 'n']],
+          [['진동 1', f(b.v0.p50, 3), f(b.v0.p99, 3)], ['진동 2', f(b.v1.p50, 3), f(b.v1.p99, 3)], ['전류', f(b.c.p50, 0), f(b.c.p99, 0)]], { wrap: false }) },
+        { h: '이상 구간', html: M.table([['시작', e => esc(e.start.slice(5, 19))], ['지속', e => `${e.secs}초`, 'n'], ['진동 1 최대', e => f(e.v0_max, 3), 'n'], ['진동 2 최대', e => f(e.v1_max, 3), 'n'], ['전류 최대', e => f(e.c_max, 0), 'n'],
+          ['기준 대비', e => `<b style="color:var(--danger-ink)">${f(e.ratio, 1)}배</b>`, 'n']], vb.events, { wrap: false, empty: '이상 구간이 없습니다' }) },
+        { html: '<p class="note">정상 운전 구간의 1초 RMS 분포에서 상위 1% 값을 기준으로 삼고, 이를 넘는 구간이 이어지면 이상 구간으로 기록합니다. 데이터가 쌓일수록 기준이 갱신됩니다.</p>' }]);
+    }
+  }
+
   M.mod({
     id: 'press', proc: 'press', group: '프레스', order: 10,
     menu: [['press_home', '프레스 현황', 'press'], ['press_lots', '타발 실적', 'list'], ['press_recipe', '공정 조건', 'range'], ['press_equip', '설비 진단', 'gauge']],
-    views: V, alerts, summary, drawers: { 'press:': lotDrawer },
+    views: V, alerts, summary, drawers: { 'press:': lotDrawer, 'k:pr:': kd },
   });
 })();

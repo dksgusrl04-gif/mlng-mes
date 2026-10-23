@@ -37,10 +37,10 @@
     const nextOrder = d => { const a = daysOf(d.item), i = a.findIndex(x => x.date === d.date); return a[i + 1] ? a[i + 1].order : null; };
     return `<div class="tools">${M.seg('pit', pit, items.map(i => [i.code, `${i.code} ${i.name}`]))}<span class="tsum">SB-01 염욕 열처리로 · 기준 ${esc(s.last.date || '')}</span></div>
     <div class="kstrip">
-      <div class="kpi"><div class="lab">수주 · 최근 ${rec.length}작업일</div><div class="val">${f(rec.reduce((t, d) => t + d.order, 0), 0)}<small>개</small></div><div class="foot">하루 평균 ${f(s.avg, 0)}개</div></div>
-      <div class="kpi"><div class="lab">생산 · 최근 ${rec.length}작업일</div><div class="val">${f(rec.reduce((t, d) => t + d.prod, 0), 0)}<small>개</small></div><div class="foot">하루 ${f(s.std, 0)}개 · ${f(s.std / s.lot, 0)}회 × ${s.lot}</div></div>
-      <div class="kpi"><div class="lab">마감 재고</div><div class="val" style="color:${s.short ? 'var(--warn-ink)' : 'inherit'}">${f(s.last.inv_close, 0)}<small>개</small></div><div class="foot">재고 일수 ${f(s.cover, 1)}일</div></div>
-      <div class="kpi"><div class="lab">내일 필요 생산</div><div class="val">${f(s.need, 0)}<small>개</small></div><div class="foot">예상 수주 ${f(s.avg, 0)} + 안전재고 ${pct(PCF().SAFETY_DAYS, 0)} − 재고</div></div>
+      <div class="kpi click" data-row="k:pl:order"><div class="lab">수주 · 최근 ${rec.length}작업일</div><div class="val">${f(rec.reduce((t, d) => t + d.order, 0), 0)}<small>개</small></div><div class="foot">하루 평균 ${f(s.avg, 0)}개</div></div>
+      <div class="kpi click" data-row="k:pl:prod"><div class="lab">생산 · 최근 ${rec.length}작업일</div><div class="val">${f(rec.reduce((t, d) => t + d.prod, 0), 0)}<small>개</small></div><div class="foot">하루 ${f(s.std, 0)}개 · ${f(s.std / s.lot, 0)}회 × ${s.lot}</div></div>
+      <div class="kpi click" data-row="k:pl:inv"><div class="lab">마감 재고</div><div class="val" style="color:${s.short ? 'var(--warn-ink)' : 'inherit'}">${f(s.last.inv_close, 0)}<small>개</small></div><div class="foot">재고 일수 ${f(s.cover, 1)}일</div></div>
+      <div class="kpi click" data-row="k:pl:need"><div class="lab">내일 필요 생산</div><div class="val">${f(s.need, 0)}<small>개</small></div><div class="foot">예상 수주 ${f(s.avg, 0)} + 안전재고 ${pct(PCF().SAFETY_DAYS, 0)} − 재고</div></div>
     </div>
     <div class="grid g21" style="margin-top:16px">
       <div class="card"><h2>수주 · 생산 · 재고 <span class="h2sub">${esc(pit)} · 최근 45작업일</span></h2>
@@ -71,10 +71,10 @@
     const lotOf = w => (M.S.lots || []).find(x => x.wo_id === w.id);
     const procs = [...new Set(all.map(woProc).filter(Boolean))];
     return `<div class="kstrip">
-      <div class="kpi"><div class="lab">작업지시 · 최근 ${M.CFG.RECENT_DAYS || 7}일</div><div class="val">${rec.length}<small>건</small></div><div class="foot">${procs.map(p => `${esc(M.PROC[p])} ${rec.filter(w => woProc(w) === p).length}`).join(' · ')}</div></div>
-      <div class="kpi"><div class="lab">완료</div><div class="val">${rec.filter(w => w.status === 'done').length}<small>건</small></div><div class="foot">실적 LOT 이 연결된 작업지시</div></div>
+      <div class="kpi click" data-row="k:pl:wo-recent"><div class="lab">작업지시 · 최근 ${M.CFG.RECENT_DAYS || 7}일</div><div class="val">${rec.length}<small>건</small></div><div class="foot">${procs.map(p => `${esc(M.PROC[p])} ${rec.filter(w => woProc(w) === p).length}`).join(' · ')}</div></div>
+      <div class="kpi click" data-row="k:pl:wo-done"><div class="lab">완료</div><div class="val">${rec.filter(w => w.status === 'done').length}<small>건</small></div><div class="foot">실적 LOT 이 연결된 작업지시</div></div>
       <div class="kpi click" data-wf="draft"><div class="lab">초안 (발행 전)</div><div class="val" style="color:${drafts().length ? 'var(--warn-ink)' : 'inherit'}">${drafts().length}<small>건</small></div><div class="foot">생산 계획에서 만든 것</div></div>
-      <div class="kpi"><div class="lab">전체</div><div class="val">${f(all.length, 0)}<small>건</small></div><div class="foot">품목 ${new Set(all.map(w => w.item_code)).size}개</div></div>
+      <div class="kpi click" data-wf="all"><div class="lab">전체</div><div class="val">${f(all.length, 0)}<small>건</small></div><div class="foot">품목 ${new Set(all.map(w => w.item_code)).size}개</div></div>
     </div>
     <div class="card" style="margin-top:16px"><div class="tools">${M.seg('wf', wf, [['all', '전체'], ['draft', '초안']].concat(procs.map(p => [p, M.PROC[p]])))}
       <input class="in" id="wq" placeholder="작업지시 · 품목" value="${esc(wq)}" style="width:200px"><span class="tsum">${f(rows.length, 0)}건</span></div>
@@ -95,10 +95,27 @@
     catch (e) { woErr = '작업지시를 만들지 못했습니다 — ' + e.message; M.render(); }
   }
 
+  // ── 요약 띠 상세
+  function kd(k) {
+    if (k.startsWith('wo-')) {
+      const since = M.sinceDay(M.CFG.RECENT_DAYS || 7).getTime(), all = (M.S.work_orders || []).filter(w => M.toDate(w.created_at).getTime() >= since);
+      const rows = (k === 'wo-done' ? all.filter(w => w.status === 'done') : all).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+      const lotOf = w => (M.S.lots || []).find(x => x.wo_id === w.id);
+      return M.kdrawer(`작업지시 · 최근 ${M.CFG.RECENT_DAYS || 7}일`, `${k === 'wo-done' ? '완료' : '전체'} ${rows.length}건`, [
+        { html: M.table([['작업지시', w => `<b>${esc(w.id)}</b>`], ['공정', w => woProc(w) ? M.procTag(woProc(w)) : '—'], ['계획', w => f(w.qty_plan, 0), 'n'], ['실적', w => { const l = lotOf(w); return l ? f(l.qty, 0) : '—'; }, 'n'],
+          ['상태', w => w.status === 'done' ? '<span class="tag j-ok">완료</span>' : w.status === 'draft' ? '<span class="tag j-warn">초안</span>' : esc(w.status)]], rows, { wrap: false, click: w => { const l = lotOf(w); return l ? 'trace:' + l.id : 'plan_wo'; } }) }]);
+    }
+    const s = stat(pit), ds = daysOf(pit).slice(-14).reverse(), lab = { order: '수주', prod: '생산', inv: '마감 재고', need: '내일 필요 생산' }[k];
+    return M.kdrawer(`생산 계획 · ${pit} ${itemName(pit)}`, `${lab} — 최근 14작업일`, [
+      k === 'need' ? { html: M.dl([['내일 예상 수주 (최근 ' + PCF().AVG_DAYS + '작업일 평균)', f(s.avg, 0) + '개'], ['안전재고', `${pct(PCF().SAFETY_DAYS, 0)} → ${f(s.avg * PCF().SAFETY_DAYS, 0)}개`], ['마감 재고', f(s.last.inv_close, 0) + '개'], ['필요 생산', `<b>${f(s.need, 0)}개</b> (${s.runs}회 × ${s.lot})`]]) } : null,
+      { html: M.table([['날짜', d => `<b>${esc(d.date)}</b>`], ['수주', d => k === 'order' ? `<b>${f(d.order, 0)}</b>` : f(d.order, 0), 'n'], ['생산', d => k === 'prod' ? `<b>${f(d.prod, 0)}</b>` : f(d.prod, 0), 'n'], ['생산 횟수', 'runs', 'n'],
+        ['마감 재고', d => k === 'inv' ? `<b>${f(d.inv_close, 0)}</b>` : f(d.inv_close, 0), 'n'], ['재고 일수', d => s.avg ? f(d.inv_close / s.avg, 1) : '—', 'n']], ds, { wrap: false }) }]);
+  }
+
   M.mod({
     id: 'plan', proc: 'plan', group: '계획', order: 5,
     menu: [['plan_home', '생산 계획', 'range'], ['plan_wo', '작업지시', 'book', '생산']],
-    views: V, alerts,
+    views: V, alerts, drawers: { 'k:pl:': kd },
     bind(root) {
       root.querySelectorAll('[data-pit]').forEach(b => b.onclick = () => { pit = b.dataset.pit; M.render(); });
       root.querySelectorAll('[data-wf]').forEach(b => b.onclick = () => { wf = b.dataset.wf; if (M.cur !== 'plan_wo') M.go('plan_wo'); else M.render(); });

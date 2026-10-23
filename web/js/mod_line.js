@@ -123,12 +123,12 @@
     const inspLimit = Math.min(m.plan.mach * m.y('mach'), m.plan.insp);
     return `
     <div class="kstrip">
-      <div class="kpi"><div class="lab">목표 산출 (열처리 양품)</div><div class="val"><input class="in tgt" type="number" min="0" step="100" data-ltgt="1" value="${Math.round(m.target)}"><small>개/일</small></div>
+      <div class="kpi click" data-row="k:line:target"><div class="lab">목표 산출 (열처리 양품)</div><div class="val"><input class="in tgt" type="number" min="0" step="100" data-ltgt="1" value="${Math.round(m.target)}"><small>개/일</small></div>
         <div class="foot">기본값 = 최근 열처리 속도 × 수율</div></div>
-      <div class="kpi"><div class="lab">지금 계획으로 가능한 산출</div><div class="val" style="color:${m.lim.t < m.target * 0.995 ? 'var(--danger-ink)' : 'var(--ok)'}">${f(m.lim.t, 0)}<small>개/일</small></div>
+      <div class="kpi click" data-row="k:line:lim"><div class="lab">지금 계획으로 가능한 산출</div><div class="val" style="color:${m.lim.t < m.target * 0.995 ? 'var(--danger-ink)' : 'var(--ok)'}">${f(m.lim.t, 0)}<small>개/일</small></div>
         <div class="foot">목표 대비 ${pct(m.lim.t / m.target, 0)} · 제약 ${esc(name(m.lim.p))}</div></div>
-      <div class="kpi"><div class="lab">설비 능력 한계 (관측 최대 기준)</div><div class="val">${f(m.capT.t, 0)}<small>개/일</small></div><div class="foot">병목 ${esc(name(m.capT.p))} — 이 이상은 가동 시간 연장 필요</div></div>
-      <div class="kpi"><div class="lab">누적 수율 (주 흐름)</div><div class="val">${pct(m.rty, 2)}</div><div class="foot">검사 셀 양품 ${f(m.insp_good, 0)}개/일 · 검사 수율 ${pct(m.y('insp'), 1)}</div></div>
+      <div class="kpi click" data-row="k:line:cap"><div class="lab">설비 능력 한계 (관측 최대 기준)</div><div class="val">${f(m.capT.t, 0)}<small>개/일</small></div><div class="foot">병목 ${esc(name(m.capT.p))} — 이 이상은 가동 시간 연장 필요</div></div>
+      <div class="kpi click" data-row="k:line:rty"><div class="lab">누적 수율 (주 흐름)</div><div class="val">${pct(m.rty, 2)}</div><div class="foot">검사 셀 양품 ${f(m.insp_good, 0)}개/일 · 검사 수율 ${pct(m.y('insp'), 1)}</div></div>
     </div>
     <div class="card" style="margin-top:16px"><h2>공정 흐름 조정 <span class="h2sub">속도를 움직이거나 계획 수량을 입력하면 앞뒤 공정 수급이 바로 다시 계산됩니다</span>
       <div style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-lauto="target">목표에 맞춤</button><button class="btn sm" data-lauto="cap">능력 한계에 맞춤</button><button class="btn sm" data-lauto="reset">현재로</button></div></h2>
@@ -150,10 +150,30 @@
     </div>`;
   };
 
+  // ── 요약 띠 상세
+  function kd(k) {
+    const m = model(), nm = p => (STEPS.find(s => s.proc === p) || {}).name || p, main = ['press', 'weld', 'heat'];
+    const row = p => ({ p, plan: m.plan[p], fac: m.fac[p], need: m.need[p], cap: m.b[p].cap, y: m.y(p), t: m.fac[p] ? m.plan[p] / m.fac[p] : null });
+    if (k === 'target') return M.kdrawer('라인 운영 · 목표 기준', `목표 ${f(m.target, 0)}개/일 — 공정별 필요량`, [
+      { html: M.table([['공정', r => `${M.procTag(r.p)} ${esc(nm(r.p))}`], ['1개당 처리', r => f(r.fac, 3), 'n'], ['목표 필요량', r => f(r.need, 0), 'n'], ['현재 계획', r => f(r.plan, 0), 'n'],
+        ['차이', r => { const d = r.plan - r.need; return `<b style="color:${d < -1 ? 'var(--danger-ink)' : 'var(--ok)'}">${d > 0 ? '+' : ''}${f(d, 0)}</b>`; }, 'n']], STEPS.map(s => row(s.proc)), { wrap: false }) },
+      { html: `<p class="note">1개당 처리 = 최종 양품 1개를 만들 때 그 공정이 처리해야 하는 양 (뒤 공정 필요량 ÷ 수율, 경로 비율 반영). 목표 칸에 숫자를 넣으면 이 표가 다시 계산됩니다.</p>` }]);
+    if (k === 'lim') return M.kdrawer('라인 운영 · 지금 계획', `가능 산출 ${f(m.lim.t, 0)}개/일 — 제약 ${nm(m.lim.p)}`, [
+      { html: M.table([['공정', r => `${M.procTag(r.p)} ${esc(nm(r.p))}${r.p === m.lim.p ? ' <span class="tag j-danger">제약</span>' : ''}`], ['계획 처리량', r => f(r.plan, 0), 'n'], ['1개당 처리', r => f(r.fac, 3), 'n'], ['이 공정 기준 가능 산출', r => `<b>${f(r.t, 0)}</b>`, 'n']], main.map(row), { wrap: false, hl: r => r.p === m.lim.p }) },
+      { h: '공정 사이 재공 (하루)', html: M.table([['구간', g => esc(g.label)], ['공급', g => f(g.sup, 0), 'n'], ['소비', g => f(g.dem, 0), 'n'], ['증감', g => `<b style="color:${Math.abs(g.d) < 1 ? 'inherit' : g.d > 0 ? 'var(--warn-ink)' : 'var(--danger-ink)'}">${g.d > 0 ? '+' : ''}${f(g.d, 0)}</b>`, 'n']], Object.values(m.gaps), { wrap: false }) }]);
+    if (k === 'cap') return M.kdrawer('라인 운영 · 설비 능력', `능력 한계 ${f(m.capT.t, 0)}개/일 — 병목 ${nm(m.capT.p)}`, [
+      { html: M.table([['공정', r => `${M.procTag(r.p)} ${esc(nm(r.p))}${r.p === m.capT.p ? ' <span class="tag j-warn">병목</span>' : ''}`], ['관측 최대', r => f(r.cap, 0), 'n'], ['목표 필요량', r => f(r.need, 0), 'n'],
+        ['능력 사용률', r => r.cap ? `<b style="color:${r.need > r.cap ? 'var(--danger-ink)' : 'inherit'}">${pct(r.need / r.cap, 0)}</b>` : '—', 'n'], ['이 공정 기준 한계', r => r.cap && r.fac ? f(r.cap / r.fac, 0) : '—', 'n']], main.map(row), { wrap: false, hl: r => r.p === m.capT.p }) },
+      { html: '<p class="note">관측 최대 = 데이터에서 그 공정이 하루에 가장 많이 처리한 양. 이보다 많이 필요하면 가동 시간 연장이나 목표 조정이 필요합니다.</p>' }]);
+    if (k === 'rty') return M.kdrawer('라인 운영 · 수율', `누적 수율 ${pct(m.rty, 2)}`, [
+      { html: M.table([['공정', r => `${M.procTag(r.p)} ${esc(nm(r.p))}`], ['수율', r => pct(r.y, 3), 'n'], ['불량 비율', r => pct(1 - r.y, 3), 'n']], STEPS.map(s => row(s.proc)), { wrap: false }) },
+      { html: `<p class="note">주 흐름 누적 수율 = 프레스 × 열처리 × (점용접 경로 비율만큼 점용접 수율). 검사 셀 양품은 하루 ${f(m.insp_good, 0)}개입니다.</p>` }]);
+  }
+
   M.mod({
     id: 'line', proc: 'line', group: '현황', order: 1,
     menu: [['line', '라인 운영', 'trace', '현황']],
-    views: { line: V.line },
+    views: { line: V.line }, drawers: { 'k:line:': kd },
     bind(root) {
       const rer = (focusSel) => { M.render(); if (focusSel) { const n = M.$(focusSel); if (n) n.focus(); } };
       root.querySelectorAll('[data-lsel]').forEach(n => n.onclick = e => { if (e.target.closest('input,button')) return; st.sel = n.dataset.lsel; M.render(); });

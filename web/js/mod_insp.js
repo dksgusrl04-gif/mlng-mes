@@ -48,10 +48,10 @@
     const cyc = M.median(I().lots.map(l => l.cycle_s));
     return `
     <div class="kstrip">
-      <div class="kpi"><div class="lab">검사 부품 · 최근 ${RD()}일</div><div class="val">${f(ps.length, 0)}<small>개</small></div><div class="foot">검사 기록 ${f(recs.length, 0)}건</div></div>
+      <div class="kpi click" data-row="k:in:lots"><div class="lab">검사 부품 · 최근 ${RD()}일</div><div class="val">${f(ps.length, 0)}<small>개</small></div><div class="foot">검사 기록 ${f(recs.length, 0)}건</div></div>
       <div class="kpi click" data-go="insp_parts:ng"><div class="lab">불합격 기록이 있는 부품</div><div class="val" style="color:${nBad ? 'var(--danger-ink)' : 'inherit'}">${nBad}<small>개</small></div><div class="foot">부품 기준 ${pct(ps.length ? nBad / ps.length : null, 1)} · 그중 확정 필요 ${ps.filter(p => !p.ok && p.conflict).length}</div></div>
       <div class="kpi click" data-go="insp_parts:conflict"><div class="lab">판정 확정 필요</div><div class="val" style="color:${nCon ? 'var(--warn-ink)' : 'inherit'}">${nCon}<small>개</small></div><div class="foot">합격·불합격이 함께 기록된 부품</div></div>
-      <div class="kpi"><div class="lab">사이클 타임</div><div class="val">${f(cyc, 0)}<small>초</small></div><div class="foot">부품 한 개 검사 간격 (중앙값)</div></div>
+      <div class="kpi click" data-row="k:in:lots"><div class="lab">사이클 타임</div><div class="val">${f(cyc, 0)}<small>초</small></div><div class="foot">부품 한 개 검사 간격 (중앙값)</div></div>
     </div>
     <div class="card" style="margin-top:16px"><h2>시간대별 불합격률 <span class="h2sub">p 관리도 · 평균 ${pct(pbar, 1)} · 관리 상한은 검사 수에 따라 달라짐</span></h2>
       ${hrs.length ? M.lineChart([{ v: rate, cls: 's1' }, { v: ucl, cls: 's4' }], null, { h: 250, w: 1000, d: 0, xlab: xl, refs: [{ y: pbar * 100, label: '평균' }],
@@ -119,11 +119,20 @@
       <div class="blk"><button class="btn pri" data-insp="insp|${esc(p.lot)}">검사 결과 기록</button></div>`);
   }
 
+  // ── 요약 띠 상세
+  function kd(k) {
+    const ls = I().lots.slice().sort((a, b) => b.date.localeCompare(a.date));
+    return M.kdrawer('정밀가공 검사 · 일별', `검사 ${ls.length}일 · 부품 ${f(ls.reduce((s, l) => s + l.parts, 0), 0)}개`, [
+      { html: M.table([['날짜', l => `<b>${esc(l.date)}</b>`], ['부품', l => f(l.parts, 0), 'n'], ['검사 기록', l => f(l.recs, 0), 'n'], ['불합격', l => f(l.fail, 0), 'n'],
+        ['불합격률', l => pct(l.fail / Math.max(1, l.parts), 1), 'n'], ['확정 필요', l => f(l.conflict, 0), 'n'], ['사이클', l => f(l.cycle_s, 0) + '초', 'n'], ['앞 공정', l => esc((l.parents || []).join(', '))]], ls, { wrap: false }) },
+      { html: '<p class="note">사이클 = 부품 한 개를 검사하는 간격의 중앙값. 앞 공정은 이 검사 부품을 가공한 MCT 가공 LOT 입니다.</p>' }]);
+  }
+
   M.mod({
     id: 'insp', proc: 'insp', group: '정밀가공 검사', order: 50,
     menu: [['insp_home', '검사 현황', 'check'], ['insp_parts', '부품 이력', 'list'], ['insp_signal', '가공 신호', 'wave']],
     views: V, alerts, summary,
-    drawers: { 'insp:': partDrawer, 'insp_parts:': k => { pf = k === 'ng' ? 'ng' : k === 'conflict' ? 'conflict' : 'all'; M.go('insp_parts'); } },
+    drawers: { 'k:in:': kd, 'insp:': partDrawer, 'insp_parts:': k => { pf = k === 'ng' ? 'ng' : k === 'conflict' ? 'conflict' : 'all'; M.go('insp_parts'); } },
     bind(root) {
       root.querySelectorAll('[data-ipf]').forEach(b => b.onclick = () => { pf = b.dataset.ipf; M.render(); });
       const q = root.querySelector('#ipq');

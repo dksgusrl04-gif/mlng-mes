@@ -128,10 +128,10 @@
     if (qTier === 'defect') rows = rows.filter(r => r.pred_defect); else if (qTier !== 'all') rows = rows.filter(r => r.risk_tier === qTier);
     if (qText) rows = rows.filter(r => String(r.idx).includes(qText));
     return `<div class="kstrip">
-      <div class="kpi"><div class="lab">예상 불량 · ${esc(d.id || '')}</div><div class="val">${f(s.expected, 1)}<small>건</small></div><div class="foot">95% 구간 ${f(s.ci[0], 1)}~${f(s.ci[1], 1)}</div></div>
-      <div class="kpi"><div class="lab">불량 판정 (1순위 검사)</div><div class="val" style="color:var(--danger-ink)">${s.pred_defect}<small>타점</small></div><div class="foot">예상 불량 수만큼 위험 상위 타점</div></div>
-      <div class="kpi"><div class="lab">경보 · 주의 (2순위)</div><div class="val">${s.tiers['경보']}<small>/ ${s.tiers['주의']}</small></div><div class="foot">위험 상위 10% / 70~90%</div></div>
-      <div class="kpi"><div class="lab">검사 기록</div><div class="val">${W().preds.filter(r => done.has(ptId(r))).length}<small>타점</small></div><div class="foot">기록이 쌓이면 타점 단위 학습</div></div></div>
+      <div class="kpi click" data-row="k:wd:exp"><div class="lab">예상 불량 · ${esc(d.id || '')}</div><div class="val">${f(s.expected, 1)}<small>건</small></div><div class="foot">95% 구간 ${f(s.ci[0], 1)}~${f(s.ci[1], 1)}</div></div>
+      <div class="kpi click" data-row="k:wd:exp"><div class="lab">불량 판정 (1순위 검사)</div><div class="val" style="color:var(--danger-ink)">${s.pred_defect}<small>타점</small></div><div class="foot">예상 불량 수만큼 위험 상위 타점</div></div>
+      <div class="kpi click" data-row="k:wd:tier"><div class="lab">경보 · 주의 (2순위)</div><div class="val">${s.tiers['경보']}<small>/ ${s.tiers['주의']}</small></div><div class="foot">위험 상위 10% / 70~90%</div></div>
+      <div class="kpi click" data-row="k:wd:insp"><div class="lab">검사 기록</div><div class="val">${W().preds.filter(r => done.has(ptId(r))).length}<small>타점</small></div><div class="foot">기록이 쌓이면 타점 단위 학습</div></div></div>
     <div class="card" style="margin-top:16px"><div class="tools">${M.seg('wqt', qTier, [['all', '전체'], ['defect', '불량 판정'], ['경보', '경보'], ['주의', '주의'], ['안정', '안정']])}
       <input class="in" id="wqtext" placeholder="타점 번호" value="${esc(qText)}" style="width:160px"><span class="tsum">${rows.length}타점</span></div>
       ${M.table([['순위', 'inspection_rank', 'n'], ['타점', r => `<b>#${r.idx}</b>`], ['가압력', r => f(r.force, 2), 'n'], ['전류', r => f(r.current, 2), 'n'], ['전압', r => f(r.voltage, 3), 'n'],
@@ -189,10 +189,28 @@
         : `<button class="btn pri" data-insp="weld|${esc(d.id)}|${r.idx}">검사 결과 기록</button>`}</div>`);
   }
 
+  // ── 요약 띠 상세
+  function kd(k) {
+    const s = W().summary, d = detail(), P = W().preds.slice().sort((a, b) => a.inspection_rank - b.inspection_rank);
+    const cols = [['순위', 'inspection_rank', 'n'], ['타점', r => `<b>#${r.idx}</b>`], ['불량확률', r => pct(r.defect_prob, 2), 'n'], ['위험비', r => f(r.risk_ratio, 2) + '×', 'n'], ['등급', r => M.tag(r.risk_tier)]];
+    if (k === 'exp') return M.kdrawer(`점용접 · ${d.id || ''}`, `예상 불량 ${f(s.expected, 1)}건 — 1순위 검사 ${s.pred_defect}타점`, [
+      { html: M.dl([['타점 수', f(s.welds, 0)], ['예상 불량 (확률 합)', f(s.expected, 1) + '건'], ['95% 구간', `${f(s.ci[0], 1)} ~ ${f(s.ci[1], 1)}`], ['1순위 검사', s.pred_defect + '타점']]) },
+      { h: '위험 상위 타점', html: M.table(cols, P.slice(0, 12), { click: r => 'weldpt:' + r.idx, wrap: false }) },
+      { html: '<p class="note">타점별 불량확률을 모두 더한 값이 예상 불량 수입니다. 그 수만큼 위험 상위 타점을 1순위 검사로 지정합니다. 행을 누르면 타점 상세가 열립니다.</p>' }]);
+    if (k === 'tier') { const t = s.tiers || {};
+      return M.kdrawer(`점용접 · ${d.id || ''}`, '위험 등급별 타점', [
+        { html: M.table([['등급', r => M.tag(r[0])], ['타점', r => f(r[1], 0), 'n'], ['기준', r => r[2]]], [['경보', t['경보'] || 0, '위험 상위 10%'], ['주의', t['주의'] || 0, '위험 상위 70~90%'], ['안정', t['안정'] || 0, '나머지']], { wrap: false }) },
+        { h: '경보 타점', html: M.table(cols, P.filter(r => r.risk_tier === '경보').slice(0, 15), { click: r => 'weldpt:' + r.idx, wrap: false, empty: '경보 타점이 없습니다' }) }]); }
+    if (k === 'insp') { const ins = M.inspections().filter(i => i.proc === 'weld');
+      return M.kdrawer('점용접 · 검사 기록', `기록 ${ins.length}건`, [
+        { html: M.table([['시각', 'at'], ['LOT', 'lot_id'], ['타점', i => i.target ? '#' + esc(i.target) : '—'], ['결과', i => i.result === '불량' ? '<b style="color:var(--danger-ink)">불량</b>' : esc(i.result)], ['메모', 'note']], ins, { wrap: false, empty: '아직 검사 기록이 없습니다 — 검사 우선순위 표의 「기록」 단추로 남깁니다' }) },
+        { html: '<p class="note">현장 검사 결과가 쌓이면 타점 단위 정답이 생겨 예측 모델이 다시 학습됩니다.</p>' }]); }
+  }
+
   M.mod({
     id: 'weld', proc: 'weld', group: '점용접', order: 20,
     menu: [['weld_home', '점용접 현황', 'spark'], ['weld_queue', '검사 우선순위', 'list'], ['weld_window', '안정 공정조건', 'range'], ['weld_days', '작업 실적', 'book']],
-    views: V, alerts, summary, drawers: { 'weldpt:': ptDrawer, 'weld:': id => { const l = W().lots.find(x => x.id === id); if (l && l.has_detail) M.go('weld_queue'); else M.go('weld_days'); } },
+    views: V, alerts, summary, drawers: { 'k:wd:': kd, 'weldpt:': ptDrawer, 'weld:': id => { const l = W().lots.find(x => x.id === id); if (l && l.has_detail) M.go('weld_queue'); else M.go('weld_days'); } },
     bind(root) {
       root.querySelectorAll('[data-mon]').forEach(b => b.onclick = () => { monK = b.dataset.mon; M.render(); });
       root.querySelectorAll('[data-wqt]').forEach(b => b.onclick = () => { qTier = b.dataset.wqt; M.render(); });

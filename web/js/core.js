@@ -144,7 +144,7 @@
     let title = M.cur, grp = '';
     M.mods.forEach(m => (m.menu || []).forEach(([k, t, , g]) => { if (k === M.cur) { title = t; grp = g || m.group; } }));
     $('#ttl').textContent = title; $('#crumb').textContent = grp;
-    $('#upd').innerHTML = `<span class="dot ok"></span>${D.LIVE ? '갱신' : '데이터 기준'} ${esc(D.LIVE ? M.S.built : (M.S.asof || ''))}`;
+    updBar();
     const v = M.views()[M.cur];
     $('#view').innerHTML = v ? v() : '';
     bind($('#view'));
@@ -169,6 +169,9 @@
     $('#drawer').classList.add('on'); $('#shade').classList.add('on'); $('#dbody').scrollTop = 0;
     bind($('#dbody'));
   };
+  // 요약 띠 항목 상세 — 제목·부제 + 블록 [{ h, html }]
+  M.kdrawer = (sub, title, blocks) => M.drawer(sub, title, blocks.filter(Boolean).map(b => `${b.h ? `<h3 class="dh">${esc(b.h)}</h3>` : ''}${b.html}`).join(''));
+  M.dl = pairs => `<dl class="stat">${pairs.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
   M.closeDrawer = () => { $('#drawer').classList.remove('on'); $('#shade').classList.remove('on'); };
 
   // ── 검사 기록 창 (모든 공정 공용 → mlng_inspections)
@@ -201,11 +204,45 @@
     $('#themebtn').innerHTML = THEME_IC[t] + THEME_TXT[t];
   }
 
+  // ── 실시간 반영: 켜면 서버에서 주기적으로 다시 읽어 화면 수치를 바꾸고, 끄면 지금 화면을 멈춘 채로 둔다
+  const LIVE_SEC = () => Math.max(10, CFG.LIVE_SEC || 30);
+  let liveOn = (() => { try { return localStorage.getItem('mlng_live') !== 'off'; } catch (e) { return true; } })();
+  let liveTimer = null, lastPull = null, pulling = false;
+  function updBar() {
+    const S = M.S || {}, t = lastPull ? lastPull.toTimeString().slice(0, 8) : '';
+    $('#upd').innerHTML = D.LIVE ? (liveOn ? `<span class="dot ok pulse"></span>실시간 · 갱신 ${esc(t || String(S.built || '').slice(11, 19))}` : `<span class="dot warn"></span>멈춤 · ${esc(t || String(S.built || '').slice(11, 19))} 기준`)
+      : `<span class="dot ok"></span>데이터 기준 ${esc(S.asof || '')}`;
+    const b = $('#livebtn'); if (!b) return;
+    b.disabled = !D.CONNECTED;
+    b.classList.toggle('on', D.CONNECTED && liveOn);
+    b.innerHTML = !D.CONNECTED ? '실시간 · 서버 미연결' : liveOn ? '<i></i>실시간 반영 중' : '<i></i>멈춤 (누르면 실시간)';
+    b.title = !D.CONNECTED ? 'config.js 에 Supabase 주소·키를 넣으면 실시간 반영을 쓸 수 있습니다'
+      : liveOn ? `${LIVE_SEC()}초마다 서버에서 다시 읽습니다 — 누르면 지금 화면을 멈춥니다` : '지금 화면을 멈춰 두었습니다 — 누르면 실시간으로 다시 읽습니다';
+  }
+  async function pull() {
+    if (pulling || !liveOn || !D.CONNECTED || document.hidden) return;
+    const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && $('#view').contains(a)) return;   // 입력 중이면 이번 차례는 건너뜀
+    pulling = true;
+    try {
+      if (!D.LIVE && !(await D.probe())) return;          // 표가 아직 비어 있으면 데모 그대로
+      const S = await D.load();
+      if (S && D.LIVE) { const keep = M.S && M.S.purchase && !S.purchase.orders.length ? M.S.purchase : null; M.S = S; if (keep) M.S.purchase = keep; lastPull = new Date(); rail(); M.render(); }
+    } catch (e) { console.warn('[mlng] 실시간 갱신 실패', e.message); }
+    finally { pulling = false; updBar(); }
+  }
+  function setLive(on) {
+    liveOn = on; try { localStorage.setItem('mlng_live', on ? 'on' : 'off'); } catch (e) { /* 무시 */ }
+    clearInterval(liveTimer); liveTimer = null;
+    if (on && D.CONNECTED) { liveTimer = setInterval(pull, LIVE_SEC() * 1000); pull(); }
+    updBar();
+  }
+  M.live = { on: () => liveOn, set: setLive };
+
   M.start = async () => {
     if (D.needLogin()) { $('#login').style.display = 'flex'; return; }
     $('#login').style.display = 'none';
     try { M.S = await D.load(); } catch (e) { $('#view').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 — ${esc(e.message)}</div>`; return; }
-    rail(); M.render();
+    lastPull = D.LIVE ? new Date() : null; rail(); M.render(); setLive(liveOn);
   };
   M.init = () => {
     $('#l-go').onclick = async () => { $('#l-err').textContent = ''; try { await D.login($('#l-id').value.trim(), $('#l-pw').value); M.start(); } catch (e) { $('#l-err').textContent = e.message; } };
@@ -215,6 +252,8 @@
     $('#d-save').onclick = saveInsp;
     setTheme(getTheme());
     $('#themebtn').onclick = () => setTheme({ system: 'light', light: 'dark', dark: 'system' }[getTheme()]);
+    if (!$('#livebtn')) { const lb = document.createElement('button'); lb.id = 'livebtn'; lb.className = 'livebtn'; $('#themebtn').before(lb); }
+    $('#livebtn').onclick = () => setLive(!liveOn);
     $('#dclose').onclick = M.closeDrawer; $('#shade').onclick = M.closeDrawer;
     document.addEventListener('keydown', e => { if (e.key === 'Escape') { M.closeDrawer(); $('#dlg').style.display = 'none'; } });
     M.start();

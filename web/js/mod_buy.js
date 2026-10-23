@@ -242,7 +242,7 @@
       <div class="kpi click" data-cf="rec"><div class="lab">발주 추천</div><div class="val" style="color:${Object.values(r).some(x => x.level === 'danger') ? 'var(--danger-ink)' : rc ? 'var(--warn-ink)' : 'inherit'}">${rc}<small>종</small></div><div class="foot">공정 알림 · 사용량 기준</div></div>
       <div class="kpi click" data-of="pending"><div class="lab">결재 대기</div><div class="val" style="color:${pend.length ? 'var(--warn-ink)' : 'inherit'}">${pend.length}<small>건</small></div><div class="foot">${esc(STEPS().join(' → '))}</div></div>
       <div class="kpi click" data-of="approved"><div class="lab">결재 완료 · 미입고</div><div class="val">${notIn.length}<small>건</small></div><div class="foot">발주서 출력 · 입고 대기</div></div>
-      <div class="kpi"><div class="lab">등록 품목</div><div class="val">${CAT().length}<small>종</small></div><div class="foot">${PROCS.map(([k, t]) => `${t} ${cnt(k)}`).join(' · ')}</div></div>
+      <div class="kpi click" data-cf="all"><div class="lab">등록 품목</div><div class="val">${CAT().length}<small>종</small></div><div class="foot">${PROCS.map(([k, t]) => `${t} ${cnt(k)}`).join(' · ')}</div></div>
     </div>
     <div class="card" style="margin-top:16px">
       <div class="tools">${M.seg('cf', cf, [['all', `전체 ${CAT().length}`], ['rec', `추천 ${rc}`], ['sel', `선택 ${sel.size}`]].concat(PROCS.map(([k, t]) => [k, t])))}
@@ -276,7 +276,10 @@
   };
 
   M.PROC.buy = '구매';
-  M.buyApi = { orders: () => P().orders, audit: () => P().audit, recs, total, nextStep, catalog: CAT };   // 질의응답에서 읽는다
+  // 알림 하나에 맞는 품목 (홈 「지금 조치할 것」의 발주 단추)
+  const itemsFor = a => CAT().filter(it => (it.on && (a.go === it.on || String(a.go || '').startsWith(it.on + ':'))) || (it.mach === 'insert' && a.proc === 'mach' && /^mach(:|_tools)/.test(String(a.go || '')))).map(it => it.code);
+  const preselect = codes => { codes.forEach(c => sel.add(c)); cf = 'sel'; msg = ''; M.closeDrawer(); M.go('buy_home'); };
+  M.buyApi = { orders: () => P().orders, audit: () => P().audit, recs, total, nextStep, catalog: CAT, itemsFor, preselect };   // 질의응답에서 읽는다
   M.mod({
     id: 'buy', proc: 'buy', group: '구매', order: 6,
     menu: [['buy_home', '공구 주문', 'cart'], ['buy_orders', '발주 · 결재', 'sign']],

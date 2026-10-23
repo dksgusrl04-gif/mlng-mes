@@ -23,41 +23,77 @@
   }
 
   const V = {};
-  V.overview = () => {
-    const S = M.S, al = M.alerts(), act = al.filter(a => a.level !== 'info');
-    const since = M.sinceDay(RD()).getTime();
+  // 공장 현황 공통 계산 (화면과 상세 서랍이 같이 쓴다)
+  function ov() {
+    const S = M.S, since = M.sinceDay(RD()).getTime();
     const lots = S.lots.filter(l => l.kind === 'process' && M.toDate(l.end_at).getTime() >= since);
     const rout = S.masters.routings.filter(r => r.item_code === (S.masters.items[0] || {}).code);
     const liveProcs = rout.filter(r => (eq(r.equipment_id).status) === 'live').map(r => r.proc);
     const lastProc = M.CFG.OUTPUT_PROC || liveProcs[liveProcs.length - 1];   // 생산 수량을 세는 공정 하나 (공정마다 더하면 중복)
-    const qty = lots.filter(l => l.proc === lastProc).reduce((s, l) => s + (l.qty || 0), 0), bad = lots.reduce((s, l) => s + (l.bad || 0), 0);
     const byProc = p => lots.filter(l => l.proc === p);
+    return { S, lots, rout, liveProcs, lastProc, byProc, qty: byProc(lastProc).reduce((s, l) => s + (l.qty || 0), 0), bad: lots.reduce((s, l) => s + (l.bad || 0), 0) };
+  }
+  const HOME = { press: 'press_home', weld: 'weld_home', heat: 'heat_home', mach: 'mach_home', insp: 'insp_home' };
+
+  V.overview = () => {
+    const o = ov(), S = o.S, al = M.alerts(), act = al.filter(a => a.level !== 'info'), nD = al.filter(a => a.level === 'danger').length, nW = al.filter(a => a.level === 'warn').length;
+    const buy = M.buyApi, pend = buy ? buy.orders().filter(x => x.status === 'pending') : [], recs = buy ? buy.recs() : [];
+    const askQ = a => `${a.title} — 원인 후보와 지금 할 조치를 알려줘`;
     return `
     <div class="kstrip">
-      <div class="kpi"><div class="lab">완료 작업 · 최근 ${RD()}일</div><div class="val">${lots.length}<small>건</small></div><div class="foot">${liveProcs.map(p => `${esc(M.PROC[p])} ${byProc(p).length}`).join(' · ')}</div></div>
-      <div class="kpi"><div class="lab">생산 수량 · 최근 ${RD()}일</div><div class="val">${f(qty, 0)}<small>개</small></div><div class="foot">${esc(M.PROC[lastProc] || '')} 완료 기준 · ${esc(item((S.masters.items[0] || {}).code))}</div></div>
-      <div class="kpi"><div class="lab">공정 불량 · 최근 ${RD()}일</div><div class="val">${f(bad, 0)}<small>개</small></div><div class="foot">${liveProcs.filter(p => byProc(p).some(l => l.bad != null)).map(p => `${esc(M.PROC[p])} ${f(byProc(p).reduce((s, l) => s + (l.bad || 0), 0), 0)}`).join(' · ')}</div></div>
-      <div class="kpi click" data-go="alerts"><div class="lab">조치 필요 알림</div><div class="val" style="color:${al.some(a => a.level === 'danger') ? 'var(--danger-ink)' : 'inherit'}">${act.length}<small>건</small></div><div class="foot">긴급 ${al.filter(a => a.level === 'danger').length} · 주의 ${al.filter(a => a.level === 'warn').length}</div></div>
+      <div class="kpi click" data-row="k:ov:done"><div class="lab">완료 작업 · 최근 ${RD()}일</div><div class="val">${o.lots.length}<small>건</small></div><div class="foot">${o.liveProcs.map(p => `${esc(M.PROC[p])} ${o.byProc(p).length}`).join(' · ')}</div></div>
+      <div class="kpi click" data-row="k:ov:qty"><div class="lab">생산 수량 · 최근 ${RD()}일</div><div class="val">${f(o.qty, 0)}<small>개</small></div><div class="foot">${esc(M.PROC[o.lastProc] || '')} 완료 기준 · ${esc(item((S.masters.items[0] || {}).code))}</div></div>
+      <div class="kpi click" data-row="k:ov:bad"><div class="lab">공정 불량 · 최근 ${RD()}일</div><div class="val">${f(o.bad, 0)}<small>개</small></div><div class="foot">${o.liveProcs.filter(p => o.byProc(p).some(l => l.bad != null)).map(p => `${esc(M.PROC[p])} ${f(o.byProc(p).reduce((s, l) => s + (l.bad || 0), 0), 0)}`).join(' · ')}</div></div>
+      <div class="kpi click" data-go="alerts"><div class="lab">조치 필요 알림</div><div class="val" style="color:${nD ? 'var(--danger-ink)' : 'inherit'}">${act.length}<small>건</small></div><div class="foot">긴급 ${nD} · 주의 ${nW}</div></div>
     </div>
-    <div class="card" style="margin-top:16px"><h2>공정 흐름 <span class="h2sub">${esc(item((S.masters.items[0] || {}).code))} · ${esc(S.factory.line || '')}</span></h2>
-      <div class="route">${rout.map((r, i) => {
-        const e = eq(r.equipment_id), st = e.status || 'planned', [cls, txt] = STATUS[st], m = modOf(r.proc), sm = st === 'live' && m && m.summary ? m.summary(S) : null;
+    <div class="card todo" style="margin-top:16px">
+      <h2>지금 조치할 것 <span class="h2sub">긴급 ${nD} · 주의 ${nW} — 근거를 보고, 바로 발주하거나 물어볼 수 있습니다</span><a class="more" href="#" data-go="alerts">전체 알림 →</a></h2>
+      ${act.length ? `<div class="tlist">${act.slice(0, 8).map((a, i) => { const codes = buy ? buy.itemsFor(a) : [];
+        return `<div class="trow ${esc(a.level)}"><div class="tn">${i + 1}</div><div class="tm ${a.go ? 'click' : ''}" ${a.go ? `data-row="${esc(a.go)}"` : ''}><div class="tt">${esc(a.title)}</div><div class="ts">${esc(a.body || '')}</div></div>
+          ${M.procTag(a.proc)}<div class="ta">${a.go ? `<button class="btn sm" data-go="${esc(a.go)}">근거</button>` : ''}${codes.length ? `<button class="btn sm" data-buy="${esc(codes.join(','))}">발주</button>` : ''}<button class="btn sm" data-askq="${esc(askQ(a))}">물어보기</button></div></div>`; }).join('')}</div>
+        ${act.length > 8 ? `<div class="tmore"><a href="#" data-go="alerts">나머지 ${act.length - 8}건 더 보기 →</a></div>` : ''}` : '<div class="empty">지금 조치할 항목이 없습니다</div>'}
+    </div>
+    <div class="card" style="margin-top:16px"><h2>공정 흐름 <span class="h2sub">${esc(item((S.masters.items[0] || {}).code))} · ${esc(S.factory.line || '')}</span><a class="more" href="#" data-go="line">라인 운영 →</a></h2>
+      <div class="route compact">${o.rout.map((r, i) => {
+        const e = eq(r.equipment_id), st = e.status || 'planned', [cls] = STATUS[st], m = modOf(r.proc), sm = st === 'live' && m && m.summary ? m.summary(S) : null;
         const go = sm ? sm.go : st === 'external' && (M.CFG.LINKS || {})[r.proc] ? 'link:' + r.proc : '';
-        return `${i ? '<div class="arrow" aria-hidden="true"></div>' : ''}<div class="step st-${cls} ${go ? 'click' : ''}" ${go ? `data-go="${esc(go)}"` : ''}>
-          <div class="sq">${r.seq}</div><div class="nm">${esc(r.step_name)}</div><div class="eq">${esc(e.name || r.equipment_id)}</div>
-          ${sm ? `<div class="kv ${sm.st}">${esc(sm.kpi)}</div><div class="sb">${esc(sm.sub)}</div>` : `<div class="sb">${st === 'external' ? (go ? '새 탭에서 열기 →' : '별도 시스템에서 관리') : '모듈 준비 중'}</div>`}
-          <span class="chip c-${cls}">${txt}</span></div>`;
+        return `${i ? '<div class="arrow" aria-hidden="true"></div>' : ''}<div class="step st-${cls} ${go ? 'click' : ''}" ${go ? `data-go="${esc(go)}"` : ''} title="${esc(sm ? sm.sub : '')}">
+          <div class="nm"><span class="dot ${sm ? sm.st : 'off'}"></span>${esc(r.step_name)}</div>
+          ${sm ? `<div class="kv ${sm.st}">${esc(sm.kpi)}</div>` : `<div class="sb">${st === 'external' ? '별도 시스템' : '준비 중'}</div>`}</div>`;
       }).join('')}</div></div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
-      <div class="card"><h2>조치 필요 <a class="more" href="#" data-go="alerts">전체 알림 →</a></h2>
-        <div class="lst">${act.slice(0, 5).map(a => `<div class="it ${a.go ? 'click' : ''}" ${a.go ? `data-row="${esc(a.go)}"` : ''}><span class="dot ${esc(a.level)}"></span><div class="m"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.body || '')}</div></div>${M.procTag(a.proc)}</div>`).join('') || '<div class="empty">조치할 항목이 없습니다</div>'}</div></div>
       <div class="card"><h2>최근 작업지시 <a class="more" href="#" data-go="trace">LOT 이력 →</a></h2>
         ${M.table([['작업지시', r => `<b>${esc(r.wo_id)}</b>`], ['수량', r => f(r.qty, 0), 'n'],
           ['공정 진행', r => { const done = new Set([r.proc].concat(M.lineage(r.id).up.map(l => l.proc)));
-            return `<span class="prog">${rout.map(x => `<i class="${done.has(x.proc) ? 'done' : (eq(x.equipment_id).status === 'live' ? '' : 'na')}" title="${esc(x.step_name)}"></i>`).join('')}</span>`; }],
-          ['종료', r => esc(String(r.end_at || '').slice(5, 16))]], S.lots.filter(l => l.kind === 'process' && l.proc === lastProc).slice(-6).reverse(), { wrap: false, click: r => 'trace:' + r.id })}</div>
+            return `<span class="prog">${o.rout.map(x => `<i class="${done.has(x.proc) ? 'done' : (eq(x.equipment_id).status === 'live' ? '' : 'na')}" title="${esc(x.step_name)}"></i>`).join('')}</span>`; }],
+          ['종료', r => esc(String(r.end_at || '').slice(5, 16))]], S.lots.filter(l => l.kind === 'process' && l.proc === o.lastProc).slice(-6).reverse(), { wrap: false, click: r => 'trace:' + r.id })}</div>
+      <div class="card"><h2>구매 · 결재 <a class="more" href="#" data-go="buy_orders">발주 · 결재 →</a></h2>
+        ${buy ? `<div class="lst">
+          ${pend.map(x => `<div class="it click" data-row="po:${esc(x.id)}"><span class="dot warn"></span><div class="m"><div class="t">${esc(x.id)} · 결재 대기 (다음: ${esc(buy.nextStep(x) || '')})</div><div class="s">${esc(x.lines.map(l => `${l.name} ×${l.qty}`).join(', '))}</div></div></div>`).join('')}
+          ${recs.length ? `<div class="it click" data-go="buy_home"><span class="dot ${recs.some(r => r.level === 'danger') ? 'danger' : 'warn'}"></span><div class="m"><div class="t">발주 추천 ${recs.length}종</div><div class="s">${esc(recs.map(r => `${r.it.name} ${r.qty}${r.it.unit}`).join(' · '))}</div></div></div>` : ''}
+          ${!pend.length && !recs.length ? '<div class="empty">진행 중인 결재·추천이 없습니다</div>' : ''}</div>` : '<div class="empty">구매 모듈이 없습니다</div>'}</div>
     </div>`;
   };
+
+  // ── 요약 띠 상세
+  function kd(k) {
+    const o = ov(), rows = o.liveProcs.map(p => { const ls = o.byProc(p), q = ls.reduce((s, l) => s + (l.qty || 0), 0), b = ls.reduce((s, l) => s + (l.bad || 0), 0), hasB = ls.some(l => l.bad != null);
+      return { p, n: ls.length, q, b: hasB ? b : null, ppm: hasB && q ? b / q * 1e6 : null }; });
+    const pcols = [['공정', r => `${M.procTag(r.p)}`], ['작업', r => f(r.n, 0), 'n'], ['수량', r => f(r.q, 0), 'n'], ['불량', r => r.b == null ? '—' : f(r.b, 0), 'n'], ['PPM', r => r.ppm == null ? '—' : f(r.ppm, 0), 'n']];
+    const lcols = [['LOT', l => `<b>${esc(l.id)}</b>`], ['공정', l => M.procTag(l.proc)], ['종료', l => esc(String(l.end_at || '').slice(5, 16))], ['수량', l => f(l.qty, 0), 'n'], ['불량', l => l.bad == null ? '—' : f(l.bad, 0), 'n']];
+    if (k === 'done') return M.kdrawer(`공장 현황 · 최근 ${RD()}일`, `완료 작업 ${o.lots.length}건`, [
+      { h: '공정별', html: M.table(pcols, rows, { wrap: false, click: r => HOME[r.p] || 'overview' }) },
+      { h: '최근 작업', html: M.table(lcols, o.lots.slice().sort((a, b) => String(b.end_at).localeCompare(String(a.end_at))).slice(0, 12), { wrap: false, click: l => 'trace:' + l.id }) }]);
+    if (k === 'qty') { const by = {}; o.byProc(o.lastProc).forEach(l => { const d = String(l.end_at).slice(0, 10), x = by[d] = by[d] || { d, q: 0, n: 0 }; x.q += l.qty || 0; x.n++; });
+      const days = Object.values(by).sort((a, b) => a.d.localeCompare(b.d));
+      return M.kdrawer(`공장 현황 · 최근 ${RD()}일`, `생산 수량 ${f(o.qty, 0)}개 (${M.PROC[o.lastProc]} 완료 기준)`, [
+        { html: M.barChart(days.map(d => ({ x: d.d.slice(5), v: d.q, t: `${d.d} · ${f(d.q, 0)}개` })), { h: 160 }) },
+        { html: M.table([['날짜', d => `<b>${esc(d.d)}</b>`], ['작업', 'n', 'n'], ['수량', d => f(d.q, 0), 'n']], days.slice().reverse(), { wrap: false }) },
+        { html: '<p class="note">생산 수량은 마지막 완료 공정 하나로만 셉니다 (공정마다 더하면 같은 부품이 여러 번 세어집니다).</p>' }]); }
+    if (k === 'bad') return M.kdrawer(`공장 현황 · 최근 ${RD()}일`, `공정 불량 ${f(o.bad, 0)}개`, [
+      { h: '공정별', html: M.table(pcols, rows.filter(r => r.b != null), { wrap: false, click: r => HOME[r.p] || 'overview' }) },
+      { h: '불량 많은 작업', html: M.table(lcols, o.lots.filter(l => l.bad).sort((a, b) => b.bad - a.bad).slice(0, 10), { wrap: false, click: l => 'trace:' + l.id }) }]);
+  }
 
   let af = 'all';
   V.alerts = () => {
@@ -163,8 +199,10 @@
     id: 'common', group: '현황', order: 0,
     menu: [['overview', '공장 현황', 'home'], ['alerts', '통합 알림', 'bell'], ['trace', '작업지시 · LOT 이력', 'trace', '생산']],
     views: V, alerts: dataAlerts,
-    drawers: { 'trace:': id => { tq = id; M.go('trace'); } },
+    drawers: { 'trace:': id => { tq = id; M.go('trace'); }, 'k:ov:': kd },
     bind(root) {
+      root.querySelectorAll('[data-buy]').forEach(b => b.onclick = e => { e.stopPropagation(); if (M.buyApi) M.buyApi.preselect(b.dataset.buy.split(',')); });
+      root.querySelectorAll('[data-askq]').forEach(b => b.onclick = e => { e.stopPropagation(); if (M.askApi) M.askApi.ask(b.dataset.askq); });
       root.querySelectorAll('[data-af]').forEach(b => b.onclick = () => { af = b.dataset.af; M.render(); });
       root.querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { mt = b.dataset.mt; M.render(); });
       root.querySelectorAll('[data-trace]').forEach(a => a.onclick = e => { e.preventDefault(); tq = a.dataset.trace; M.closeDrawer(); M.go('trace'); });
