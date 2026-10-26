@@ -99,7 +99,9 @@
   // ── 화면
   let cur = null, vres = null, tamp = false, viewAs = 'MLNG', vmsg = '';
   const shipLots = () => H().lots.slice(-30).reverse();
-  const qrSvg = text => { try { const q = window.qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 3, margin: 2, scalable: true }); } catch (e) { return '<div class="muted">QR 생성 불가</div>'; } };
+  const QRC = {};   // 같은 링크의 QR 은 한 번만 만든다
+  const qrSvg = text => QRC[text] || (QRC[text] = qrMake(text));
+  const qrMake = text => { try { const q = window.qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 3, margin: 2, scalable: true }); } catch (e) { return '<div class="muted">QR 생성 불가</div>'; } };
   const verifyUrl = p => `${location.origin}${location.pathname}#verify=${p.id}:${p.root.slice(0, 16)}`;
   const stepVal = s => Object.entries(s.data).map(([k, v]) => `${({ qty: '수량', bad: '불량', ppm: 'PPM', strokes: '타발', cpk_min: 'Cpk(최소)', welds: '타점', expected_defects: '예상 불량', priority_checks: '1순위 검사', dur_h: '시간(h)', deviation_max: '조건 이탈률', material_lot: '소재 LOT', tool: '공구', material: '재질', runs: '가공', vb_mm: '마모 VB', parts: '검사 부품', fail: '불합격', conflict: '확정 필요', item: '품목' })[k] || k} ${typeof v === 'number' ? f(v, Number.isInteger(v) ? 0 : 2) : esc(v)}`).join(' · ');
 

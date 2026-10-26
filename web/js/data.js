@@ -71,8 +71,15 @@
 
   async function load() {
     if (CONNECTED) {
-      const live = await loadLive().catch(e => { DBSTATE = '연결 실패 — ' + e.message; return null; });
-      if (live) { MODE = 'live'; return live; }
+      // 먼저 LOT 표에 한 줄이라도 있는지만 본다 (데모 파일은 같이 받아 둔다) — 비어 있으면 표 14개를 다 읽지 않는다
+      const demoP = loadDemo().catch(() => null);
+      const head = await db('GET', '/mlng_lots?select=id&limit=1').catch(e => { DBSTATE = '연결 실패 — ' + e.message; return null; });
+      if (head && !head.length) DBSTATE = '연결됨 — 표가 비어 있어 데모 스냅샷 표시';
+      if (head && head.length) {
+        const live = await loadLive().catch(e => { DBSTATE = '연결 실패 — ' + e.message; return null; });
+        if (live) { MODE = 'live'; return live; }
+      }
+      MODE = 'demo'; const d = await demoP; if (d) return d;
     }
     MODE = 'demo';
     return loadDemo();
