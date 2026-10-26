@@ -84,6 +84,10 @@
     get LIVE() { return MODE === 'live'; },
     CONNECTED,
     dbState: () => DBSTATE,
+    // 2.0 신뢰 원장 — 실시간일 때만 서버에 쌓는다 (공개키도 함께 남겨 나중에 검증)
+    async v2Append(e) { if (MODE !== 'live') return; await db('POST', '/mlng_ledger', { seq: e.seq, at: e.at, company: e.company, kind: e.kind, ref: e.ref, title: e.title, payload: e.payload, prev: e.prev, hash: e.hash, sig: e.sig }); },
+    async v2Key(k) { if (MODE !== 'live') return; await db('POST', '/mlng_keys', k).catch(() => {}); },
+    async v2LoadLedger() { if (MODE !== 'live') return { ledger: [], keys: [] }; const [l, k] = await Promise.all([soft(db('GET', '/mlng_ledger?select=*&order=seq.asc&limit=5000')), soft(db('GET', '/mlng_keys?select=*'))]); return { ledger: l || [], keys: k || [] }; },
     // 데모로 떠 있는 동안 표에 데이터가 들어왔는지만 가볍게 확인 (실시간 반영 켜짐일 때)
     async probe() { if (!CONNECTED) return false; const r = await soft(db('GET', '/mlng_lots?select=id&limit=1')); return !!(r && r.length); },
     user: () => USER,

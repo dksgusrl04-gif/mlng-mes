@@ -112,6 +112,7 @@
         ['마감 재고', d => k === 'inv' ? `<b>${f(d.inv_close, 0)}</b>` : f(d.inv_close, 0), 'n'], ['재고 일수', d => s.avg ? f(d.inv_close / s.avg, 1) : '—', 'n']], ds, { wrap: false }) }]);
   }
 
+  M.planApi = { stat, items: () => PL().items.map(i => i.code), makeWo };
   M.mod({
     id: 'plan', proc: 'plan', group: '계획', order: 5,
     menu: [['plan_home', '생산 계획', 'range'], ['plan_wo', '작업지시', 'book', '생산']],

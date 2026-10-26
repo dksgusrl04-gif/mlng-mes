@@ -279,7 +279,14 @@
   // 알림 하나에 맞는 품목 (홈 「지금 조치할 것」의 발주 단추)
   const itemsFor = a => CAT().filter(it => (it.on && (a.go === it.on || String(a.go || '').startsWith(it.on + ':'))) || (it.mach === 'insert' && a.proc === 'mach' && /^mach(:|_tools)/.test(String(a.go || '')))).map(it => it.code);
   const preselect = codes => { codes.forEach(c => sel.add(c)); cf = 'sel'; msg = ''; M.closeDrawer(); M.go('buy_home'); };
-  M.buyApi = { orders: () => P().orders, audit: () => P().audit, recs, total, nextStep, catalog: CAT, itemsFor, preselect };   // 질의응답에서 읽는다
+  // 다른 모듈(에이전트)이 발주를 바로 만든다 — 결재는 똑같이 사람이 한다
+  async function createPO(items, note, by) {
+    const r = recMap(), lines = items.map(x => line(x.code, Math.max(1, x.qty || (r[x.code] || {}).qty || ITEM(x.code).qty || 1), x.reason || (r[x.code] || {}).reason || note || '자동 제안'));
+    const day = ymd(M.now()).slice(2).replace(/-/g, ''), seq = P().orders.filter(o => o.id.startsWith(`PO-${day}-`)).length + 1;
+    const po = { id: `PO-${day}-${String(seq).padStart(2, '0')}`, created_at: stamp(), by: by || M.D.user().name, vendor: '구매팀', lines, signs: {}, status: 'pending', note: note || '' };
+    const saved = await M.D.savePO(po, true); P().orders.unshift(saved); await log(saved.id, '발주 등록' + (by ? ` (${by})` : '')); return saved;
+  }
+  M.buyApi = { orders: () => P().orders, audit: () => P().audit, recs, total, nextStep, catalog: CAT, itemsFor, preselect, createPO };   // 질의응답에서 읽는다
   M.mod({
     id: 'buy', proc: 'buy', group: '구매', order: 6,
     menu: [['buy_home', '공구 주문', 'cart'], ['buy_orders', '발주 · 결재', 'sign']],

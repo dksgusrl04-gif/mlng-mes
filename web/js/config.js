@@ -51,6 +51,15 @@ window.MLNG_CONFIG = {
     MACH_STOCK: 12,                     // 페이스커터 인서트 현재 재고 (데모값)
     MACH_WEEKS: 2,                      // 인서트는 «최근 7일 공구 교체 횟수 × 날 수 × N주» 만큼 확보
   },
+  // 2.0 탄소 발자국 — 모두 예시값. 최신 국가 전력 배출계수·공급사 제공값으로 바꿔 쓴다
+  PCF: {
+    EF_KWH: 0.4594,            // 전력 배출계수 kgCO2e/kWh (예시)
+    STEEL_KG: 0.35, STEEL_EF: 2.3,   // 브래킷 1개 강판 kg · 강판 kgCO2e/kg (예시, 공급사 값으로 교체)
+    HEAT_ZONE_KW: { op1: 60, op2: 60, op3: 60, op4: 60, opd1: 20, opd2: 20 },   // 열처리 존별 정격 kW
+    PRESS_KWH_PER_STROKE: 0.0022, WELD_KWH_PER_SPOT: 0.0015, SPOTS_PER_PART: 2, MACH_KW: 7.5, INSP_KWH_PER_PART: 0.002,
+  },
+  // 2.0 공급망 동기 계획 — 다른 회사 능력은 데이터 계약으로 받는 값 (데모는 예시값)
+  SYNC: { SEATS_PER_VEHICLE: 2, BRACKETS_PER_SEAT: 2, B_SEAT_CAP: 26000, STEEL_KG: 0.35, STEEL_YIELD: 0.72, D_STEEL_TPD: 22 },
   // 질의응답 (Claude API) — 키는 Supabase Edge Function 에만 둔다 (supabase/functions/mlng-ask)
   //   '' = `${SUPABASE_URL}/functions/v1/mlng-ask` 를 쓴다 (배포 완료) · 'off' = 규칙 기반만
   ASK_URL: '',

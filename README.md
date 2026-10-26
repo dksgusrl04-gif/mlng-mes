@@ -27,6 +27,26 @@ supabase functions deploy mlng-ask --no-verify-jwt
 - 로그인 없는 공개 사이트이므로 **Anthropic 콘솔에서 월 사용 한도(Spend limit)를 꼭 건다**. 함수에는 IP 당 호출 제한·요청/답 길이 상한이 들어 있다
 - 접속 주소만 허용하려면 `supabase secrets set ASK_ALLOW_ORIGIN=https://dksgusrl04-gif.github.io`
 
+## 2.0 — 신뢰로 연결되는 MES
+회사 사이(완성차 A · 1차 협력사 B · 우리 C · 강판 공급사 D)를 «서명된 데이터»로 잇는다. 메뉴 그룹 「연결 · 신뢰 (2.0)」 와 「AI 에이전트」.
+- **데이터 공유 계약**: 누가 · 무엇을(범위 7종) · 언제까지 · 재공유 여부를 양쪽 회사 키로 서명. 계약이 없으면 조회가 막히고, 허용·거부 모두 기록
+- **신뢰 원장**: 모든 계약·발행·검수·조치가 해시 사슬 + 회사 서명으로 쌓인다. 「전체 검증」·「위변조 시험」으로 바로 확인
+- **보안 구조**: 회사별 ECDSA P-256 키(WebCrypto), 공개키 지문, 검증 방식 설명
+- **LOT 디지털 여권**: 소재(D사 서명 성적서) → 프레스 → 점용접 → 열처리 → MCT → 검사를 해시 사슬로 묶고 우리 서명. QR 링크(`#verify=`)로 누구나 진본 확인
+- **공정 능력 증명서**: 원본 대신 «기준 충족» 만 서명해서 고객사에 발급 (근거 데이터는 해시만)
+- **탄소 발자국**: LOT 별 소재·공정 에너지 기반 g/개 (계수는 `config.js PCF`, 예시값)
+- **스마트 발주**: 고객 발주에 품질·탄소 조항을 넣으면 납품 때 여권으로 자동 검수 → 합격은 정산 승인, 미달은 근거 붙은 클레임 자동 생성
+- **공급망 동기 계획**: 완성차 계획 변경 → B·우리·D 필요량·병목 재계산 → 「변경 전파」로 라인 목표·작업지시 초안·협력사 회신
+- **함께 배우는 AI**: 4개 공장이 원본 대신 요약 통계(XᵀX·Xᵀy)만 모아 공구 마모 모델 학습 (NASA 데이터 시뮬레이션)
+- **AI 에이전트**: 알림·계획·클레임에서 조치안을 만들고, 정책(자동/승인/제안)에 따라 실행 — 실행은 모두 원장에
+- 질의응답에 `trust_network` 도구 추가 → 함수 다시 배포: `supabase functions deploy mlng-ask --no-verify-jwt`
+
+### 2.0 실시간 저장과 한계
+- 실시간 모드에서 서버에 남기는 것은 **원장(`mlng_ledger`)과 공개키(`mlng_keys`)** 뿐 — anon 은 추가만 가능(수정·삭제 불가). `supabase/trust_schema.sql` (new_project_setup.sql 에 포함)
+- 계약·발주·여권 등 시나리오 자체는 화면 안 메모리(데모). 데모 시드 기록은 서버 원장에 넣지 않는다
+- 데모 키는 브라우저에서 만든다. 운영에서는 회사별 키를 서버(HSM/KMS)에 두고 서명 함수로만 서명해야 한다
+- 연합 학습은 시뮬레이션, 탄소 계수는 예시값, 전자 계약의 법적 효력은 별도 검토가 필요하다
+
 ## 배포·Supabase
 - GitHub Pages: 저장소 Settings → Pages → Branch `main` / `(root)`. 루트 `index.html` 이 `web/` 으로 넘겨 준다
 - Supabase: **MLNG 전용 새 프로젝트** (MCT MES 프로젝트와 섞지 않는다)
@@ -51,6 +71,14 @@ mlng-mes/
 │  ├─ js/catalog.js        공구·소모품 등록 목록 (공정별)
 │  ├─ js/mod_buy.js        구매 모듈 (공구 주문 · 3단계 결재 · 공구 발주서 · 입고)
 │  ├─ js/mod_ask.js        질의응답 (Claude API 중계 + 규칙 기반)
+│  ├─ js/vendor/qrcode.js  QR 생성 (qrcode-generator 1.4.4, MIT)
+│  ├─ js/trust.js          2.0 신뢰 계층 — 회사 키 · 서명/검증 · 해시 사슬 원장
+│  ├─ js/mod_net.js        데이터 공유 계약 · 신뢰 원장 · 보안 구조
+│  ├─ js/mod_pass.js       LOT 디지털 여권 · 공정 능력 증명서 · 탄소 발자국
+│  ├─ js/mod_deal.js       스마트 발주 (조건부 자동 검수 · 클레임)
+│  ├─ js/mod_agent.js      AI 에이전트 (조치안 · 정책 · 실행 기록)
+│  ├─ js/mod_sync.js       공급망 동기 계획
+│  ├─ js/mod_fed.js        함께 배우는 AI (연합 학습 시뮬레이션)
 │  ├─ js/mod_press.js      프레스 모듈 (현황 · 타발 실적 · 공정 조건 · 설비 진단)
 │  ├─ js/mod_weld.js       점용접 모듈 (현황 · 검사 우선순위 · 안정 공정조건 · 작업 실적) — 용접 웹에서 옮김
 │  ├─ js/mod_heat.js       열처리 모듈 (현황 · 작업 실적 · 공정 조건 · 설비 상태)
@@ -77,7 +105,8 @@ mlng-mes/
 │  ├─ insp_schema.sql      검사 표 (insp_)
 │  ├─ weld_schema.sql      점용접 표 (weld_, 용접 웹과 같은 것)
 │  ├─ plan_schema.sql      생산 계획 표 (plan_)
-│  └─ buy_schema.sql       구매·발주 · 활동 기록 표
+│  ├─ buy_schema.sql       구매·발주 · 활동 기록 표
+│  └─ trust_schema.sql     2.0 신뢰 원장 · 공개키 표 (추가 전용)
 └─ docs/설계.md
 ```
 

@@ -47,9 +47,19 @@
         recent_activity: B.audit().slice(0, 10) }; },
     buy_recommendations: () => M.buyApi ? { recommendations: M.buyApi.recs().map(r => ({ item: r.it.name, code: r.it.code, process: M.PROC[r.it.proc] || r.it.proc, class: r.it.cls, qty: r.qty, unit: r.it.unit, level: r.level, reason: r.reason })),
       registered_items: M.buyApi.catalog().map(i => `${i.code} ${i.name} (${M.PROC[i.proc] || i.proc}·${i.cls})`) } : { error: '구매 모듈 없음' },
+    trust_network: async i => { const T = window.MLNGTrust; if (!T || !T.ready) return { error: '신뢰 계층 준비 전' };
+      const part = (i && i.part) || 'all', o = {}, co = id => (T.co(id) || {}).name || id;
+      if (part === 'all' || part === 'contracts') o.contracts = (T.contracts || []).map(c => ({ id: c.id, provider: co(c.provider), consumer: co(c.consumer), scopes: c.scopes.map(k => (T.SCOPES[k] || {}).name || k), state: T.contractState(c), end: c.end, recent_access: (c.access || []).slice(0, 3).map(a => `${a.at} ${a.ok ? '허용' : '거부'} ${a.resource || ''}`) }));
+      if (part === 'all' || part === 'orders') o.smart_orders = (T.orders || []).map(x => ({ id: x.id, buyer: co(x.buyer), item: x.item, qty: x.qty, clauses: x.clauses.map(c => `${c.k} ${c.op || ''} ${c.v ?? ''}`), deliveries: x.deliveries.length, accepted: x.deliveries.filter(d => d.result === 'accepted').length,
+        claims: x.deliveries.filter(d => d.claim).map(d => ({ id: d.claim.id, lot: d.lot, status: d.claim.status, text: d.claim.text })) }));
+      if (part === 'all' || part === 'passports') o.passports = Object.values(T.passports || {}).slice(-8).map(p => ({ id: p.id, lot: p.lot, steps: p.steps.length, root: T.short(p.root), pcf_kg_per_part: p.pcf ? +p.pcf.total.toFixed(3) : null }));
+      if (part === 'all' || part === 'credentials') o.credentials = (T.credentials || []).map(c => ({ id: c.id, claim: c.claim, audience: co(c.audience), issued: c.issued, expires: c.expires, revoked: !!c.revoked }));
+      if (part === 'all' || part === 'agent') o.agent = { pending: ((T.agent || {}).items || []).filter(x => x.status === 'pending' || x.status === 'suggested').slice(0, 8).map(x => ({ id: x.id, kind: x.kind, action: x.act, why: x.why, status: x.status })), recent_log: ((T.agent || {}).log || []).slice(0, 5) };
+      if (part === 'all' || part === 'ledger') { const v = await T.verifyLedger(); o.ledger = { entries: T.ledger.length, valid: v.ok, broken_at: v.ok ? null : v.broken[0].seq, last: T.ledger.slice(-5).map(e => `${e.seq} ${e.company} ${e.kind} ${e.title}`) }; }
+      return o; },
   };
   async function runTool(name, input) {
-    try { const fn = TOOLS[name]; const out = fn ? fn(input || {}) : { error: `모르는 도구 ${name}` }; const s = JSON.stringify(out); return s.length > MAX_RESULT ? s.slice(0, MAX_RESULT) + '…(생략)' : s; }
+    try { const fn = TOOLS[name]; const out = fn ? await fn(input || {}) : { error: `모르는 도구 ${name}` }; const s = JSON.stringify(out); return s.length > MAX_RESULT ? s.slice(0, MAX_RESULT) + '…(생략)' : s; }
     catch (e) { return JSON.stringify({ error: e.message }); }
   }
 
@@ -80,6 +90,21 @@
       return { text: `${r.lot.lot} (${r.lot.process}) — ${f(r.lot.qty, 0)}개${r.lot.bad != null ? ` · 불량 ${f(r.lot.bad, 0)}` : ''} · ${r.lot.date}\n앞 공정: ${r.upstream.map(x => `${x.lot}(${x.process})`).join(', ') || '없음'}\n뒤 공정: ${r.downstream.map(x => `${x.lot}(${x.process})`).join(', ') || '없음'}`,
         links: [['trace', 'LOT 이력 보기']] };
     }
+    if (has('계약', '여권', '클레임', '검수', '원장', '위변조', '에이전트', '증명서', '탄소', '공급망')) {
+      const T = window.MLNGTrust; if (!T || !T.ready) return { text: '신뢰 계층을 준비하는 중입니다' };
+      if (has('계약')) { const cs = T.contracts || [], by = k => cs.filter(c => T.contractState(c) === k);
+        return { text: `데이터 공유 계약 ${cs.length}건 — 유효 ${by('active').length} · 서명 대기 ${by('proposed').length}${by('proposed').length ? ' (' + by('proposed').map(c => c.id).join(', ') + ')' : ''} · 만료·철회 ${by('expired').length + by('revoked').length}`, links: [['net_contracts', '데이터 공유 계약']] }; }
+      if (has('클레임', '검수', '발주')) { const os = T.orders || [], ds = [].concat(...os.map(o => o.deliveries)), cl = ds.filter(d => d.claim);
+        return { text: `스마트 발주 ${os.length}건 · 납품 ${ds.length}건 중 자동 합격 ${ds.filter(d => d.result === 'accepted').length}건, 클레임 ${cl.length}건${cl.length ? '\n' + cl.slice(0, 3).map(d => `· ${d.claim.id} ${d.lot} (${d.claim.status === 'open' ? '처리 중' : '종결'})`).join('\n') : ''}`, links: [['deal_home', '스마트 발주']] }; }
+      if (has('에이전트')) { const it = ((T.agent || {}).items || []).filter(x => x.status === 'pending' || x.status === 'suggested');
+        return { text: it.length ? `승인 대기 조치 ${it.length}건\n${it.slice(0, 5).map(x => `· ${x.act}`).join('\n')}` : '승인 대기 중인 에이전트 조치가 없습니다', links: [['agent', 'AI 에이전트']] }; }
+      if (has('여권', '탄소')) { const ps = Object.values(T.passports || {});
+        return { text: `발행된 LOT 디지털 여권 ${ps.length}건${ps.length ? '\n' + ps.slice(-3).map(p => `· ${p.id} ${p.steps.length}단계${p.pcf ? ` · 탄소 ${f(p.pcf.total * 1000, 0)} g/개` : ''}`).join('\n') : ''}`, links: [['pass_home', 'LOT 디지털 여권'], ['pass_pcf', '탄소 발자국']] }; }
+      if (has('증명서')) { const cr = T.credentials || [];
+        return { text: `공정 능력 증명서 ${cr.length}건${cr.length ? '\n' + cr.map(c => `· ${c.claim} → ${(T.co(c.audience) || {}).name || c.audience}`).join('\n') : ''}`, links: [['pass_cred', '공정 능력 증명서']] }; }
+      if (has('공급망')) return { text: '공급망 동기 계획 화면에서 완성차 계획을 바꿔 보면 B·우리·D 단계 필요량과 병목이 다시 계산됩니다', links: [['sync', '공급망 동기 계획']] };
+      return T.verifyLedger().then(v => ({ text: `신뢰 원장 ${T.ledger.length}건 — ${v.ok ? '전체 사슬 정상 (위변조 없음)' : `${v.broken[0].seq}번 기록부터 이상 — ${v.broken[0].why}`}`, links: [['net_ledger', '신뢰 원장']] }));
+    }
     if (has('발주', '결재', '구매', '입고', '발주서')) {
       const B = M.buyApi; if (!B) return { text: '구매 모듈이 없습니다' };
       const os = B.orders(), pend = os.filter(o => o.status === 'pending'), notIn = os.filter(o => o.status === 'approved'), rs = B.recs();
@@ -105,7 +130,7 @@
     if (has('현황', '요약', '오늘', '상태', '어때')) {
       return { text: sums().map(s => `· ${s.proc}: ${s.kpi}${s.detail ? ' — ' + s.detail : ''}`).join('\n') || '요약할 자료가 없습니다', links: [['overview', '공장 현황']] };
     }
-    return { text: '이 질문은 규칙 기반으로는 답하기 어렵습니다. 아래처럼 물어보세요.\n· 지금 가장 먼저 조치할 것은?\n· 병목 공정은 어디야?\n· MCT 공구 상태 어때?\n· 결재 대기 발주 있어?\n· HT-… LOT 이력 알려줘' };
+    return { text: '이 질문은 규칙 기반으로는 답하기 어렵습니다. 아래처럼 물어보세요.\n· 지금 가장 먼저 조치할 것은?\n· 병목 공정은 어디야?\n· MCT 공구 상태 어때?\n· 결재 대기 발주 있어?\n· 클레임 걸린 납품 있어?\n· 신뢰 원장 정상이야?\n· HT-… LOT 이력 알려줘' };
   }
 
   async function send(q) {
@@ -114,14 +139,14 @@
     let ans;
     if (M.D.askUrl()) {
       try { const r = await askClaude(q); ans = { text: r.text, engine: 'Claude', tools: r.tools }; }
-      catch (e) { const r = askRule(q); ans = Object.assign(r, { engine: '규칙 기반', note: `Claude 연결 실패(${e.message}) — 규칙 기반으로 답했습니다` }); }
-    } else ans = Object.assign(askRule(q), { engine: '규칙 기반' });
+      catch (e) { const r = await askRule(q); ans = Object.assign(r, { engine: '규칙 기반', note: `Claude 연결 실패(${e.message}) — 규칙 기반으로 답했습니다` }); }
+    } else ans = Object.assign(await askRule(q), { engine: '규칙 기반' });
     chat.push(Object.assign({ role: 'bot' }, ans)); busy = false;
     if (M.cur === 'ask') { M.render(); const b = M.$('#chatbox'); if (b) b.scrollTop = b.scrollHeight; }
   }
 
   const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-  const SUG = ['지금 가장 먼저 조치할 것은?', '병목 공정은 어디고 하루 몇 개까지 가능해?', 'MCT 공구 상태 어때?', '결재 대기 발주 있어?', '열처리 불량 원인 후보는?', '공장 현황 요약해 줘'];
+  const SUG = ['지금 가장 먼저 조치할 것은?', '병목 공정은 어디고 하루 몇 개까지 가능해?', 'MCT 공구 상태 어때?', '결재 대기 발주 있어?', '열처리 불량 원인 후보는?', '공장 현황 요약해 줘', '클레임 걸린 납품 있어?', '서명 대기 계약 있어?'];
   const V = {};
   V.ask = () => {
     const live = !!M.D.askUrl();
@@ -140,7 +165,7 @@
   };
 
   M.PROC.ask = '질의';
-  M.askApi = { ask: q => { M.closeDrawer(); M.go('ask'); send(q); } };
+  M.askApi = { ask: q => { M.closeDrawer(); M.go('ask'); send(q); }, tool: runTool };
   M.mod({
     id: 'ask', group: '현황', order: 1,
     menu: [['ask', '질의응답', 'chat']],

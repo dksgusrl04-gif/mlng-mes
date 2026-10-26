@@ -31,7 +31,7 @@
   const { esc, f } = M;
 
   // ── 공정 표시
-  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획', buy: '구매' };
+  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획', buy: '구매', net: '연결', deal: '스마트 발주', agent: '에이전트' };
   M.procTag = p => `<span class="proc p-${esc(p)}">${esc(M.PROC[p] || p)}</span>`;
   M.tag = (t, cls) => `<span class="tag ${cls || 't-' + esc(t)}">${esc(t)}</span>`;
   M.dot = (st, t) => `<span class="dot ${st}"></span>${esc(t)}`;
@@ -48,6 +48,16 @@
     cart: '<path d="M3 4h2l2.4 11h11l2-8H6.2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
     sign: '<path d="M4 20h16"/><path d="M14.5 4.5l5 5L9 20H4v-5z"/>',
     chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
+    link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    chain: '<rect x="3" y="4" width="7" height="6" rx="1"/><rect x="14" y="14" width="7" height="6" rx="1"/><path d="M6.5 10v4h11v0"/><path d="M17.5 14v-2"/>',
+    shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+    passport: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M9 17h6"/>',
+    badge: '<circle cx="12" cy="9" r="5"/><path d="M9 13.5L8 21l4-2 4 2-1-7.5"/>',
+    leaf: '<path d="M5 19c8 0 14-6 14-14-8 0-14 5-14 13z"/><path d="M5 19c3-5 6-8 10-10"/>',
+    deal: '<path d="M3 12l4-4 5 3 5-3 4 4"/><path d="M7 8v8l5 3 5-3V8"/>',
+    agent: '<rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9 15h6"/>',
+    sync: '<path d="M20 11a8 8 0 0 0-14-5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 5l2-2"/><path d="M20 20v-4h-4"/>',
+    fed: '<circle cx="12" cy="12" r="3"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/><path d="M6 7l4 3M18 7l-4 3M6 17l4-3M18 17l-4-3"/>',
   };
   M.ic = k => `<svg class="ic" viewBox="0 0 24 24">${IC[k] || ''}</svg>`;
 
@@ -183,7 +193,7 @@
   };
   // 요약 띠 항목 상세 — 제목·부제 + 블록 [{ h, html }]
   M.kdrawer = (sub, title, blocks) => M.drawer(sub, title, blocks.filter(Boolean).map(b => `${b.h ? `<h3 class="dh">${esc(b.h)}</h3>` : ''}${b.html}`).join(''));
-  M.dl = pairs => `<dl class="stat">${pairs.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  M.dl = (pairs, cls) => `<dl class="stat ${cls || ''}">${pairs.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
   M.closeDrawer = () => { $('#drawer').classList.remove('on'); $('#shade').classList.remove('on'); };
 
   // ── 검사 기록 창 (모든 공정 공용 → mlng_inspections)
@@ -253,7 +263,7 @@
   M.start = async () => {
     if (D.needLogin()) { $('#login').style.display = 'flex'; return; }
     $('#login').style.display = 'none';
-    try { M.S = await D.load(); } catch (e) { $('#view').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 — ${esc(e.message)}</div>`; return; }
+    try { M.S = await D.load(); if (window.MLNGTrust) await window.MLNGTrust.init(); } catch (e) { $('#view').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 — ${esc(e.message)}</div>`; return; }
     lastPull = D.LIVE ? new Date() : null; rail(); M.render(); setLive(liveOn);
   };
   M.init = () => {

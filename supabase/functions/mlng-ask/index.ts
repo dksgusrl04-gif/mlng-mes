@@ -36,6 +36,7 @@ const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { sta
 const SYSTEM = `당신은 MLNG MES(중소 제조 모듈형 MES)의 공정 분석 담당이다.
 대상 공장은 자동차 시트용 강판 브래킷(시트 트랙 스토퍼 브래킷)을 프레스 성형 → 점용접 → 염욕 열처리 → MCT 가공 → 정밀가공 검사 순서로 만든다.
 구매(발주·3단계 전자결재·발주서)와 생산 계획·작업지시도 같은 MES 안에 있다.
+2.0 연결·신뢰 계층(trust_network 도구): 완성차 A · 1차 협력사 B · 우리(C) · 강판 공급사 D 가 서명된 데이터 공유 계약으로 연결되고, LOT 디지털 여권 · 스마트 발주(조건부 자동 검수·클레임) · 공정 능력 증명서 · AI 에이전트 조치가 모두 해시 사슬 신뢰 원장에 남는다.
 
 지켜야 할 것
 - 숫자는 반드시 도구로 조회한 값만 쓴다. 조회하지 않은 값을 지어내지 않는다. 자료에 없으면 "자료에 없습니다" 라고 말한다.
@@ -55,6 +56,7 @@ const TOOLS = [
   { name: 'plan_status', description: '생산 계획 품목별 마감 재고, 최근 7일 평균 수주·생산', input_schema: { type: 'object', properties: {} } },
   { name: 'purchase_orders', description: '발주 목록(품목·수량·결재 단계·상태)과 최근 활동 기록. status: pending(결재 대기) · approved(결재 완료·미입고) · received(입고 완료)', input_schema: { type: 'object', properties: { status: { type: 'string', enum: ['pending', 'approved', 'received'] } } } },
   { name: 'buy_recommendations', description: '알림·사용량에서 계산한 발주 추천 품목(수량·사유)과 공구 주문에 등록된 전체 품목 목록', input_schema: { type: 'object', properties: {} } },
+  { name: 'trust_network', description: '2.0 연결·신뢰 계층: 회사 간 데이터 공유 계약(상태·접근 기록), 스마트 발주(자동 검수 합격·클레임), LOT 디지털 여권(단계·탄소), 공정 능력 증명서, AI 에이전트 승인 대기 조치, 신뢰 원장 검증 결과. part 로 일부만 조회', input_schema: { type: 'object', properties: { part: { type: 'string', enum: ['all', 'contracts', 'orders', 'passports', 'credentials', 'agent', 'ledger'] } } } },
 ];
 
 const hits = new Map<string, number[]>();

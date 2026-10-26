@@ -519,3 +519,58 @@ ul.plain{list-style:none;margin:0;padding:0;font-size:13px}ul.plain li{padding:5
 .kstrip.kside .kpi.click:hover{background:var(--line-2)}
 @media(max-width:1100px){#view.hasside{grid-template-columns:1fr}.vside{position:static;order:-1}.kstrip.kside{display:grid;grid-template-columns:1fr 1fr}.kstrip.kside > .kpi:nth-child(2){border-top:0}}
 @media(max-width:640px){.kstrip.kside{grid-template-columns:1fr}.kstrip.kside > .kpi:nth-child(2){border-top:1px solid var(--line-2)}}
+
+/* ═══ 2.0 연결 · 신뢰 ═══ */
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+.cotag{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;white-space:nowrap}
+.cotag b{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;background:var(--cc);color:#fff;font-size:11px}
+.mebar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+.mebtn{border:1px solid var(--line-in);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:3px 10px 3px 4px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.mebtn b{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--cc);color:#fff;font-size:11px}
+.mebtn.on{border-color:var(--cc);color:var(--ink);font-weight:700;box-shadow:inset 0 0 0 1px var(--cc)}
+.frm{display:grid;grid-template-columns:110px 1fr;gap:9px 12px;align-items:center;font-size:13px}
+.frm > label{color:var(--muted);font-weight:600}.frm .ck{grid-column:1 / -1}
+.ckl{display:flex;flex-direction:column;gap:5px}.ck{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+.tag.t-off{background:var(--line-2);color:var(--muted);border:1px solid var(--line-in)}
+/* LOT 여권 */
+.pp{margin-top:6px}.pph{display:flex;gap:20px;justify-content:space-between;align-items:flex-start;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.ppt{font-size:11.5px;font-weight:700;color:var(--brand);letter-spacing:.06em}.ppn{font-size:20px;font-weight:800;margin:2px 0}
+.pph .stat{margin-top:8px;font-size:12.5px}
+.qr{flex:none;width:140px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px}.qr svg{width:100%;height:auto;display:block}
+.ppsteps{display:flex;flex-direction:column;margin-top:10px}
+.pps{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line-2);position:relative}
+.ppi{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;background:var(--line-2);color:var(--muted)}
+.pps.ok .ppi{background:var(--ok-soft);color:var(--ok)}.pps.bad .ppi{background:var(--danger-soft);color:var(--danger-ink)}
+.pps.bad{background:var(--danger-soft)}
+.ppb{flex:1;min-width:0}.ppnm{font-weight:700;font-size:13.5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.ppd{font-size:12.5px;color:var(--ink-2);margin-top:2px}.pph2{color:var(--faint);margin-top:2px}
+.vbig{font-size:26px;font-weight:800;padding:14px;border-radius:8px;text-align:center}.vbig.ok{background:var(--ok-soft);color:var(--ok)}.vbig.bad{background:var(--danger-soft);color:var(--danger-ink)}
+.hbars .hb{display:grid;grid-template-columns:90px 1fr 70px;gap:10px;align-items:center;font-size:12.5px;padding:3px 0}
+.hbars .hb i{display:block;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--brand) var(--w),var(--line-2) var(--w))}
+.hbars .hb b{text-align:right;font-variant-numeric:tabular-nums}
+/* 스마트 발주 */
+span.ok{color:var(--ok);font-weight:800}span.ng{color:var(--danger-ink);font-weight:700;font-size:12px;white-space:nowrap}
+/* 에이전트 */
+.aglist{display:flex;flex-direction:column;gap:10px}
+.ag{border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;background:var(--raise)}
+.ag.pending{border-left:3px solid var(--warn)}.ag.done{border-left:3px solid var(--ok)}.ag.rejected{opacity:.6}
+.agh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
+.agw{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0;font-size:12.5px;color:var(--ink-2)}
+.agw span{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px}.agw i{font-style:normal;font-size:11px;color:var(--muted);margin-right:5px;font-weight:700}.agw > b{color:var(--faint)}
+.agf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px}.agf a{color:var(--brand);text-decoration:none;margin-right:auto}
+/* 공급망 동기 */
+.syc{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}.syc input[type=range]{width:240px}.syc b{font-size:18px;min-width:56px}
+.sychain{display:flex;align-items:stretch;gap:0;overflow-x:auto}
+.sytier{flex:1;min-width:150px;border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;background:var(--surface)}
+.sytier.me{border:1.5px solid var(--brand)}.sytier.warn{border-color:var(--warn)}.sytier.danger{border-color:var(--danger);background:var(--danger-soft)}
+.syco{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px}.syco b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:5px;background:var(--cc);color:#fff;font-size:11px}
+.synd{font-size:22px;font-weight:800;margin:6px 0 4px;font-variant-numeric:tabular-nums}.synd small{font-size:12px;color:var(--muted);font-weight:600}
+.sybar{height:6px;border-radius:3px;background:var(--line-2);overflow:hidden;margin-bottom:4px}.sybar i{display:block;height:100%;width:var(--w);background:var(--brand)}
+.sytier.warn .sybar i{background:var(--warn)}.sytier.danger .sybar i{background:var(--danger)}
+.sylink{flex:none;width:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;color:var(--muted);text-align:center;padding:0 4px}
+.sylink .sya{width:70%;height:2px;background:var(--line-in);position:relative}.sylink .sya::after{content:"";position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left-color:var(--line-in);border-right:0}
+.sylink.ok .sya,.sylink.ok .sya::after{background:var(--ok-fill);border-left-color:var(--ok-fill)}.sylink.no .syc2{color:var(--danger-ink);font-weight:700}
+.sylog{padding:9px 0;border-bottom:1px solid var(--line-2);font-size:13px}.sylog ul{margin-top:4px}
+
+.stat.kvl{grid-template-columns:92px 1fr}.stat.kvl dd{text-align:left;font-weight:600}
+.sytier{min-width:0}.sylink{width:74px}.sychain{gap:0}
+@media(max-width:1200px){.sychain{flex-wrap:wrap;row-gap:10px}.sylink{width:40px}.sylink .syl,.sylink .syc2{display:none}}

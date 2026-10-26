@@ -150,6 +150,12 @@
     </div>`;
   };
 
+  // 다른 모듈(에이전트·공급망 동기화)이 쓰는 조정
+  M.lineApi = {
+    fit: (k = 'target', T) => { const m = model(); if (T != null) st.target = T; const tgt = k === 'cap' ? Math.min(st.target ?? m.target, m.capT.t) : (st.target ?? m.target);
+      const before = Object.assign({}, st.speed); STEPS.forEach(s => { const r = m.b[s.proc].rate; if (r) st.speed[s.proc] = m.fac[s.proc] * tgt / r * 100; }); return { before, after: Object.assign({}, st.speed), target: tgt }; },
+    setTarget: v => { st.target = v; }, reset: () => { st.speed = {}; st.target = null; }, model,
+  };
   // ── 요약 띠 상세
   function kd(k) {
     const m = model(), nm = p => (STEPS.find(s => s.proc === p) || {}).name || p, main = ['press', 'weld', 'heat'];
