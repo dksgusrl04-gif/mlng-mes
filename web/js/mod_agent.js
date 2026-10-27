@@ -58,14 +58,21 @@
   async function run(it) {
     try { it.result = await it.exec(); it.status = 'done'; it.done = T.stamp(); }
     catch (e) { it.result = '실패 — ' + e.message; it.status = 'failed'; }
+    if (M.prove && it.status === 'done') { const tr = M.ml && M.ml.KIND_MODEL[it.kind] ? M.ml.trustOf(M.ml.KIND_MODEL[it.kind]) : null; const inp = { id: it.id, kind: it.kind, act: it.act, trig: it.trig.title, mode: it.mode, by: it.approvedBy || '자동', trust: tr ? +tr.trust.toFixed(3) : null };
+      await M.prove.record({ kind: 'agent', ref: it.id, title: `에이전트 실행 판단 — ${it.act}`.slice(0, 80), model: tr ? tr.v : '규칙', inputs: inp, output: { run: true, mode: it.mode }, redo: i => ({ run: true, mode: i.mode }) }); }
     await T.append('MLNG', 'agent', it.id, `에이전트 ${it.status === 'done' ? '실행' : '실패'} — ${KINDS[it.kind].name}: ${it.result}`, { id: it.id, kind: it.kind, act: it.act, result: it.result });
     Q.log.unshift({ at: T.stamp(), id: it.id, kind: it.kind, text: it.result, by: it.approvedBy || '자동' });
   }
+  // 4.0 자기 의심: 이 조치의 근거 모델이 지금 «신뢰» 가 아니면 자동 실행 권한을 스스로 내려놓고 승인을 기다린다
+  async function doubt(it) { const ML = M.ml, mk = ML && ML.KIND_MODEL[it.kind]; if (!mk) return false; const tr = ML.trustOf(mk); if (tr.level === 'ok') return false;
+    it.mode = 'approve'; it.status = 'pending'; it.doubt = `근거 모델 «${tr.name}» ${ML.fmtTrust(tr)} — 자동 실행을 멈추고 승인을 기다립니다`;
+    await T.append('MLNG', 'agent', it.id, `자기 의심 — ${KINDS[it.kind].name} 자동 실행 보류 (${tr.name} ${ML.LEVEL[tr.level][1]})`, { id: it.id, model: tr.v, trust: +tr.trust.toFixed(3) }); return true; }
   async function scan() {
     const ps = plans();
     for (const p of ps) {
       const it = Object.assign({ id: `AG-${String(++seq).padStart(3, '0')}`, at: T.stamp(), mode: pol[p.kind], status: pol[p.kind] === 'suggest' ? 'suggested' : 'pending' }, p);
       Q.items.unshift(it);
+      if (it.mode === 'auto' && await doubt(it)) continue;
       if (it.mode === 'auto') await run(it);
     }
     Q.lastScan = { at: T.stamp(), n: ps.length };
@@ -74,7 +81,7 @@
   T.agentScan = scan;
   // 다른 화면(질의응답 · 사건실)에서 조치안을 만들어 넣는다 — 정책에 따라 승인 대기 또는 자동 실행
   T.agentAdd = async (kind, act, why, exec, trig) => { const it = Object.assign({ id: `AG-${String(++seq).padStart(3, '0')}`, at: T.stamp(), key: kind + ':' + act + seq, kind, act, why, exec, trig: trig || { title: '질의응답 지시', go: 'ask' }, mode: pol[kind], status: pol[kind] === 'suggest' ? 'suggested' : 'pending' });
-    Q.items.unshift(it); if (it.mode === 'auto') await run(it); return it; };
+    Q.items.unshift(it); if (it.mode === 'auto' && !(await doubt(it))) await run(it); return it; };
   T.agentRun = async (id, by) => { const it = Q.items.find(x => x.id === id); if (!it) throw new Error('조치안 없음'); if (it.status === 'done') return it.result; it.approvedBy = by || M.D.user().name; await run(it); return it.result; };
   T.onInit(async () => { await scan(); });
   // 실시간 반영이 켜져 있으면 1분마다 다시 점검
@@ -99,7 +106,7 @@
       ${its.length ? `<div class="aglist">${its.map(it => `<div class="ag ${esc(it.status)}">
         <div class="agh"><span class="tag ${it.status === 'done' ? 'j-ok' : it.status === 'rejected' ? 't-off' : it.status === 'suggested' ? 'j-ok' : 'j-warn'}">${esc({ pending: '승인 대기', done: '실행됨', rejected: '반려', suggested: '제안', failed: '실패' }[it.status])}</span>
           <b>${esc(it.act)}</b><span class="chip c-ext">${esc(KINDS[it.kind].name)} · ${esc(MODE[it.mode])}</span><span class="muted" style="margin-left:auto;font-size:12px">${esc(it.id)} · ${esc(it.at.slice(5, 16))}</span></div>
-        <div class="agw">${it.why.map((w, i) => `<span><i>${['감지', '원인 후보', '조치'][i]}</i>${esc(w)}</span>`).join('<b>→</b>')}</div>
+        ${it.doubt ? `<div class="doubt">${M.ic('shield')}<span><b>자기 의심</b> — ${esc(it.doubt)} <a href="#" data-go="models">모델 상태 →</a></span></div>` : ''}<div class="agw">${it.why.map((w, i) => `<span><i>${['감지', '원인 후보', '조치'][i]}</i>${esc(w)}</span>`).join('<b>→</b>')}</div>
         <div class="agf"><a href="#" data-go="${esc(it.trig.go || 'alerts')}">근거: ${esc(it.trig.title)}</a>
           ${it.status === 'pending' ? `<button class="btn pri sm" data-agok="${esc(it.id)}">승인 · 실행</button><button class="btn sm" data-agno="${esc(it.id)}">반려</button>` : ''}
           <button class="btn sm" data-askq="${esc(`${it.trig.title} — 에이전트가 「${it.act}」를 제안했어. 근거와 다른 선택지를 알려줘`)}">Claude에게 묻기</button>

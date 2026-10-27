@@ -69,7 +69,7 @@
   V.replay = () => {
     const ds = allDays(); if (!ds.length) return '<div class="empty">되감을 날짜가 없습니다</div>';
     if (idx == null || idx >= ds.length) idx = ds.length - 1;
-    const day = ds[idx], r = at(day), prev = idx ? at(ds[idx - 1]) : null, key = a => a.proc + String(a.title).replace(/[\d.,+%]+/g, '#'), pt = new Set(prev ? prev.al.map(key) : []);
+    const day = ds[idx], r = at(day), prev = idx ? at(ds[idx - 1]) : null, key = a => a.key ? a.key + ':' + ((a.data || {}).tool || (a.data || {}).zone || (a.data || {}).param || (a.data || {}).item || (a.data || {}).equip || '') : a.proc + String(a.title).replace(/[\d.,+%]+/g, '#'), pt = new Set(prev ? prev.al.map(key) : []);
     const nw = r.al.filter(a => !pt.has(key(a))), gone = prev ? prev.al.filter(a => !r.al.some(b => key(b) === key(a))) : [];
     const ev = happened(day), q = DX.copq(60).days.find(x => x.d === day);
     const prodHeat = (M.S.heat.lots || []).filter(l => d10(l.end) === day).reduce((s, l) => s + l.qty, 0);

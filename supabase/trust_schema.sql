@@ -23,4 +23,11 @@ create table if not exists mlng_keys (
   at      text
 );
 alter table mlng_ledger enable row level security;
+-- 4.0 — 원장 기록 형식 검사: 해시는 64자리 16진수, 서명이 있어야 한다 (로그인 없는 추가 전용 표에 엉터리 기록이 들어오는 것을 DB 에서 막음)
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'mlng_ledger_hash_fmt') then
+    alter table mlng_ledger add constraint mlng_ledger_hash_fmt check (hash ~ '^[0-9a-f]{64}$' and prev ~ '^[0-9a-f]{64}$' and sig is not null and length(title) <= 300);
+  end if;
+end $$;
+
 alter table mlng_keys enable row level security;

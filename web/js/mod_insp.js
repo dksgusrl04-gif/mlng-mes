@@ -19,13 +19,13 @@
 
   function alerts() {
     const out = [], c = I().checks || {}, at = (I().lots.slice(-1)[0] || {}).end || M.S.asof;
-    if (c.conflict) out.push({ proc: 'insp', level: 'warn', title: `판정 확정 필요 — 같은 부품 번호에 합격·불합격이 함께 기록된 부품 ${c.conflict}개`,
+    if (c.conflict) out.push({ key: 'insp.conflict', data: { n: c.conflict }, proc: 'insp', level: 'warn', title: `판정 확정 필요 — 같은 부품 번호에 합격·불합격이 함께 기록된 부품 ${c.conflict}개`,
       body: '같은 시각에 두 판정이 있습니다. 재검 결과인지 중복 입력인지 확인해 하나로 확정하세요 (확정 전 출하 보류)', by: '검사', at, go: 'insp_parts:conflict' });
-    if ((c.stuck || []).length) out.push({ proc: 'insp', level: 'warn', title: `${c.stuck.join('·')}축 신호가 변하지 않음 — 모든 부품에서 ${f(c.const_value, 1)}`,
+    if ((c.stuck || []).length) out.push({ key: 'insp.stuck', data: { axes: c.stuck }, proc: 'insp', level: 'warn', title: `${c.stuck.join('·')}축 신호가 변하지 않음 — 모든 부품에서 ${f(c.const_value, 1)}`,
       body: `전류·부하 ${c.stuck_cols}개 항목이 고정값입니다. 센서 배선·수집 설정을 확인하세요 (이 축은 판정 근거로 쓸 수 없음)`, by: '데이터 점검', at, go: 'insp_signal' });
     // 시간대별 불합격률이 관리 상한을 넘으면 (p 관리도)
     const hrs = hourly(recentRecs()), pbar = hrs.reduce((s, h) => s + h.f, 0) / Math.max(1, hrs.reduce((s, h) => s + h.n, 0));
-    hrs.filter(h => h.n >= 10 && h.f / h.n > pbar + 3 * Math.sqrt(pbar * (1 - pbar) / h.n)).forEach(h => out.push({ proc: 'insp', level: 'warn',
+    hrs.filter(h => h.n >= 10 && h.f / h.n > pbar + 3 * Math.sqrt(pbar * (1 - pbar) / h.n)).forEach(h => out.push({ key: 'insp.hour', data: { hour: h.h, f: h.f, n: h.n }, proc: 'insp', level: 'warn',
       title: `${h.h.slice(5)}시 불합격률 ${pct(h.f / h.n, 0)} — 관리 상한 초과`, body: `${h.f}/${h.n}개 · 평균 ${pct(pbar, 1)}`, by: '검사', at: h.h + ':59', go: 'insp_home' }));
     return out;
   }

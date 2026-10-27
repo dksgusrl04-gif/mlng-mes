@@ -5,3 +5,5 @@ _build/
 preview.html
 __pycache__/
 supabase/.temp/
+bt/
+node_modules/

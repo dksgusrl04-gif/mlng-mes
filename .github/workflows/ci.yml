@@ -1,0 +1,20 @@
+# push 할 때마다: 스탬프 확인 → 분석 엔진 단위 시험 → 데이터 검사 → 타입 검사 → 한 파일 빌드 → 화면·시나리오 시험(47개 화면 + 2.0~4.0)
+name: MLNG MES 시험
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: npm install --no-audit --no-fund
+      - run: python tools/stamp_version.py --check
+      - run: node tests/stats.test.js
+      - run: python tests/test_data.py
+      - run: npx tsc -p tsconfig.json
+      - run: python tools/build_preview.py
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/e2e.js

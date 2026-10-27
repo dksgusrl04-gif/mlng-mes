@@ -84,9 +84,11 @@
     if (!M.lineApi) return '<div class="empty">라인 운영 모듈이 없습니다</div>';
     S = S || defaults();
     const B = compute(defaults()), R = compute(S), nm = p => M.PROC[p] || p;
+    // 4.0 몬테카를로: 공정별 하루 실적의 흔들림을 2,000번 뽑아 «하루 산출이 어디쯤 나올지» 와 목표 달성 확률
+    const mcOf = s => M.ml ? M.ml.lineMC({ press: s.press / 100, weld: s.weld, heat: s.heat / 100 }, s.target) : null, MB = mcOf(defaults()), MR = mcOf(S);
     const row = (t, a, b, d, good, unit = '') => `<tr><td>${t}</td><td class="n">${d === 'won' ? DX.won(a) : f(a, d) + unit}</td><td class="n"><b>${d === 'won' ? DX.won(b) : f(b, d) + unit}</b></td><td class="n">${dv(b, a, d, good)}</td></tr>`;
     return `<div class="kstrip">
-      <div class="kpi"><div class="lab">하루 산출</div><div class="val">${f(R.out, 0)}<small>개</small></div><div class="foot">${dv(R.out, B.out, 0)} · 병목 ${esc(nm(R.lim.p))}</div></div>
+      <div class="kpi"><div class="lab">하루 산출</div><div class="val">${f(R.out, 0)}<small>개</small></div><div class="foot">${dv(R.out, B.out, 0)} · 병목 ${esc(nm(R.lim.p))} (능력 기준)${MR ? ` · 실적 흔들림 반영 P10~P90 ${f(MR.p10, 0)}~${f(MR.p90, 0)} · 목표 달성 확률 ${pct(MR.pMeet, 0)}` : ''}</div></div>
       <div class="kpi"><div class="lab">하루 판단 이익</div><div class="val" style="color:${R.profit >= B.profit ? 'var(--ok)' : 'var(--danger-ink)'}">${DX.wonShort(R.profit)}<small>원</small></div><div class="foot">지금 대비 ${dv(R.profit, B.profit, 'won')}원</div></div>
       <div class="kpi"><div class="lab">고객 계약</div><div class="val" style="color:${R.ok ? 'var(--ok)' : feasible(R, B) ? 'var(--warn-ink)' : 'var(--danger-ink)'};font-size:${R.ok ? '' : '17px'}">${R.ok ? '충족' : feasible(R, B) ? '지금도 위반' : '새로 위반'}</div><div class="foot">${R.checks.map(c => `${c.ok ? '✓' : '✕'} ${c.t} ${c.v}`).join(' · ') || '활성 계약 없음'}${!R.ok && feasible(R, B) ? ' — 손잡이로 바뀌지 않는 조항은 출하 게이트가 LOT 단위로 거릅니다' : ''}</div></div>
       <div class="kpi"><div class="lab">부품 1개당 탄소</div><div class="val">${R.pcfG != null ? f(R.pcfG, 0) : '—'}<small>g</small></div><div class="foot">지금 ${B.pcfG != null ? f(B.pcfG, 0) : '—'} g</div></div>
@@ -108,7 +110,8 @@
     <div class="grid g2" style="margin-top:16px;align-items:start">
       <div class="card"><h2>지금 vs 바꾸면 <span class="h2sub">하루 기준</span></h2>
         <table class="tb"><thead><tr><th></th><th class="n">지금</th><th class="n">바꾸면</th><th class="n">차이</th></tr></thead><tbody>
-          ${row('하루 산출 (개)', B.out, R.out, 0, 1)}
+          ${row('하루 산출 (개, 능력 기준)', B.out, R.out, 0, 1)}
+          ${MB && MR ? row('하루 산출 중앙값 (몬테카를로)', MB.p50, MR.p50, 0, 1) + row('목표 달성 확률 (%)', MB.pMeet * 100, MR.pMeet * 100, 0, 1) : ''}
           ${row('공헌이익', B.contrib, R.contrib, 'won', 1)}
           ${row('불량 손실 (프레스·열처리)', B.scrap, R.scrap, 'won', -1)}
           ${row('인서트 비용', B.toolCost, R.toolCost, 'won', -1)}
@@ -170,6 +173,8 @@
         if (S.weld > 1) done.push(`점용접기 ${S.weld - 1}대 증설 검토 요청`);
         if (S.dev < defaults().dev) done.push(`열처리 조건 관리 목표 — 이탈 작업 ${S.dev}% 이하`);
         if (S.heater) done.push('소입로 히터 정비 지시');
+        if (M.prove) { const inp = Object.assign({}, S), red = i => { const r = compute(i); return { out: Math.round(r.out), profit: Math.round(r.profit), ok: r.ok }; };
+          await M.prove.record({ kind: 'whatif', ref: 'WI', title: `계획 적용 판단 — 산출 ${f(R.out, 0)}개/일`, model: M.ml ? M.ml.VERSION.line : 'line', inputs: inp, output: red(inp), redo: red }); }
         if (T && T.ready) await T.append('MLNG', 'whatif', 'WI-' + String(Date.now()).slice(-6), `What-if 계획 적용 — ${done.join(' · ')}`.slice(0, 160), { s: S, out: Math.round(R.out), profit: Math.round(R.profit) });
         msg = '적용: ' + done.map(esc).join(' · ') + ' — <a href="#" data-go="line">라인 운영에서 확인 →</a>'; M.render();
       });

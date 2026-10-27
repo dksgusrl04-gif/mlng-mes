@@ -21,13 +21,13 @@
 
   function alerts() {
     const out = [], t = cur(), at = (runsOf(t.id).slice(-1)[0] || {}).t || M.S.asof;
-    if (t.id && t.vb_last != null && t.vb_last >= MC().VB_LIMIT) out.push({ proc: 'mach', level: 'danger', title: `${t.id} 공구 교체 — 마모 VB ${f(t.vb_last, 2)} mm (기준 ${f(MC().VB_LIMIT, 2)})`,
+    if (t.id && t.vb_last != null && t.vb_last >= MC().VB_LIMIT) out.push({ key: 'mach.tool_over', data: { tool: t.id, vb: t.vb_last }, proc: 'mach', level: 'danger', title: `${t.id} 공구 교체 — 마모 VB ${f(t.vb_last, 2)} mm (기준 ${f(MC().VB_LIMIT, 2)})`,
       body: `${t.material} · 절삭깊이 ${t.DOC} mm · 이송 ${t.feed} mm/rev · 마모 속도 ${f((t.rate || 0) * 1000, 1)} µm/분 — 다음 가공 전 인서트 교체`, by: 'MCT', at, go: 'mach:' + t.id });
     const lt = recentTools().filter(late);
-    if (lt.length) { const n = overRuns(lt); out.push({ proc: 'mach', level: 'warn', title: `최근 ${RD()}일 교체 기준을 넘겨 가공한 공구 ${lt.length}개 — ${n}회 가공`,
+    if (lt.length) { const n = overRuns(lt); out.push({ key: 'mach.late', data: { tools: lt.map(x => x.id), runs: n }, proc: 'mach', level: 'warn', title: `최근 ${RD()}일 교체 기준을 넘겨 가공한 공구 ${lt.length}개 — ${n}회 가공`,
       body: `${lt.map(x => `${x.id} VB ${f(x.vb_last, 2)}`).join(' · ')} → 해당 가공 부품 약 ${f(n * D().parts_per_run, 0)}개 검사 강화 권장`, by: 'MCT', at: lt[lt.length - 1].date, go: 'mach_tools' }); }
     const bad = recentTools().filter(x => x.sensor_bad);
-    if (bad.length) out.push({ proc: 'mach', level: 'warn', title: `MCT 센서 값 비정상 ${bad.reduce((s, x) => s + x.sensor_bad, 0)}회`,
+    if (bad.length) out.push({ key: 'mach.sensor', data: { tools: bad.map(x => x.id) }, proc: 'mach', level: 'warn', title: `MCT 센서 값 비정상 ${bad.reduce((s, x) => s + x.sensor_bad, 0)}회`,
       body: `${bad.map(x => x.id).join(' · ')} 가공 중 센서 값이 범위를 벗어남 — 센서 배선·수집 설정 확인 (해당 가공은 마모 추정에서 제외)`, by: '데이터 점검', at: bad[bad.length - 1].date, go: 'mach_cond' });
     return out;
   }

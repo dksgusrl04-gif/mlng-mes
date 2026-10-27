@@ -1,0 +1,17 @@
+{
+  "name": "mlng-mes",
+  "private": true,
+  "description": "MLNG MES — 정적 웹 MES (빌드 · 시험 도구만)",
+  "scripts": {
+    "stamp": "python3 tools/stamp_version.py",
+    "build": "python3 tools/build_preview.py",
+    "test:unit": "node tests/stats.test.js && python3 tests/test_data.py",
+    "test:types": "tsc -p tsconfig.json",
+    "test:e2e": "node tests/e2e.js",
+    "test": "npm run test:unit && npm run test:types && npm run build && npm run test:e2e"
+  },
+  "devDependencies": {
+    "playwright": "1.47.2",
+    "typescript": "5.4.5"
+  }
+}

@@ -72,7 +72,13 @@
   M.mod = m => { M.mods.push(m); M.mods.sort((a, b) => (a.order || 0) - (b.order || 0)); };
   M.views = () => Object.assign({}, ...M.mods.map(m => m.views || {}));
   // LOT 이력: mlng_trace 를 따라 위(조상)·아래(자손)로
-  M.lineage = id => {
+  // 데이터(S)가 같으면 결과도 같다 → S 별로 기억 (되감기의 잘린 S 는 따로)
+  const LIN = new WeakMap();
+  M.lineage = id => { let m = LIN.get(M.S); if (!m) LIN.set(M.S, m = new Map()); if (m.has(id)) return m.get(id); const r = lineage0(id); m.set(id, r); return r; };
+  // 데이터 버전에 묶인 계산 캐시 — 같은 S · 같은 원장 길이면 다시 계산하지 않는다
+  const MEMO = new WeakMap();
+  M.memo = (name, key, fn) => { let m = MEMO.get(M.S); if (!m) MEMO.set(M.S, m = new Map()); const T = window.MLNGTrust, k = name + '|' + key + '|' + (T ? T.ledger.length : 0); if (m.has(k)) return m.get(k); const v = fn(); m.set(k, v); return v; };
+  const lineage0 = id => {
     const T = M.S.trace || [], up = [], down = [], seen = new Set([id]);
     const walk = (cur, dir, acc) => T.filter(t => (dir === 'up' ? t.child_lot : t.parent_lot) === cur).forEach(t => {
       const nx = dir === 'up' ? t.parent_lot : t.child_lot; if (seen.has(nx)) return; seen.add(nx); acc.push(nx); walk(nx, dir, acc); });

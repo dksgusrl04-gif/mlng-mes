@@ -1,0 +1,4 @@
+{
+  "compilerOptions": { "allowJs": true, "checkJs": true, "noEmit": true, "target": "ES2020", "lib": ["ES2020", "DOM"], "strict": false, "noImplicitAny": false, "skipLibCheck": true },
+  "files": ["types/globals.d.ts", "web/js/stats.js"]
+}

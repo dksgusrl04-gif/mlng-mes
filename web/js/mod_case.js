@@ -46,9 +46,9 @@
         const all = MC().tools.filter(t => inDays(t.date, 30)).reduce((s, t) => s + t.runs * (MC().parts_per_run || 25), 0);
         c.scope = { all, unit: 'MCT 가공 부품 (30일)' };
         const R = m => MC().tools.filter(t => t.rate && t.material === m).map(t => t.rate * 1000), cmp = DX.compare(R('스테인리스강'), R('주철'));
-        c.causes.push({ t: '재질 — 스테인리스강 가공', strength: cmp.strength, d: `마모 속도 스테인리스강 ${f(cmp.ma, 1)} µm/분 (${cmp.na}개) vs 주철 ${f(cmp.mb, 1)} (${cmp.nb}개) → ${f(cmp.ratio, 1)}배` });
+        c.causes.push({ cmp: cmp, t: '재질 — 스테인리스강 가공', strength: cmp.strength, d: `마모 속도 스테인리스강 ${f(cmp.ma, 1)} µm/분 (${cmp.na}개) vs 주철 ${f(cmp.mb, 1)} (${cmp.nb}개) → ${f(cmp.ratio, 1)}배` });
         const cd = (MC().conditions || []).filter(x => x.material === '스테인리스강'), fc = DX.compare(cd.filter(x => x.feed >= 0.5).map(x => x.rate * 1000), cd.filter(x => x.feed < 0.5).map(x => x.rate * 1000));
-        c.causes.push({ t: '이송 속도 — 0.5 mm/rev', strength: fc.strength === 'none' && fc.ratio ? (fc.ratio >= 1.3 ? 'some' : 'weak') : fc.strength, d: `스테인리스강에서 이송 0.5 → ${f(fc.ma, 1)} µm/분, 0.25 → ${f(fc.mb, 1)} (${f(fc.ratio, 1)}배, 조건별 평균 ${fc.na}+${fc.nb}개)` });
+        c.causes.push({ cmp: fc, t: '이송 속도 — 0.5 mm/rev', strength: fc.strength === 'none' && fc.ratio ? (fc.ratio >= 1.3 ? 'some' : 'weak') : fc.strength, d: `스테인리스강에서 이송 0.5 → ${f(fc.ma, 1)} µm/분, 0.25 → ${f(fc.mb, 1)} (${f(fc.ratio, 1)}배, 조건별 평균 ${fc.na}+${fc.nb}개)` });
         const late = tools.filter(t => t.vb_last > lim * ((M.CFG.MACH || {}).LATE_RATIO || 1.2));
         c.causes.push({ t: '교체 시점 — 늦은 교체', strength: tools.length && late.length / tools.length >= 0.5 ? 'strong' : late.length ? 'some' : 'weak', d: `기준 넘긴 공구 ${tools.length}개 중 ${late.length}개가 기준의 ${(M.CFG.MACH || {}).LATE_RATIO || 1.2}배 이상 (${late.map(t => `${t.id} ${f(t.vb_last, 2)}`).join(', ') || '없음'})` });
         const ins = c.lots.filter(l => l.proc === 'insp').map(l => l.id), mcs = c.lots.filter(l => l.proc === 'mach').map(l => l.id);
@@ -68,7 +68,7 @@
           M.lineage(l.id).down.filter(d => d.proc === 'heat' || d.proc === 'weld').forEach(d => c.lots.push({ id: d.id, proc: d.proc, qty: d.qty, why: `${l.id} 성형품 사용` })); });
         c.scope = { all: ls.filter(l => inDays(l.date, 30)).reduce((s, l) => s + l.qty, 0), unit: '프레스 성형 (30일)' };
         const vb = DX.compare(ls.filter(l => evDays.has(l.date)).map(l => l.ppm), ls.filter(l => !evDays.has(l.date)).map(l => l.ppm));
-        c.causes.push({ t: '설비 진동 이상', strength: vb.na ? (vb.ratio >= 1.5 ? 'some' : 'weak') : 'none', d: ev.length ? `진동 이상 ${ev.length}회 (최대 정상의 ${f(Math.max(...ev.map(e => e.ratio)), 1)}배) · 당일 불량률 ${f(vb.ma, 0)} PPM vs 다른 날 ${f(vb.mb, 0)} PPM (${f(vb.ratio, 1)}배, 하루 표본이라 단정 어려움)` : '최근 진동 이상 없음' });
+        c.causes.push({ cmp: vb, t: '설비 진동 이상', strength: vb.na ? vb.strength : 'none', d: ev.length ? `진동 이상 ${ev.length}회 (최대 정상의 ${f(Math.max(...ev.map(e => e.ratio)), 1)}배) · 당일 불량률 ${f(vb.ma, 0)} PPM vs 다른 날 ${f(vb.mb, 0)} PPM (${f(vb.ratio, 1)}배, 하루 표본이라 단정 어려움)` : '최근 진동 이상 없음' });
         const rec = ls.filter(l => inDays(l.date, RD())), cpk = {}; rec.forEach(l => Object.entries(l.stats || {}).forEach(([k, s]) => { if (s.cpk != null) (cpk[k] = cpk[k] || []).push(s.cpk); }));
         const low = Object.entries(cpk).map(([k, v]) => [k, Math.min(...v), median(v)]).sort((a, b) => a[1] - b[1])[0];
         const lab = k => ((P().recipe || []).find(r => r.key === k) || {}).label || k;
@@ -77,7 +77,7 @@
         const nm = k => (M.S.masters.defect_codes.find(x => x.code === k) || {}).name || k, tot = Object.values(dc).reduce((s, v) => s + v, 0), top = Object.entries(dc).sort((a, b) => b[1] - a[1]);
         if (top.length) c.causes.push({ t: `불량 유형 — ${top.slice(0, 2).map(([k]) => nm(k)).join('·')}`, strength: top[0][1] / tot >= 0.5 ? 'some' : 'weak', d: `${top.map(([k, v]) => `${nm(k)} ${v}`).join(' · ')} — 주름·터짐은 금형 마모 · 윤활 부족 후보` });
         const mS = median(ls.map(l => l.strokes)), sp = DX.compare(ls.filter(l => l.strokes > mS).map(l => l.ppm), ls.filter(l => l.strokes <= mS).map(l => l.ppm));
-        c.causes.push({ t: '생산 속도 (하루 타발 수)', strength: sp.strength, d: `타발 많은 날 ${f(sp.ma, 0)} PPM vs 적은 날 ${f(sp.mb, 0)} PPM (${f(sp.ratio, 2)}배, ${sp.na}+${sp.nb}일)` });
+        c.causes.push({ cmp: sp, t: '생산 속도 (하루 타발 수)', strength: sp.strength, d: `타발 많은 날 ${f(sp.ma, 0)} PPM vs 적은 날 ${f(sp.mb, 0)} PPM (${f(sp.ratio, 2)}배, ${sp.na}+${sp.nb}일)` });
         const hts = c.lots.filter(l => l.proc === 'heat').map(l => l.id);
         c.actions.push({ id: 'hold', stage: 'contain', label: `하류 열처리 LOT 출하 보류 (${hts.length})`, run: hold(hts, '프레스 불량 증가 LOT 사용') });
         c.actions.push({ id: 'mt', stage: 'fix', label: 'PR-01 설비 점검 지시 — 금형 · 크랭크 · 클러치', run: order('보전 담당에게 PR-01 점검 지시') });
@@ -96,14 +96,14 @@
         c.scope = { all: all.filter(l => inDays(l.end, 30)).reduce((s, l) => s + l.qty, 0), unit: '열처리 (30일)' };
         const w = DX.heaterWaste()[0], key = w ? w.key : 'op2', hv = all.filter(l => l.heater && l.heater[key] != null).sort((a, b) => a.heater[key] - b.heater[key]), n3 = Math.floor(hv.length / 3);
         const hc = DX.compare(hv.slice(-n3).map(l => l.ppm), hv.slice(0, n3).map(l => l.ppm));
-        c.causes.push({ t: `히터 출력 — ${w ? w.label : '소입로 2존'}`, strength: hc.strength, d: `출력 상위 1/3 작업 ${f(hc.ma, 0)} PPM vs 하위 1/3 ${f(hc.mb, 0)} PPM (${f(hc.ratio, 2)}배, ${hc.na}+${hc.nb}작업)${w ? ` · 출력 +${f(w.diff, 1)}%p 증가 중` : ''}` });
+        c.causes.push({ cmp: hc, t: `히터 출력 — ${w ? w.label : '소입로 2존'}`, strength: hc.strength, d: `출력 상위 1/3 작업 ${f(hc.ma, 0)} PPM vs 하위 1/3 ${f(hc.mb, 0)} PPM (${f(hc.ratio, 2)}배, ${hc.na}+${hc.nb}작업)${w ? ` · 출력 +${f(w.diff, 1)}%p 증가 중` : ''}` });
         const dc = DX.compare(all.filter(l => M.heatDev(l) >= rate).map(l => l.ppm), all.filter(l => M.heatDev(l) < rate).map(l => l.ppm));
-        c.causes.push({ t: '열처리 조건 이탈', strength: dc.strength, d: `이탈 작업 ${f(dc.ma, 0)} PPM (${dc.na}건) vs 정상 ${f(dc.mb, 0)} PPM (${dc.nb}건) → ${f(dc.ratio, 2)}배` });
+        c.causes.push({ cmp: dc, t: '열처리 조건 이탈', strength: dc.strength, d: `이탈 작업 ${f(dc.ma, 0)} PPM (${dc.na}건) vs 정상 ${f(dc.mb, 0)} PPM (${dc.nb}건) → ${f(dc.ratio, 2)}배` });
         const up = all.map(l => { const pr = M.lineage(l.id).up.find(x => x.proc === 'press'), pl = pr && P().lots.find(x => x.id === pr.id); return pl ? { h: l.ppm, p: pl.ppm } : null; }).filter(Boolean);
         const mp = median(up.map(x => x.p)), uc = DX.compare(up.filter(x => x.p > mp).map(x => x.h), up.filter(x => x.p <= mp).map(x => x.h));
-        c.causes.push({ t: '앞 공정 — 프레스 불량률 (공정 간)', strength: up.length >= 6 ? uc.strength : 'none', d: up.length ? `프레스 불량 높은 날 성형품 → 열처리 ${f(uc.ma, 0)} PPM vs 낮은 날 ${f(uc.mb, 0)} PPM (${f(uc.ratio, 2)}배, ${up.length}작업 연결)` : '프레스와 연결된 열처리 작업이 없어 비교 불가' });
+        c.causes.push({ cmp: uc, t: '앞 공정 — 프레스 불량률 (공정 간)', strength: up.length >= 6 ? uc.strength : 'none', d: up.length ? `프레스 불량 높은 날 성형품 → 열처리 ${f(uc.ma, 0)} PPM vs 낮은 날 ${f(uc.mb, 0)} PPM (${f(uc.ratio, 2)}배, ${up.length}작업 연결)` : '프레스와 연결된 열처리 작업이 없어 비교 불가' });
         const mq = median(all.map(l => l.qty)), qc = DX.compare(all.filter(l => l.qty > mq).map(l => l.ppm), all.filter(l => l.qty <= mq).map(l => l.ppm));
-        c.causes.push({ t: '장입량 (한 작업 수량)', strength: qc.strength, d: `많이 넣은 작업 ${f(qc.ma, 0)} PPM vs 적게 넣은 작업 ${f(qc.mb, 0)} PPM (${f(qc.ratio, 2)}배)` });
+        c.causes.push({ cmp: qc, t: '장입량 (한 작업 수량)', strength: qc.strength, d: `많이 넣은 작업 ${f(qc.ma, 0)} PPM vs 적게 넣은 작업 ${f(qc.mb, 0)} PPM (${f(qc.ratio, 2)}배)` });
         const inside = c.lots.map(l => l.id);
         c.actions.push({ id: 'hold', stage: 'contain', label: '고불량 · 조건 이탈 LOT 출하 보류', run: hold(inside, '열처리 불량·조건 이탈') });
         if (claims.length) c.actions.push({ id: 'rc', stage: 'contain', label: `클레임 LOT 재검사 요청 (${claims.map(d => d.lot).join(', ')})`, run: async () => { for (const d of claims) { const o = T.orders.find(x => x.id === d.so), dd = o.deliveries.find(x => x.lot === d.lot); dd.claim.status = 'recheck'; await T.append('MLNG', 'claim', dd.claim.id, '클레임 재검사 요청 — 사건실', { id: dd.claim.id, status: 'recheck' }); } return `재검사 요청 ${claims.length}건 — 고객 MES 에 전달`; } });
@@ -160,7 +160,17 @@
       const id = `CS-${k.toUpperCase()}-${yymmdd(opened)}`;
       const c = { id, tpl: k, name: tp.name, proc: tp.proc, alerts: al, opened, level: al.some(a => a.level === 'danger') ? 'danger' : 'warn', lots: [], causes: [], actions: [], scope: null };
       try { tp.build(c, al); } catch (e) { console.warn('[case]', k, e); }
+      // 다중 비교 보정: 후보가 여러 개면 «하나쯤은 우연히 유의» 해 보이므로 BH 로 q 값을 낸다
+      const pc = c.causes.filter(x => x.cmp && x.cmp.p != null); if (pc.length && M.st) M.st.bh(pc.map(x => x.cmp.p)).forEach((q, i) => { pc[i].q = q; if (pc[i].strength === 'strong' && q >= 0.05) pc[i].strength = 'some'; });
       c.causes.sort((a, b) => DX.RANK[a.strength] - DX.RANK[b.strength]);
+      // 4.0 원인을 실험한다: 불량률(PPM) 비교 후보는 «두 조건을 번갈아 운전하면 몇 작업이면 가릴 수 있나» 를 계산해 실험 계획으로 제안
+      const top = c.causes.find(x => x.cmp && x.cmp.ma != null && x.cmp.mb != null && /PPM/.test(x.d) && x.strength !== 'inverse');
+      if (top && M.st && (k === 'heat' || k === 'press')) { const qs = (k === 'heat' ? (M.S.heat || { lots: [] }).lots : (M.S.press || { lots: [] }).lots).map(l => l.qty), qa = M.st.mean(qs) || 1;
+        const m1 = Math.max(top.cmp.ma, top.cmp.mb) * qa / 1e6, m2 = Math.min(top.cmp.ma, top.cmp.mb) * qa / 1e6, n = M.st.poissonN(m1, m2);
+        c.experiment = { cause: top.t, n: isFinite(n) ? n : null, m1, m2, qa, p: top.cmp.p };
+        if (isFinite(n)) c.actions.push({ id: 'exp', stage: 'cause', label: `확인 실험 — «${top.t}» 조건 A/B 를 ${n}작업씩 번갈아 운전 (유의수준 5% · 검출력 80%)`, run: async () => {
+          c.st.exp = Object.assign({ at: T.stamp(), by: M.D.user().name, status: '계획' }, c.experiment);
+          return `실험 계획 서명 — ${top.t}: A/B 각 ${n}작업 (작업당 기대 불량 ${f(m1, 1)} vs ${f(m2, 1)}개) · 결과가 나오면 원인 확정`; } }); }
       // LOT 정리 (같은 LOT 은 하나로, 상태 · 고객)
       const m = new Map(); c.lots.forEach(l => { const x = m.get(l.id); if (x) { if (!x.why.includes(l.why)) x.why += ' · ' + l.why; } else m.set(l.id, Object.assign({}, l)); });
       c.lots = [...m.values()].map(l => Object.assign(l, { ship: shipState(l.id) }));
@@ -206,7 +216,10 @@
     run: async (cid, aid) => { const c = M.caseApi.get(cid), a = c && c.actions.find(x => x.id === aid); if (!a) throw new Error('조치를 찾지 못했습니다');
       const r = await a.run(); c.st.done[a.id] = { at: T.stamp(), by: M.D.user().name, result: r }; c.st.log.unshift({ at: T.stamp(), by: M.D.user().name, text: `${a.label} → ${r}` });
       if (c.st.stage < ACT_STAGE[a.stage]) c.st.stage = Math.min(ACT_STAGE[a.stage], 4);
-      await T.append('MLNG', 'case', c.id, `사건 조치 — ${a.label}`.slice(0, 160), { case: c.id, action: a.id, result: r }); return r; },
+      await T.append('MLNG', 'case', c.id, `사건 조치 — ${a.label}`.slice(0, 160), { case: c.id, action: a.id, result: r });
+      if (M.prove) { const inp = { case: c.id, action: a.id, alerts: c.alerts.map(x => ({ key: x.key || null, data: x.data || null })) }, red = i => ({ action: i.action, won: Math.round(i.alerts.reduce((s, x) => s + ((DX.money(x) || {}).won || 0), 0)) });
+        await M.prove.record({ kind: 'case', ref: c.id, title: `사건 조치 판단 — ${a.label}`.slice(0, 80), model: 'decide@3.0', inputs: inp, output: red(inp), redo: red, now: () => ({ case: c.id, action: a.id, alerts: (M.caseApi.get(c.id) || c).alerts.map(x => ({ key: x.key || null, data: x.data || null })) }) }); }
+      return r; },
     advance: async (cid, note) => { const c = M.caseApi.get(cid); if (!c || c.st.stage >= 5) return; c.st.stage += 1;
       c.st.log.unshift({ at: T.stamp(), by: M.D.user().name, text: `단계 → ${STAGES[c.st.stage]}${note ? ' · ' + note : ''}` });
       await T.append('MLNG', 'case', c.id, `사건 ${STAGES[c.st.stage]} — ${c.name}${note ? ' · ' + note : ''}`.slice(0, 160), { case: c.id, stage: c.st.stage, note: note || null, money: Math.round(c.money.won) }); },
@@ -258,9 +271,10 @@
         </div>
         <div><h3 class="dh" style="margin-top:0">원인 후보 <span class="h2sub">같은 공정 + 앞뒤 공정 데이터 비교</span></h3>
           <div class="ccause">${c.causes.map((x, i) => { const [k, t] = DX.STRENGTH[x.strength] || DX.STRENGTH.none;
-            return `<label class="cc ${c.st.cause === i ? 'pick' : ''}"><input type="radio" name="cc-${esc(c.id)}" data-ccause="${esc(c.id)}|${i}" ${c.st.cause === i ? 'checked' : ''}><div><b>${esc(x.t)}</b> <span class="tag ${k}">근거 ${esc(t)}</span><div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.d)}</div></div></label>`; }).join('') || '<div class="empty">원인 후보를 만들 데이터가 없습니다</div>'}</div>
-          <p class="note">근거 강도는 두 묶음 평균의 배수와 표본 수로 정한 것입니다 (2배 이상·표본 3 이상 = 강함 · 1.3배 이상 = 있음 · 거꾸로면 «반대 방향»). 인과가 아니라 «먼저 볼 곳» 입니다. 원인을 고르면 「원인 확정」 단계에 기록됩니다.</p>
+            return `<label class="cc ${c.st.cause === i ? 'pick' : ''}"><input type="radio" name="cc-${esc(c.id)}" data-ccause="${esc(c.id)}|${i}" ${c.st.cause === i ? 'checked' : ''}><div><b>${esc(x.t)}</b> <span class="tag ${k}">근거 ${esc(t)}</span><div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.d)}</div>${x.cmp && x.cmp.p != null ? `<div style="font-size:12px;margin-top:3px;color:var(--ink-2)">우연일 확률 p = ${f(x.cmp.p, 3)}${x.q != null ? ` · 보정 q = ${f(x.q, 3)}` : ''} · 배수 90% 구간 ${f(x.cmp.lo, 2)}~${f(x.cmp.hi, 2)}</div>` : ''}</div></label>`; }).join('') || '<div class="empty">원인 후보를 만들 데이터가 없습니다</div>'}</div>
+          <p class="note">근거 강도 = 순열 검정의 «우연일 확률» p 와 부트스트랩 90% 구간 (p < 0.01 이고 구간 하한 1.2배 이상 = 강함 · p < 0.1 = 있음 · 거꾸로 뚜렷하면 «반대 방향»), 후보가 여럿이면 BH 보정 q 를 함께 봅니다. 인과가 아니라 «먼저 볼 곳» 입니다. 원인을 고르면 「원인 확정」 단계에 기록됩니다.</p>
           <h3 class="dh">조치</h3>${actBlock('contain', '격리')}${actBlock('cause', '원인 확정')}${actBlock('fix', '시정 조치')}${actBlock('prevent', '재발 방지')}
+          ${c.experiment ? `<div class="note" style="margin-top:6px">${M.ic('trace')} <b>원인 확인 실험</b> — «${esc(c.experiment.cause)}»: 지금 데이터는 우연일 확률 p = ${f(c.experiment.p, 3)}. 두 조건을 ${c.experiment.n ? `<b>${c.experiment.n}작업씩</b> 번갈아 운전하면` : '충분히 운전하면'} 5% 유의수준 · 80% 검출력으로 가릴 수 있습니다 (작업당 기대 불량 ${f(c.experiment.m1, 1)} vs ${f(c.experiment.m2, 1)}개).${c.st.exp ? ` <span class="tag j-ok">계획 서명 ${esc(c.st.exp.at.slice(5, 16))}</span>` : ''}</div>` : ''}
           <div class="pacts"><button class="btn sm" data-cfirst="${esc(c.id)}">처음 징후는 언제였나? (되감기)</button><span id="cfirst" class="muted" style="font-size:12.5px">${c.st.first ? esc(c.st.first) : ''}</span></div>
         </div></div>
       <div class="grid g2" style="margin-top:12px;align-items:start">
@@ -302,7 +316,10 @@
       root.querySelectorAll('[data-call]').forEach(b => b.onclick = async () => { b.disabled = true; msg = await M.caseApi.runAll(b.dataset.call); M.render(); });
       root.querySelectorAll('[data-crep]').forEach(b => b.onclick = () => report(M.caseApi.get(b.dataset.crep)));
       root.querySelectorAll('[data-cfirst]').forEach(b => b.onclick = () => { const c = M.caseApi.get(b.dataset.cfirst); if (!M.replayApi) return; b.disabled = true; M.$('#cfirst').textContent = '되감는 중…';
-        setTimeout(() => { const r = M.replayApi.firstSeen(a => TPL[c.tpl].match(a) && a.level !== 'info'); c.st.first = r ? `처음 징후 ${r.day} (${r.lead}일 전${r.capped ? ' · 되감기 범위 처음부터 이미 있었음' : ''}) — ${r.title}` : '되감기 범위 안에서 징후를 찾지 못했습니다'; M.render(); }, 20); });
+        setTimeout(() => { const r = M.replayApi.firstSeen(a => TPL[c.tpl].match(a) && a.level !== 'info'), cg = M.ml ? M.ml.changeFor(c.tpl) : null;
+          const lead = cg && cg.day && r ? Math.round((M.toDate(r.day).getTime() - M.toDate(cg.day).getTime()) / 86400000) : null;
+          c.st.first = (r ? `규칙 알림 처음 ${r.day} (${r.lead}일 전${r.capped ? ' · 되감기 범위 처음부터' : ''}) — ${r.title}` : '되감기 범위 안에서 규칙 알림 없음')
+            + (cg ? ` · 통계적 변화 시작 ${cg.day} — ${cg.what} (p = ${f(cg.p, 3)})${lead != null && lead > 0 ? ` → 규칙 알림보다 ${lead}일 먼저 알 수 있었음` : ''}` : ''); M.render(); }, 20); });
       root.querySelectorAll('[data-askq]').forEach(b => b.onclick = e => { e.stopPropagation(); if (M.askApi) M.askApi.ask(b.dataset.askq); });
     },
   });

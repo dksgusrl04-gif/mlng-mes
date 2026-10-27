@@ -8,8 +8,8 @@
 (function () {
   'use strict';
   const M = window.MLNG, T = window.MLNGTrust, DX = M.dx, { esc, f, pct } = M;
-  const G = M.gate = { holds: {}, rules: { clause: true, near: false, cases: true, dev: true }, log: [] };
-  const RULES = { clause: '계약 조항 미달이 예상되면 보류 권고', near: '기준의 10% 안으로 근접하면 보류 권고', cases: '열린 사건에 걸린 LOT 이면 보류 권고', dev: '열처리 조건 이탈 5% 이상이면 보류 권고' };
+  const G = M.gate = { holds: {}, rules: { ev: true, clause: true, near: false, cases: true, dev: true }, log: [] };
+  const RULES = { ev: '기대 손실(클레임 확률 × 클레임 비용)이 보류 비용보다 크면 보류 권고', clause: '계약 조항 미달이 예상되면 보류 권고', near: '기준의 10% 안으로 근접하면 보류 권고', cases: '열린 사건에 걸린 LOT 이면 보류 권고', dev: '열처리 조건 이탈 5% 이상이면 보류 권고' };
   const H = () => M.S.heat || { lots: [] };
   const delivered = () => new Set([].concat(...(T.orders || []).map(o => o.deliveries.map(d => d.lot))));
 
@@ -25,7 +25,11 @@
     });
     out.cases = M.caseApi && !opt.noCase ? M.caseApi.casesOfLot(lot) : [];
     const dev = hl && M.heatDev ? M.heatDev(hl) : 0; out.dev = dev;
+    // 4.0 확률 판단: 이 LOT 의 참 불량률이 계약 기준을 넘을 확률 × 클레임 비용  vs  보류 비용
+    const cl = so.clauses.find(c => c.k === 'heat_ppm'), c0 = DX.C();
+    if (cl && M.ml) { out.prob = M.ml.claimP(lot, cl.v); out.claimCost = DX.claimCost(out.qty); out.holdCost = (c0.HOLD_FIXED || 150000) + out.qty * (c0.HOLD_PER_PART || 4); out.ev = out.prob ? out.prob.p * out.claimCost : 0; }
     const why = [];
+    if (G.rules.ev && out.prob && out.ev > out.holdCost) why.push(`기대 손실 ${DX.won(out.ev)} > 보류 비용 ${DX.won(out.holdCost)} (클레임 확률 ${pct(out.prob.p, 0)})`);
     if (G.rules.clause && out.checks.some(c => !c.ok)) why.push('계약 조항 미달 예상 — ' + out.checks.filter(c => !c.ok).map(c => `${c.label} ${c.actual} (${c.th})`).join(', '));
     if (G.rules.near && out.checks.some(c => c.near)) why.push('기준 근접 — ' + out.checks.filter(c => c.near).map(c => `${c.label} ${c.actual}`).join(', '));
     if (G.rules.cases && out.cases.length) why.push('열린 사건 ' + out.cases.map(c => c.id).join(', '));
@@ -37,10 +41,15 @@
     return out;
   };
   G.isHeld = lot => !!G.holds[lot];
+  // 판단 증명: 판단에 쓴 값만 묶어 해시 · 같은 입력이면 같은 결과가 나오는 순수 계산(redo)
+  const decIn = r => r.prob ? { lot: r.lot, qty: r.qty, bad: (H().lots.find(l => l.id === r.lot) || {}).bad, a0: +r.prob.a0.toFixed(6), b0: +r.prob.b0.toFixed(3), th: r.prob.th, claimCost: Math.round(r.claimCost), holdCost: Math.round(r.holdCost), checks: r.checks.map(c => [c.k, c.ok]) } : { lot: r.lot, checks: r.checks.map(c => [c.k, c.ok]) };
+  const decRedo = i => { if (i.a0 == null) return { hold: i.checks.some(c => !c[1]) }; const p = 1 - M.st.gammaP(i.a0 + i.bad, (i.b0 + i.qty) * i.th / 1e6), ev = p * i.claimCost; return { p: +p.toFixed(6), ev: Math.round(ev), hold: ev > i.holdCost || i.checks.some(c => !c[1]) }; };
+  const prove = async (kind, lot, title) => { if (!M.prove) return; const r = G.predict(lot, { noCase: true }), inp = decIn(r);
+    await M.prove.record({ kind, ref: lot, title, model: r.prob ? r.prob.model : '계약 조항', inputs: inp, output: decRedo(inp), redo: decRedo, now: () => decIn(G.predict(lot, { noCase: true })) }); };
   G.hold = async (lot, reason, by) => { if (G.holds[lot]) return G.holds[lot]; if (delivered().has(lot)) throw new Error(`${lot} 은 이미 납품했습니다 — 보류 대신 사건실에서 고객 대응`); const h = G.holds[lot] = { lot, at: T.stamp(), by: by || M.D.user().name, reason: reason || '' };
-    await T.append('MLNG', 'gate', lot, `출하 보류 — ${lot} · ${reason || ''}`.slice(0, 160), h); G.log.unshift({ at: h.at, lot, act: '보류', by: h.by, why: reason }); return h; };
+    await T.append('MLNG', 'gate', lot, `출하 보류 — ${lot} · ${reason || ''}`.slice(0, 160), h); G.log.unshift({ at: h.at, lot, act: '보류', by: h.by, why: reason }); await prove('gate.hold', lot, `출하 보류 판단 — ${lot}`); return h; };
   G.release = async (lot, by) => { const h = G.holds[lot]; if (!h) return; delete G.holds[lot]; await T.append('MLNG', 'gate', lot, `출하 보류 해제 — ${lot}`, { lot, by: by || M.D.user().name }); G.log.unshift({ at: T.stamp(), lot, act: '해제', by: by || M.D.user().name, why: '' }); };
-  G.ship = async lot => { if (G.holds[lot]) throw new Error(`${lot} 은 출하 보류 중입니다`); const so = DX.activeSO(); if (!so) throw new Error('수락한 스마트 발주가 없습니다'); const d = await T.dealEvaluate(so, lot); G.log.unshift({ at: T.stamp(), lot, act: d.result === 'accepted' ? '출하 · 자동 검수 합격' : '출하 · 클레임', by: M.D.user().name, why: '' }); return d; };
+  G.ship = async lot => { if (G.holds[lot]) throw new Error(`${lot} 은 출하 보류 중입니다`); const so = DX.activeSO(); if (!so) throw new Error('수락한 스마트 발주가 없습니다'); await prove('gate.ship', lot, `출하 판단 — ${lot}`); const d = await T.dealEvaluate(so, lot); G.log.unshift({ at: T.stamp(), lot, act: d.result === 'accepted' ? '출하 · 자동 검수 합격' : '출하 · 클레임', by: M.D.user().name, why: '' }); return d; };
   // 실시간 모드: 서버 원장(서명된 기록)에서 보류 상태를 다시 만든다 — 원장이 곧 상태의 근거
   G.restore = () => { (T.ledger || []).filter(e => e.kind === 'gate').forEach(e => {
     if (/^출하 보류 해제/.test(e.title)) delete G.holds[e.ref];
@@ -77,9 +86,9 @@
       <p class="note" style="margin-top:0">계약 조항: ${cls.map(c => `${esc(T.dealCL[c.k].label)} ${esc(c.op)} ${esc(T.dealFmt(c.k, c.v))}`).join(' · ')} — ✓ 만족 · △ 기준의 10% 안 · ✕ 미달</p>
       ${M.table([['LOT', r => `<b>${esc(r.lot)}</b><div class="muted" style="font-size:11.5px">${esc(String(r.end).slice(5, 16))}</div>`], ['수량', r => f(r.qty, 0), 'n']]
         .concat([['계약 조항 미리 판정', r => `<div class="gchk">${r.checks.map(x => `<span class="${x.na ? 'na' : !x.ok ? 'ng' : x.near ? 'nr' : 'ok'}" title="${esc(`${x.label} ${x.actual} (기준 ${x.th})`)}">${x.na ? '–' : !x.ok ? '✕' : x.near ? '△' : '✓'} ${esc(SHORT[x.k] || x.k)} <b>${esc(x.actual)}</b></span>`).join('')}</div>`]])
+        .concat([['클레임 확률 · 기대 손실', r => r.prob ? `<div class="pbar" title="${esc(`사전(조건 기준) ${f(r.prob.ppmPrior, 0)} PPM · 이 LOT 실제 ${f(r.prob.actualPpm, 0)} PPM → 사후 ${f(r.prob.ppmPost, 0)} PPM`)}"><i style="--w:${(r.prob.p * 100).toFixed(1)}%"></i><b>${pct(r.prob.p, 0)}</b></div><div class="muted" style="font-size:11.5px">${DX.wonShort(r.ev)} ${r.ev > r.holdCost ? '>' : '≤'} 보류 ${DX.wonShort(r.holdCost)}</div>` : '<span class="muted">—</span>']])
         .concat([['사건', r => r.cases.length ? r.cases.map(c => `<a href="#" data-go="case:${esc(c.id)}" class="chip c-ext">${esc(c.id)}</a>`).join(' ') : '<span class="muted">—</span>'],
-          ['판정', r => r.held ? '<span class="tag j-danger">보류 중</span>' : r.rec === 'hold' ? `<span class="tag j-warn" title="${esc(r.why.join('\n'))}">보류 권고</span>` : `<span class="tag ${ST[r.status][0]}">${ST[r.status][1]}</span>`],
-          ['', r => `<div style="display:flex;gap:4px;justify-content:flex-end">` + (r.held ? `<button class="btn sm" data-grel="${esc(r.lot)}">해제</button>` : `${r.rec === 'hold' ? `<button class="btn sm" data-ghold="${esc(r.lot)}">보류</button>` : ''}<button class="btn sm ${r.rec === 'ship' ? 'pri' : ''}" data-gship="${esc(r.lot)}">출하</button>`) + '</div>']]),
+          ['판정 · 처리', r => `${r.held ? '<span class="tag j-danger">보류 중</span>' : r.rec === 'hold' ? `<span class="tag j-warn" title="${esc(r.why.join('\n'))}">보류 권고</span>` : `<span class="tag ${ST[r.status][0]}">${ST[r.status][1]}</span>`}<div style="display:flex;gap:4px;margin-top:5px">${`<div style="display:flex;gap:4px">` + (r.held ? `<button class="btn sm" data-grel="${esc(r.lot)}">해제</button>` : `${r.rec === 'hold' ? `<button class="btn sm" data-ghold="${esc(r.lot)}">보류</button>` : ''}<button class="btn sm ${r.rec === 'ship' ? 'pri' : ''}" data-gship="${esc(r.lot)}">출하</button>`) + '</div>'}</div>`]]),
         show, { wrap: false, click: r => 'gate:' + r.lot, hl: r => r.rec === 'hold' || r.held, empty: '해당하는 출하 대기 LOT 이 없습니다' })}
       ${msg ? `<p class="note">${esc(msg)}</p>` : ''}
       <p class="note">판정은 2.0 LOT 여권과 같은 계산으로 미리 해 본 결과이고, 원장에는 보류·해제·출하만 남습니다. 「출하」 를 누르면 스마트 발주 납품 → 고객 MES 자동 검수까지 이어집니다.</p></div>`}
@@ -95,6 +104,10 @@
       ${r.why && r.why.length ? `<div class="note" style="margin-top:0;color:var(--danger-ink)">${r.why.map(esc).join('<br>')}</div>` : '<div class="note" style="margin-top:0;color:var(--ok)">보류 사유가 없습니다</div>'}
       <h3 class="dh">계약 조항 미리 판정 (${esc(r.so || '')})</h3>
       ${M.table([['조항', 'label'], ['예상 값', 'actual', 'n'], ['기준', 'th'], ['판정', x => x.na ? '<span class="muted">해당 없음</span>' : !x.ok ? '<span class="tag j-danger">미달</span>' : x.near ? '<span class="tag j-warn">근접</span>' : '<span class="tag j-ok">만족</span>']], r.checks, { wrap: false })}
+      ${r.prob ? `<h3 class="dh">확률 판단 <span class="h2sub">${esc(r.prob.model)}</span></h3>
+        ${M.dl([['조건이 기대하는 불량률 (사전)', f(r.prob.ppmPrior, 0) + ' PPM'], ['이 LOT 실제 불량률', f(r.prob.actualPpm, 0) + ' PPM'], ['둘을 합친 참 불량률 추정 (사후)', f(r.prob.ppmPost, 0) + ' PPM'],
+          ['계약 기준을 넘을 확률', `<b>${pct(r.prob.p, 1)}</b>`], ['기대 손실 = 확률 × 클레임', `${DX.won(r.ev)} = ${pct(r.prob.p, 1)} × ${DX.won(r.claimCost)}`], ['보류 비용', DX.won(r.holdCost)], ['판단', r.ev > r.holdCost ? '<span class="tag j-danger">보류가 이득</span>' : '<span class="tag j-ok">출하가 이득</span>']], 'kvl')}
+        <p class="note">같은 PPM 이라도 조건(이탈 · 히터 · 장입량)이 나쁘면 사전이 높아 확률이 올라갑니다. 판단을 내리면 데이터 · 모델 · 코드 해시가 「판단 증명」 에 남습니다.</p>` : ''}
       <h3 class="dh">돈</h3>${M.dl([['출하 수량', f(r.qty, 0) + '개'], ['매출', DX.won(r.qty * c.PRICE)], ['미달 시 클레임', r.claimWon ? DX.won(r.claimWon) : '—'], ['열처리 조건 이탈', pct(r.dev || 0, 1)]])}
       <h3 class="dh">여권 단계 (미리 보기)</h3>${r.pp ? M.table([['단계', 'name'], ['LOT', s => `<b>${esc(s.lot)}</b>`], ['회사', s => esc(T.co(s.company).short)]], r.pp.steps, { wrap: false }) : ''}
       <div class="pacts">${r.held ? `<button class="btn" data-grel="${esc(lot)}">보류 해제</button>` : `<button class="btn" data-ghold="${esc(lot)}">출하 보류</button><button class="btn pri" data-gship="${esc(lot)}">출하 → 자동 검수</button>`}

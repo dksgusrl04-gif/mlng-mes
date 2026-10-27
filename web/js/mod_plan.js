@@ -20,7 +20,7 @@
   const drafts = () => (M.S.work_orders || []).filter(w => w.status === 'draft');
 
   function alerts() {
-    return PL().items.map(i => stat(i.code)).filter(s => s.short).map(s => ({ proc: 'plan', level: 'warn',
+    return PL().items.map(i => stat(i.code)).filter(s => s.short).map(s => ({ key: 'plan.short', data: { item: s.it, inv: s.last.inv_close, demand: s.avg, gap: Math.max(0, s.avg - s.last.inv_close) }, proc: 'plan', level: 'warn',
       title: `${s.it} ${itemName(s.it)} 마감 재고 ${f(s.last.inv_close, 0)} < 내일 예상 수주 ${f(s.avg, 0)}`,
       body: `재고 일수 ${f(s.cover, 1)}일 · 아침 출하 전 생산이 없으면 부족 — 첫 생산 ${f(s.runs, 0)}회(${f(s.need, 0)}개) 앞당기기 검토`, by: '생산 계획', at: s.last.date + ' 20:00', go: 'plan_home' }));
   }

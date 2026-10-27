@@ -118,7 +118,7 @@
     views: V,
     alerts: () => { if (!T.ready) return []; const out = [];
       SO.forEach(o => { const op = o.deliveries.filter(d => d.claim && d.claim.status === 'open');
-        if (op.length) out.push({ proc: 'deal', level: 'warn', title: `스마트 발주 클레임 ${op.length}건 — ${op.map(d => d.lot).join(', ')}`, body: op[0].claim.text, by: T.co(o.buyer).name, at: op[0].at, go: `dl:${o.id}|${op[0].lot}` });
+        if (op.length) out.push({ key: 'deal.claim', data: { so: o.id, lots: op.map(d => d.lot) }, proc: 'deal', level: 'warn', title: `스마트 발주 클레임 ${op.length}건 — ${op.map(d => d.lot).join(', ')}`, body: op[0].claim.text, by: T.co(o.buyer).name, at: op[0].at, go: `dl:${o.id}|${op[0].lot}` });
         if (!o.signs.seller) out.push({ proc: 'deal', level: 'info', title: `${o.id} 수락 서명 대기 — ${T.co(o.buyer).name} ${f(o.qty, 0)}개`, body: '수락해야 납품을 받을 수 있습니다', by: '스마트 발주', at: o.created, go: 'deal_home' }); });
       return out; },
     drawers: { 'dl:': openDel },

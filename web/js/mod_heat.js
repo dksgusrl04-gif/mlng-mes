@@ -35,16 +35,16 @@
   // ── 현장 알림
   function alerts() {
     const out = [], t = target(), rl = recent(), at = M.S.asof;
-    rl.filter(l => l.ppm >= 2 * t).slice(-3).forEach(l => out.push({ proc: 'heat', level: 'danger', title: `${l.id} 불량률 ${ppmTxt(l.ppm)} PPM — 관리 기준 2배 초과`,
+    rl.filter(l => l.ppm >= 2 * t).slice(-3).forEach(l => out.push({ key: 'heat.lot_ppm', data: { lots: [l.id] }, proc: 'heat', level: 'danger', title: `${l.id} 불량률 ${ppmTxt(l.ppm)} PPM — 관리 기준 2배 초과`,
       body: `${l.wo} · ${l.date} · 주요 불량 ${topDefect(l)}`, by: '열처리', at: l.end, go: 'heat:' + l.id }));
     const over = rl.filter(l => l.ppm >= t && l.ppm < 2 * t);
-    if (over.length) out.push({ proc: 'heat', level: 'warn', title: `최근 ${RD()}일 불량률 관리 기준(${f(t, 0)} PPM) 초과 ${over.length}건`,
+    if (over.length) out.push({ key: 'heat.ppm_over', data: { lots: over.map(l => l.id) }, proc: 'heat', level: 'warn', title: `최근 ${RD()}일 불량률 관리 기준(${f(t, 0)} PPM) 초과 ${over.length}건`,
       body: over.map(l => `${l.id} ${ppmTxt(l.ppm)} PPM`).join(' · '), by: '열처리', at: over[over.length - 1].end, go: over.length === 1 ? 'heat:' + over[0].id : 'heat_lots' });
     const dv = {};
     recent(RD() * 2).forEach(l => devs(l).forEach(d => (dv[d.key] = dv[d.key] || []).push([l, d.out])));
-    Object.entries(dv).forEach(([k, a]) => out.push({ proc: 'heat', level: 'warn', title: `${R(k).label} 조건 이탈 — 작업 ${a.length}건`,
+    Object.entries(dv).forEach(([k, a]) => out.push({ key: 'heat.dev', data: { param: k, lots: a.map(([l]) => l.id) }, proc: 'heat', level: 'warn', title: `${R(k).label} 조건 이탈 — 작업 ${a.length}건`,
       body: a.slice(-3).map(([l, o]) => `${l.id} ${pct(o, 0)} 시간 이탈`).join(' · ') + ` (허용 ${limTxt(R(k))} ${R(k).unit})`, by: '열처리', at: a[a.length - 1][0].end, go: 'heat_recipe' }));
-    heaterDrift().filter(h => h.diff != null && h.diff >= HC().HEATER_DRIFT_PP).forEach(h => out.push({ proc: 'heat', level: 'warn',
+    heaterDrift().filter(h => h.diff != null && h.diff >= HC().HEATER_DRIFT_PP).forEach(h => out.push({ key: 'heat.heater', data: { zone: h.key, diff: h.diff }, proc: 'heat', level: 'warn',
       title: `${h.label} 히터 출력 +${f(h.diff, 1)}%p — 설비 점검`, body: `초기 ${HC().HEATER_BASE_JOBS}작업 ${f(h.base, 1)}% → 최근 ${f(h.now, 1)}%. 같은 온도를 유지하는 데 출력이 더 들고 있습니다 (히터·단열재·열전대 점검)`,
       by: '열처리 설비', at, go: 'heat_equip' }));
     return out;

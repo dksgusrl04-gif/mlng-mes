@@ -31,21 +31,21 @@
   function alerts() {
     const out = [], L = P().lots, t = PC().TARGET_PPM, rl = recent();
     const over = rl.filter(l => l.ppm >= t);
-    if (over.length) out.push({ proc: 'press', level: over.some(l => l.ppm >= 2 * t) ? 'danger' : 'warn', title: `최근 ${RD()}일 프레스 불량률 기준(${f(t, 0)} PPM) 초과 ${over.length}일`,
+    if (over.length) out.push({ key: 'press.ppm_over', data: { lots: over.map(l => l.id) }, proc: 'press', level: over.some(l => l.ppm >= 2 * t) ? 'danger' : 'warn', title: `최근 ${RD()}일 프레스 불량률 기준(${f(t, 0)} PPM) 초과 ${over.length}일`,
       body: over.map(l => `${l.id} ${ppmTxt(l.ppm)} PPM (${topDefect(l)})`).join(' · '), by: '프레스', at: over[over.length - 1].date, go: over.length === 1 ? 'press:' + over[0].id : 'press_lots' });
     const n = PC().TREND_DAYS;
     if (L.length > n + 3) {
       const a = L.slice(-n), b = L.slice(0, -n), ra = sumPpm(a), rb = sumPpm(b);
       if (rb && ra / rb >= PC().TREND_RATIO) {
         const dc = {}; a.forEach(l => Object.entries(l.defects).forEach(([c, k]) => dc[c] = (dc[c] || 0) + k));
-        out.push({ proc: 'press', level: 'warn', title: `프레스 불량 증가 — 최근 ${n}작업일 ${f(ra / rb, 1)}배`, body: `${ppmTxt(rb)} → ${ppmTxt(ra)} PPM · ${Object.entries(dc).sort((x, y) => y[1] - x[1]).map(([c, k]) => `${codeName(c)} ${k}`).join(' · ')} — 금형 마모·윤활 점검`,
+        out.push({ key: 'press.ppm_trend', data: { lots: a.map(l => l.id), ratio: ra / rb }, proc: 'press', level: 'warn', title: `프레스 불량 증가 — 최근 ${n}작업일 ${f(ra / rb, 1)}배`, body: `${ppmTxt(rb)} → ${ppmTxt(ra)} PPM · ${Object.entries(dc).sort((x, y) => y[1] - x[1]).map(([c, k]) => `${codeName(c)} ${k}`).join(' · ')} — 금형 마모·윤활 점검`,
           by: '프레스', at: a[a.length - 1].date, go: 'press_home' });
       }
     }
-    rl.filter(l => outN(l) / l.strokes >= PC().OUT_RATE).forEach(l => out.push({ proc: 'press', level: 'warn', title: `${l.id} 허용 범위 밖 타발 ${f(outN(l), 0)}회`,
+    rl.filter(l => outN(l) / l.strokes >= PC().OUT_RATE).forEach(l => out.push({ key: 'press.out_range', data: { lots: [l.id] }, proc: 'press', level: 'warn', title: `${l.id} 허용 범위 밖 타발 ${f(outN(l), 0)}회`,
       body: l.changeover ? '설정 변경일 — 변경 전 타발이 새 기준 밖으로 잡혔습니다' : '타발 시간·압력 확인', by: '프레스', at: l.date, go: 'press:' + l.id }));
     const since = M.sinceDay(RD()).getTime();
-    P().vib.events.filter(e => M.toDate(e.end).getTime() >= since).forEach(e => out.push({ proc: 'press', level: 'danger', title: `${e.equip} 진동 이상 — 정상 기준의 ${f(e.ratio, 1)}배`,
+    P().vib.events.filter(e => M.toDate(e.end).getTime() >= since).forEach(e => out.push({ key: 'press.vib', data: { equip: e.equip, ratio: e.ratio, start: e.start, end: e.end }, proc: 'press', level: 'danger', title: `${e.equip} 진동 이상 — 정상 기준의 ${f(e.ratio, 1)}배`,
       body: `${e.start.slice(5, 16)} ~ ${e.end.slice(11, 16)} · ${e.secs}초 동안 기준(상위 1%) 초과 · 최대 전류 ${f(e.c_max, 0)} — 금형·크랭크·클러치 점검`, by: '프레스 설비', at: e.end, go: 'press_equip' }));
     return out;
   }

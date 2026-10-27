@@ -71,9 +71,9 @@
     const out = [], d = detail(), s = W().summary, done = doneSet();
     if (!d.id || M.toDate(d.date).getTime() < M.sinceDay(RD()).getTime()) return out;
     const pend = W().preds.filter(r => r.pred_defect && !done.has(ptId(r)));
-    if (pend.length) out.push({ proc: 'weld', level: 'danger', title: `${d.id} 불량 판정 ${pend.length}타점 — 1순위 검사`,
+    if (pend.length) out.push({ key: 'weld.pred', data: { lot: d.id, n: pend.length, expected: s.expected }, proc: 'weld', level: 'danger', title: `${d.id} 불량 판정 ${pend.length}타점 — 1순위 검사`,
       body: `예상 불량 ${f(s.expected, 1)}건 (95% ${f(s.ci[0], 1)}~${f(s.ci[1], 1)}) · 위험 상위 타점부터 검사하고 결과를 기록하세요`, by: '점용접', at: d.date + ' 23:00', go: 'weld_queue' });
-    if (s.excursion) out.push({ proc: 'weld', level: 'warn', title: `${d.id} 가압 이상 구간 ${f(s.excursion, 0)}타점`,
+    if (s.excursion) out.push({ key: 'weld.pressure', data: { lot: d.id, n: s.excursion }, proc: 'weld', level: 'warn', title: `${d.id} 가압 이상 구간 ${f(s.excursion, 0)}타점`,
       body: '가압력 3 bar 초과 구간 — 가압 실린더·전극 팁 점검', by: '점용접', at: d.date + ' 23:00', go: 'weld_home' });
     return out;
   }

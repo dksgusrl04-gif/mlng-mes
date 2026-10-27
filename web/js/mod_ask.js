@@ -84,6 +84,16 @@
     what_if: i => { if (!M.whatifApi) return { error: 'What-if 없음' }; const p = {}; ['target', 'press', 'weld', 'heat', 'vb', 'dev'].forEach(k => { if (i && i[k] != null && !isNaN(+i[k])) p[k] = +i[k]; }); if (i && i.heater != null) p.heater = !!i.heater;
       const pick = r => ({ output_per_day: Math.round(r.out), bottleneck: M.PROC[r.lim.p] || r.lim.p, profit_per_day_won: Math.round(r.profit), contribution: Math.round(r.contrib), scrap: Math.round(r.scrap), insert_cost: Math.round(r.toolCost), wear_risk: Math.round(r.wearRisk), equipment_overtime: Math.round(r.weldCost + r.ot + r.maint), heater_waste: Math.round(r.energy), press_ppm: Math.round(r.ppmP), heat_ppm: Math.round(r.ppmH), claim_expected: Math.round(r.claimExp), carbon_g_per_part: r.pcfG != null ? Math.round(r.pcfG) : null, contract: r.checks.map(c => `${c.t} ${c.v} (${c.th}) ${c.ok ? '충족' : '위반'}`) });
       const base = M.whatifApi.compute({}), sc = M.whatifApi.compute(p); return { levers: Object.assign(M.whatifApi.defaults(), p), now: pick(base), scenario: pick(sc), press_regression_r: sc.pf ? +sc.pf.r.toFixed(2) : null, note: '판단 이익 = 공헌이익 − 불량 − 인서트 − 마모 위험 − 설비·잔업 − 낭비 전력 (비교용)' }; },
+    model_status: () => { const ML = M.ml; if (!ML) return { error: '모델 계층 없음' }; const h = ML.heat(), t = ML.tool(), v = ML.vb();
+      return { models: ML.all().map(x => ({ name: x.name, version: x.v, trust: +x.trust.toFixed(2), level: ML.LEVEL[x.level][1] })), psi: ML.psi().rows.map(r => ({ input: r.name, psi: isFinite(r.psi) ? +r.psi.toFixed(3) : null, level: r.level })),
+        heat_effects: h.effects.map(e => `${e.name} 배수 ${e.rr.toFixed(2)} (90% ${e.lo.toFixed(2)}~${e.hi.toFixed(2)})`), heat_holdout_cover: h.cover, tool_loo_cover: t.cover, vb_interval_mm: v.q, vb_recent_cover: v.recCover,
+        change_points: ['heat', 'press', 'tool'].map(k => ({ case: k, change: ML.changeFor(k) })), doubted_agent_actions: ((window.MLNGTrust || {}).agent || { items: [] }).items.filter(x => x.doubt).map(x => `${x.act} — ${x.doubt}`) }; },
+    tool_life: i => { const ML = M.ml; if (!ML) return { error: '모델 계층 없음' }; const ts = (M.S.mach || { tools: [] }).tools.filter(t => t.rate), id = (i && i.tool) || (ts[ts.length - 1] || {}).id, r = ML.rul(id); if (!r) return { error: `공구 ${id} 없음` };
+      return { tool: id, material: r.material, measured_points: r.k, minutes_now: r.tNow, minutes_to_vb05_p10_p50_p90: [Math.round(r.t10), Math.round(r.t50), Math.round(r.t90)], runs_left_p10_p50_p90: [Math.round(r.r10), Math.round(r.r50), Math.round(r.r90)], p_reach_within_4_runs: +r.pNext(4).toFixed(2), own_data_weight: +r.wOwn.toFixed(2), prior_from: r.prior.from, model: ML.VERSION.tool }; },
+    claim_probability: i => { const ML = M.ml, so = M.dx && M.dx.activeSO(), cl = so && so.clauses.find(c => c.k === 'heat_ppm'); if (!ML || !cl) return { error: '활성 계약(열처리 PPM 조항) 없음' };
+      const lots = i && i.lot ? [String(i.lot).toUpperCase()] : (M.gate ? M.gate.candidates().map(l => l.id) : []);
+      return { threshold_ppm: cl.v, model: ML.VERSION.heat, lots: lots.map(id => { const r = ML.claimP(id, cl.v), g = M.gate ? M.gate.predict(id, { noCase: true }) : {}; return r ? { lot: id, actual_ppm: Math.round(r.actualPpm), prior_ppm: Math.round(r.ppmPrior), posterior_ppm: Math.round(r.ppmPost), p_exceed: +r.p.toFixed(3), expected_loss: Math.round(g.ev || 0), hold_cost: Math.round(g.holdCost || 0) } : { lot: id, error: '열처리 LOT 아님' }; }) }; },
+    decision_proof: () => M.prove ? { build: (window.MLNG_BUILD || {}).hash || 'dev-build', decisions: M.prove.log.slice(0, 15).map(r => { const x = M.prove.canReplay(r.id) ? M.prove.replay(r.id) : null; return { id: r.id, title: r.title, model: r.model, data: r.data.slice(0, 12), code: r.code.slice(0, 12), ledger_seq: r.seq, replay_same: x ? x.same : null, data_same_now: x ? x.dataSame : null }; }) } : { error: '판단 증명 없음' },
     shift_brief: () => M.shiftApi ? M.shiftApi.brief() : { error: '교대 모듈 없음' },
     propose_action: i => { const a = proposal(i || {}); if (a.error) return a; pending.push(a); return { status: 'proposed', label: a.label, note: '화면에 승인 버튼으로 표시했습니다. 사용자가 누르기 전에는 실행되지 않습니다.' }; },
     trust_network: async i => { const T = window.MLNGTrust; if (!T || !T.ready) return { error: '신뢰 계층 준비 전' };
@@ -143,6 +153,15 @@
       const a = proposal({ kind: 'purchase', items: rs.map(r => r.it.code), reason: '질의응답 지시 — 추천 품목' }); return { text: `추천 품목 ${rs.length}종 발주 초안을 제안합니다 — ${rs.map(r => `${r.it.name} ${r.qty}${r.it.unit}`).join(', ')}`, acts: [a], links: [['buy_home', '공구 주문']] }; }
     if (ready && /(실행|처리|진행)\s*(해|시켜)/.test(q) && M.caseApi) { const c = M.caseApi.open()[0], nx = c && M.caseApi.next(c); if (!nx) return { text: '실행할 사건 조치가 없습니다' };
       return { text: `가장 급한 사건 ${c.id} (${c.name}) 의 다음 조치를 제안합니다.`, acts: [proposal({ kind: 'case_action', case_id: c.id, action_id: nx.id })], links: [['case:' + c.id, '사건 열기']] }; }
+    // 4.0 확률 · 신뢰 · 증명
+    if (ready && M.ml && /(신뢰도|모델|믿을)/.test(q) && !/원장/.test(q)) { const r = TOOLS.model_status();
+      return { text: `모델 신뢰도\n${r.models.map(m => `· ${m.name}: ${m.level} ${Math.round(m.trust * 100)}`).join('\n')}${r.doubted_agent_actions.length ? `\n자기 의심으로 승인 대기로 내린 조치 ${r.doubted_agent_actions.length}건` : ''}`, links: [['models', '모델 상태']] }; }
+    if (ready && M.ml && /(수명|잔여|몇 번 더|언제 바꿔)/.test(q)) { const tm = q.toUpperCase().match(/\bT\d{2}\b/), r = TOOLS.tool_life({ tool: tm && tm[0] });
+      return r.error ? { text: r.error } : r.runs_left_p10_p50_p90[2] === 0 ? { text: `${r.tool} (${r.material}) — 이미 VB 0.5 에 도달했습니다 (가공 ${r.minutes_now}분 시점 측정). 다음 가공 전 인서트 교체`, links: [['mach:' + r.tool, '공구 상세']] } : { text: `${r.tool} (${r.material}) — VB 0.5 까지 잔여 ${r.runs_left_p10_p50_p90[0]}~${r.runs_left_p10_p50_p90[2]}회 (중앙 ${r.runs_left_p10_p50_p90[1]}회, 80% 구간)\n다음 4회 안에 도달할 확률 ${Math.round(r.p_reach_within_4_runs * 100)}% · 이 공구 측정 ${r.measured_points}개 (자기 데이터 비중 ${Math.round(r.own_data_weight * 100)}%, 사전: ${r.prior_from})`, links: [['models', '모델 상태']] }; }
+    if (ready && M.ml && /(확률|클레임 날)/.test(q)) { const r = TOOLS.claim_probability({ lot: lotM && lotM[1] });
+      return r.error ? { text: r.error } : { text: `계약 기준 ${r.threshold_ppm} PPM 초과 확률\n${r.lots.filter(x => !x.error).map(x => `· ${x.lot}: 실제 ${x.actual_ppm} · 조건 기대 ${x.prior_ppm} → 사후 ${x.posterior_ppm} PPM — **${Math.round(x.p_exceed * 100)}%** (기대 손실 ${M.dx.won(x.expected_loss)} vs 보류 ${M.dx.won(x.hold_cost)})`).join('\n')}`, links: [['gate', '출하 게이트']] }; }
+    if (ready && M.prove && /(증명|재현|어떤 모델)/.test(q)) { const r = TOOLS.decision_proof();
+      return { text: `코드 빌드 ${String(r.build).slice(0, 12)} · 판단 ${r.decisions.length}건\n${r.decisions.slice(0, 5).map(d => `· ${d.title} — 모델 ${d.model} · 데이터 ${d.data} · ${d.replay_same == null ? '기록만' : d.replay_same ? '재현 ✓' : '재현 ✕'}`).join('\n') || '· 아직 판단 없음'}`, links: [['prove', '판단 증명']] }; }
     // 3.0 판단
     if (ready && DX && /(얼마|손실|돈|비용|원가|낭비)/.test(q)) { const r = TOOLS.money_overview();
       return { text: `30일 품질 손실 ${DX.won(r.copq_30d_won)} (매출 대비 ${M.pct(r.copq_rate, 2)}) · 매일 새는 돈 ${DX.won(r.waste_per_day_won)}${r.line_opportunity_per_day_won ? ` · 기회 손실 하루 ${DX.won(r.line_opportunity_per_day_won)}` : ''}\n금액 큰 순서:\n${r.top_alerts_by_money.slice(0, 4).map((x, i) => `${i + 1}. ${x.title} — ${x.kind} ${DX.won(x.won)}`).join('\n')}`, links: [['cost', '돈으로 보는 공장']] }; }
@@ -219,7 +238,7 @@
   }
 
   const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-  const SUG = ['지금 가장 먼저 조치할 것은?', '병목 공정은 어디고 하루 몇 개까지 가능해?', 'MCT 공구 상태 어때?', '결재 대기 발주 있어?', '열처리 불량 원인 후보는?', '공장 현황 요약해 줘', '오늘 손실은 얼마야?', '열린 사건 알려줘', '지금 출하해도 돼?', '프레스 속도 110%면 어떻게 돼?', '교대 인수인계 정리해 줘', '발주 올려줘'];
+  const SUG = ['지금 가장 먼저 조치할 것은?', '병목 공정은 어디고 하루 몇 개까지 가능해?', 'MCT 공구 상태 어때?', '결재 대기 발주 있어?', '열처리 불량 원인 후보는?', '공장 현황 요약해 줘', '오늘 손실은 얼마야?', '열린 사건 알려줘', '지금 출하해도 돼?', '프레스 속도 110%면 어떻게 돼?', '교대 인수인계 정리해 줘', '발주 올려줘', '모델 믿을 만해?', 'T16 잔여 수명은?', '출하 대기 LOT 클레임 확률은?'];
   const V = {};
   V.ask = () => {
     const live = !!M.D.askUrl();
