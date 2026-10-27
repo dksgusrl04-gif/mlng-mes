@@ -239,7 +239,7 @@
     const pend = os.filter(o => o.status === 'pending'), notIn = os.filter(o => o.status === 'approved');
     const cnt = k => CAT().filter(it => it.proc === k).length;
     return `<div class="kstrip">
-      <div class="kpi click" data-cf="rec"><div class="lab">발주 필요 품목</div><div class="val" style="color:${Object.values(r).some(x => x.level === 'danger') ? 'var(--danger-ink)' : rc ? 'var(--warn-ink)' : 'inherit'}">${rc}<small>종</small></div><div class="foot">공정 알람 · 사용량 기준</div></div>
+      <div class="kpi click" data-cf="rec"><div class="lab">발주 필요 품목${M.asmTag ? M.asmTag('buy') : ''}</div><div class="val" style="color:${Object.values(r).some(x => x.level === 'danger') ? 'var(--danger-ink)' : rc ? 'var(--warn-ink)' : 'inherit'}">${rc}<small>종</small></div><div class="foot">공정 알람 · 사용량 기준</div></div>
       <div class="kpi click" data-of="pending"><div class="lab">승인 대기</div><div class="val" style="color:${pend.length ? 'var(--warn-ink)' : 'inherit'}">${pend.length}<small>건</small></div><div class="foot">${esc(STEPS().join(' → '))}</div></div>
       <div class="kpi click" data-of="approved"><div class="lab">승인 완료 · 미입고</div><div class="val">${notIn.length}<small>건</small></div><div class="foot">발주서 출력 · 입고 대기</div></div>
       <div class="kpi click" data-cf="all"><div class="lab">등록 품목</div><div class="val">${CAT().length}<small>종</small></div><div class="foot">${PROCS.map(([k, t]) => `${t} ${cnt(k)}`).join(' · ')}</div></div>

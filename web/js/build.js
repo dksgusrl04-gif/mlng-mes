@@ -1,10 +1,10 @@
 /* 자동 생성 — tools/stamp_version.py. 손으로 고치지 않는다 */
 window.MLNG_BUILD = {
- "hash": "f64683bafb6ee27fde78681b6f05da9b7e4d1ff5bf70ae96d088b0b0664d6a0a",
+ "hash": "1de3ad3061997797bd90a919baa9a37c5f310ef71a9adf8bb41a32d1f2cf2ae9",
  "files": {
   "js/config.js": "2e2e263fccc9c161",
   "js/data.js": "2500a1d2d8d1e8ae",
-  "js/core.js": "9d97e3cefc27f9f3",
+  "js/core.js": "2975efba9b098cf2",
   "js/mod_common.js": "0737f341d8a133de",
   "js/mod_line.js": "3bfe192c8fdb99ea",
   "js/mod_press.js": "6e820f8a7f9879dd",
@@ -14,12 +14,12 @@ window.MLNG_BUILD = {
   "js/mod_insp.js": "5afa19bb837bcd97",
   "js/mod_plan.js": "bb15c000865cd81b",
   "js/catalog.js": "3393c9ea90f20d48",
-  "js/mod_buy.js": "7ede14f6ca33e611",
+  "js/mod_buy.js": "5a818f380e896cbb",
   "js/mod_ask.js": "b11c66022fd7465b",
   "js/vendor/qrcode.js": "18ae399f81182bc9",
   "js/trust.js": "e118f7b41ffc7be5",
   "js/mod_net.js": "611420ebd00301e0",
-  "js/mod_pass.js": "2d9e66e2ad98ee6b",
+  "js/mod_pass.js": "194213cca60481ab",
   "js/mod_deal.js": "be04fd8130acac58",
   "js/mod_agent.js": "4ee466caf9a64e54",
   "js/mod_sync.js": "14fd9644170640fc",
@@ -28,17 +28,18 @@ window.MLNG_BUILD = {
   "js/stats.js": "8c311be41efc7466",
   "js/models.js": "7766b19547ca37d0",
   "js/prove.js": "74e70e185ff78b05",
-  "js/mod_gate.js": "e5813564e6797f62",
-  "js/mod_case.js": "23263741e0fbe51f",
-  "js/mod_cost.js": "55634a5ea4353d23",
-  "js/mod_whatif.js": "7e7bab27eb540a2d",
+  "js/mod_gate.js": "f96c25bf985055df",
+  "js/mod_case.js": "221220f855274380",
+  "js/mod_cost.js": "f2cebb1716c11f96",
+  "js/mod_whatif.js": "9e81b1acf5e256ab",
   "js/mod_replay.js": "176883e408ad2b9d",
   "js/mod_shift.js": "dd6a83d09d7129a0",
   "js/mod_palette.js": "700dd8e2c75fa3d7",
   "js/mod_models.js": "6b872b3338c87bec",
   "js/mod_prove.js": "a5848eddd39ac22e",
-  "js/mod_flow.js": "e3b73c5361d36340",
+  "js/mod_assume.js": "62c90f4832d68f30",
+  "js/mod_flow.js": "06aca6dd0bcc1549",
   "js/boot.js": "ff48c44de6b1a781",
-  "css/style.css": "834e7ab4f325a556"
+  "css/style.css": "f7b549fc69032581"
  }
 };

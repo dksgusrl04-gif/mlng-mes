@@ -240,7 +240,7 @@
     const risk = op.reduce((s, x) => s + x.money.won, 0), inside = op.reduce((s, x) => s + x.lots.filter(l => l.ship.k === 'inside').length, 0);
     return `<div class="kstrip">
       <div class="kpi"><div class="lab">미결 이슈</div><div class="val" style="color:${op.some(x => x.level === 'danger') ? 'var(--danger-ink)' : 'inherit'}">${op.length}<small>건</small></div><div class="foot">알람 ${M.alerts().filter(a => a.level !== 'info').length}건을 ${cs.length}건으로 묶음</div></div>
-      <div class="kpi click" data-go="cost"><div class="lab">예상 손실</div><div class="val">${DX.wonShort(risk)}<small>원</small></div><div class="foot">발생 손실 · 잠재 손실 · 보류 재고 · 에너지 손실 합</div></div>
+      <div class="kpi click" data-go="cost"><div class="lab">예상 손실${M.asmTag ? M.asmTag('loss') : ''}</div><div class="val">${DX.wonShort(risk)}<small>원</small></div><div class="foot">발생 손실 · 잠재 손실 · 보류 재고 · 에너지 손실 합</div></div>
       <div class="kpi click" data-go="gate"><div class="lab">미봉쇄 LOT</div><div class="val" style="color:${inside ? 'var(--warn-ink)' : 'var(--ok)'}">${inside}<small>LOT</small></div><div class="foot">이슈에 걸렸지만 아직 공장 안 · 보류 전</div></div>
       <div class="kpi"><div class="lab">종결</div><div class="val">${cs.length - op.length}<small>건</small></div><div class="foot">단계마다 서명 · 원장 기록</div></div>
     </div>
@@ -261,7 +261,7 @@
       ${msg ? `<p class="note" style="margin-top:6px">${esc(msg)}</p>` : ''}
       ${nx && c.st.stage < 5 ? `<div class="cnext"><b>다음 조치</b> ${esc(nx.label)} <button class="btn pri sm" data-crun="${esc(c.id)}|${esc(nx.id)}">실행</button><button class="btn sm" data-askq="${esc(`이슈 ${c.id} (${c.name}) — 추정 원인과 「${nx.label}」 말고 다른 선택지를 알려줘`)}">AI 문의</button></div>` : ''}
       <div class="grid g2" style="align-items:start;margin-top:12px">
-        <div><h3 class="dh" style="margin-top:0">손실 금액 <span class="h2sub">항목에 마우스를 올리면 산출 근거</span></h3>${moneyRow(c.money)}
+        <div><h3 class="dh" style="margin-top:0">손실 금액 ${M.asmTag ? M.asmTag('loss') : ''}<span class="h2sub">항목에 마우스를 올리면 산출 근거</span></h3>${moneyRow(c.money)}
           ${c.money.basis.length ? `<ul class="plain cbasis">${c.money.basis.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}
           <h3 class="dh">영향 범위</h3>
           ${sc ? `<div class="cscope"><div><i style="--w:${Math.max(1.5, Math.min(100, sc / c.scope.all * 100))}%"></i></div><span>${esc(c.scope.unit)} ${f(c.scope.all, 0)}개 중 <b>${f(sc, 0)}개 (${pct(sc / c.scope.all, sc / c.scope.all < 0.01 ? 2 : 1)})</b>만 조치 대상 — 전수 대신 이것만 격리하면 됩니다</span></div>` : ''}

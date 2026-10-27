@@ -182,7 +182,7 @@
       ${kpi('납기 준수율 (예상)', pct(onTime, 0), '', '진행 수주 중 정상 진행', onTime < 0.8 ? 'warn' : '', 'orders')}
       ${kpi('공정 불량률', S.qual.big, 'PPM', '열처리 · 최근 7일 · 관리 기준 450', '', 'heat_home')}
       ${kpi('출하 대기', S.ship.big, 'LOT', S.ship.sub, '', 'gate')}
-      ${kpi('미결 품질 이슈', cs.length, '건', DX ? `예상 손실 ${DX.wonShort(cs.reduce((t, c) => t + (c.money ? c.money.won : 0), 0))}원` : '', cs.some(c => c.level === 'danger') ? 'danger' : '', 'cases')}
+      ${kpi('미결 품질 이슈' + (M.asmTag ? M.asmTag('loss') : ''), cs.length, '건', DX ? `예상 손실 ${DX.wonShort(cs.reduce((t, c) => t + (c.money ? c.money.won : 0), 0))}원` : '', cs.some(c => c.level === 'danger') ? 'danger' : '', 'cases')}
     </div>
     <div class="card dsec"><h2>수주별 진행 현황 <span class="h2sub">${ords.length}건</span>${sel ? `<span class="fchip">${SN[sel]} 단계만 <button data-fsel="">×</button></span>` : ''}<a class="more" href="#" data-go="orders">수주 현황 →</a></h2>
       ${board(ords, S, { issue: true, empty: sel ? `${SN[sel]} 단계에 해당하는 수주가 없습니다` : '진행 중인 수주가 없습니다' })}</div>
@@ -198,7 +198,7 @@
     </div>
     <div class="card dsec"><h2>이상 발생 · 조치 현황 <span class="h2sub">미결 ${iss.length}건</span><a class="more" href="#" data-go="alerts">알람 이력 →</a></h2>
       ${iss.length ? `<div class="tbx"><table class="tb itab"><colgroup><col class="c-lv"><col class="c-sg"><col><col class="c-won"><col class="c-go"></colgroup>
-        <thead><tr><th>등급</th><th>구분</th><th>이상 내용</th><th class="n">예상 손실</th><th></th></tr></thead>
+        <thead><tr><th>등급</th><th>구분</th><th>이상 내용</th><th class="n">예상 손실${M.asmTag ? M.asmTag('loss') : ''}</th><th></th></tr></thead>
         <tbody>${iss.slice(0, 8).map(x => `<tr class="click ${x.lv}" ${x.go ? `data-row="${esc(x.go)}"` : ''}><td><span class="lvt ${x.lv}">${x.lv === 'danger' ? '긴급' : '경고'}</span></td><td>${SN[x.st]}</td>
           <td><div class="it1">${esc(x.t)}</div><div class="it2">${esc(x.s)}</div></td><td class="n">${x.won > 0 && DX ? DX.wonShort(x.won) + '원' : '<span class="muted">—</span>'}</td><td class="n"><span class="golink">${esc(x.btn || '보기')} ›</span></td></tr>`).join('')}</tbody></table></div>`
         : `<div class="empty">${sel ? SN[sel] + ' 단계에 ' : ''}미결 이상이 없습니다</div>`}</div>`;
@@ -235,10 +235,77 @@
       <div class="pacts" style="margin-top:12px">${o.ls.some(x => ['ready', 'hold_rec', 'held'].includes(x.k)) ? '<button class="btn pri" data-go="gate">출하 승인 화면</button>' : ''}${o.remain > 0 ? '<button class="btn" data-go="plan_wo">작업지시</button>' : ''}</div>`);
   }
 
+  // ── 전체 공정 흐름: 소재 → 프레스 → 점용접 → 열처리 → MCT 가공 → 정밀 검사 → 출하
+  const NODES = [
+    { k: 'mat', nm: '소재', full: '소재 입고', go: 'trace' },
+    { k: 'press', nm: '프레스', full: '프레스 성형', go: 'press_home' },
+    { k: 'weld', nm: '점용접', full: '점용접', go: 'weld_home', part: true },
+    { k: 'heat', nm: '열처리', full: '염욕 소입 열처리', go: 'heat_home' },
+    { k: 'mach', nm: 'MCT', full: 'MCT 가공', go: 'mach_home', part: true },
+    { k: 'insp', nm: '검사', full: '정밀 검사', go: 'insp_home', part: true },
+    { k: 'ship', nm: '출하', full: '출하', go: 'gate' },
+  ];
+  function procStat(p) {
+    const al = M.alerts().filter(x => x.proc === p && x.level !== 'info'), m = M.mods.find(x => x.proc === p);
+    const sm = m && m.summary ? (() => { try { return m.summary(M.S); } catch (e) { return null; } })() : null;
+    const st = al.some(x => x.level === 'danger') ? 'danger' : al.length || (sm && sm.st === 'warn') ? 'warn' : sm && sm.st === 'danger' ? 'danger' : 'ok';
+    return { al, sm, st };
+  }
+  function nodeData(B) {
+    const since = M.sinceDay(M.CFG.RECENT_DAYS || 7).getTime(), L = M.S.lots || [], rt = M.S.masters.routings;
+    const out = {};
+    NODES.forEach(n => {
+      if (n.k === 'mat') { const ms = L.filter(l => l.kind === 'material' && M.toDate(l.last || l.first).getTime() >= since), last = L.filter(l => l.kind === 'material').slice(-1)[0];
+        out.mat = { eq: '자재 창고', n: ms.length, qty: ms.reduce((s, l) => s + (l.qty || 0), 0), bad: null, last: last ? { id: last.id, t: String(last.last || last.first).slice(5, 10) } : null, st: 'ok', al: [], kpi: `소재 LOT ${ms.length}개` }; return; }
+      if (n.k === 'ship') { const ls = [].concat(...B.orders.map(o => o.ls)), cnt = k => ls.filter(x => x.k === k).length, sq = ls.filter(x => (x.k === 'shipped' || x.k === 'claim') && M.toDate(x.l.end).getTime() >= since).reduce((s, x) => s + x.l.qty, 0);
+        const al = M.alerts().filter(x => (x.proc === 'gate' || x.proc === 'deal') && x.level !== 'info');
+        out.ship = { eq: '출하장', n: cnt('ready') + cnt('hold_rec') + cnt('held'), qty: sq, bad: null, last: null, st: cnt('claim') || cnt('held') ? 'danger' : cnt('hold_rec') ? 'warn' : 'ok', al, kpi: `출하 대기 ${cnt('ready')} · 보류 권고 ${cnt('hold_rec')} LOT` }; return; }
+      const ls = L.filter(l => l.kind === 'process' && l.proc === n.k && M.toDate(l.end_at || l.start_at).getTime() >= since), last = L.filter(l => l.kind === 'process' && l.proc === n.k).slice(-1)[0];
+      const qty = ls.reduce((s, l) => s + (l.qty || 0), 0), bad = ls.some(l => l.bad != null) ? ls.reduce((s, l) => s + (l.bad || 0), 0) : null, ps = procStat(n.k);
+      out[n.k] = { eq: (rt.find(r => r.proc === n.k) || {}).equipment_id || '', n: ls.length, qty, bad, rate: bad != null && qty ? bad / qty : null, last: last ? { id: last.id, t: String(last.end_at || last.start_at).slice(5, 16) } : null, st: ps.st, al: ps.al, kpi: ps.sm ? ps.sm.kpi : '' };
+    });
+    return out;
+  }
+  const rateTxt = r => r == null ? '—' : r >= 0.001 ? pct(r, r >= 0.01 ? 1 : 2) : `${f(r * 1e6, 0)} ppm`;
+  V.procmap = () => {
+    const B = book(), D = nodeData(B), lm = M.lineApi ? M.lineApi.model() : null;
+    const gap = (from) => { const g = lm && lm.gaps[from]; if (!g) return ''; const c = Math.abs(g.d) < Math.max(1, g.dem * 0.02) ? 'ok' : g.d > 0 ? 'up' : 'down';
+      return `<span class="pg ${c}" title="${esc(g.label)} — 앞 공정 공급 ${f(g.sup, 0)} · 뒤 공정 소요 ${f(g.dem, 0)} (개/일)">${c === 'ok' ? '균형' : `재공 ${g.d > 0 ? '+' : '−'}${man(Math.abs(g.d))}/일`}</span>`; };
+    const GAP_AFTER = { press: 'press', weld: 'weld', heat: 'heat', mach: 'mach' };
+    const stT = { ok: '정상', warn: '주의', danger: '이상' };
+    // 최근 열처리 LOT 8개의 앞뒤 공정 LOT
+    const hl = H().lots.slice(-8).reverse(), lotSt = l => lotState(l, B.ctx);
+    const chain = hl.map(h => { const lg = M.lineage(h.id), pick = p => [].concat(lg.up, lg.down).filter(l => l.proc === p || (p === 'mat' && l.kind === 'material'));
+      return { h, mat: pick('mat'), press: pick('press'), weld: pick('weld'), mach: pick('mach'), insp: pick('insp'), ship: lotSt(h) }; });
+    const lc = xs => xs.length ? `<a href="#" data-trace="${esc(xs[0].id)}"><b>${esc(xs[0].id)}</b></a>${xs.length > 1 ? `<span class="muted"> 외 ${xs.length - 1}</span>` : ''}` : '<span class="muted">—</span>';
+    return `<div class="card"><h2>공정 흐름 <span class="h2sub">최근 ${M.CFG.RECENT_DAYS || 7}일 · 공정을 누르면 상세 화면</span><a class="more" href="#" data-go="line">라인 밸런스 →</a></h2>
+      <div class="pcard-scroll"><div class="pmap">${NODES.map((n, i) => i ? `<div class="pgl" style="grid-column:${2 * i - 1} / ${2 * i + 2}">${gap(GAP_AFTER[NODES[i - 1].k]) || ''}</div>` : '').join('')}
+        ${NODES.map((n, i) => { const d = D[n.k];
+        return `${i ? `<div class="pcon" style="grid-column:${2 * i}"></div>` : ''}<div class="pnode ${d.st}" data-go="${n.go}" style="grid-column:${2 * i + 1}" title="${esc(n.full)}${n.part ? ' — 일부 사양만 거치는 공정' : ''}">
+          <div class="ph"><span class="dot ${d.st}"></span><b>${esc(n.nm)}</b><span class="pst2 ${d.st}">${stT[d.st]}</span></div>
+          <div class="pe">${esc(d.eq)}${n.part ? ' · 일부 사양' : ''}</div>
+          <div class="pv">${d.qty ? man(d.qty) : '—'}<small>${n.k === 'ship' ? '개 출하' : '개'}</small></div>
+          <dl><dt>${n.k === 'ship' ? '대기' : '작업'}</dt><dd>${n.k === 'ship' ? `${d.n} LOT` : n.k === 'mat' ? `${d.n} LOT` : `${d.n}건`}</dd>
+            <dt>불량률</dt><dd>${rateTxt(d.rate)}</dd><dt>알람</dt><dd class="${d.al.length ? d.st : ''}">${d.al.length}건</dd>
+            <dt>최근</dt><dd>${d.last ? esc(d.last.t.slice(0, 5)) : '—'}</dd></dl></div>`; }).join('')}</div></div>
+      ${M.legend([['l-ok', '정상'], ['l-warn', '주의 (경고 알람)'], ['l-danger', '이상 (긴급 알람)']])}</div>
+    <div class="card"><h2>공정별 실적 <span class="h2sub">최근 ${M.CFG.RECENT_DAYS || 7}일</span></h2>
+      <div class="tbx"><table class="tb pmtab"><colgroup><col class="c-1"><col class="c-2"><col class="c-3"><col class="c-4"><col class="c-5"><col class="c-6"><col class="c-7"><col class="c-8"><col></colgroup>
+        <thead><tr><th>공정</th><th>설비</th><th>상태</th><th class="n">작업</th><th class="n">처리량</th><th class="n">불량</th><th class="n">불량률</th><th class="n">알람</th><th>주요 지표</th></tr></thead>
+        <tbody>${NODES.filter(n => n.k !== 'mat' && n.k !== 'ship').map(n => { const d = D[n.k];
+          return `<tr class="click" data-row="${n.go}"><td><b>${esc(n.full)}</b></td><td class="muted">${esc(d.eq)}</td><td><span class="pst2 ${d.st}">${stT[d.st]}</span></td><td class="n">${f(d.n, 0)}</td><td class="n">${f(d.qty, 0)}</td>
+            <td class="n">${d.bad == null ? '—' : f(d.bad, 0)}</td><td class="n">${rateTxt(d.rate)}</td><td class="n">${d.al.length}</td><td>${esc(d.kpi || '—')}</td></tr>`; }).join('')}</tbody></table></div></div>
+    <div class="card"><h2>LOT 흐름 <span class="h2sub">최근 열처리 LOT 기준 앞뒤 공정 연결</span><a class="more" href="#" data-go="trace">LOT 추적 →</a></h2>
+      <div class="tbx"><table class="tb lftab"><thead><tr><th>소재 LOT</th><th>프레스</th><th>점용접</th><th>열처리</th><th>MCT 가공</th><th>정밀 검사</th><th>출하</th></tr></thead>
+        <tbody>${chain.map(r => `<tr><td>${lc(r.mat)}</td><td>${lc(r.press)}</td><td>${lc(r.weld)}</td>
+          <td><a href="#" data-trace="${esc(r.h.id)}"><b>${esc(r.h.id)}</b></a><div class="muted sm1">${f(r.h.qty, 0)}개 · ${f(r.h.ppm, 0)} PPM</div></td>
+          <td>${lc(r.mach)}</td><td>${lc(r.insp)}</td><td><span class="ost ${r.ship.lv}">${esc(r.ship.t)}</span></td></tr>`).join('')}</tbody></table></div></div>`;
+  };
+
   M.flow = { book, stages, STAGE };
   M.mod({
     id: 'flow', group: '대시보드', order: -1,
-    menu: [['overview', '종합 현황', 'home'], ['orders', '수주 현황', 'deal']],
+    menu: [['overview', '종합 현황', 'home'], ['orders', '수주 현황', 'deal'], ['procmap', '전체 공정', 'trace']],
     views: V,
     drawers: { 'ord:': orderDrawer },
     bind(root) {

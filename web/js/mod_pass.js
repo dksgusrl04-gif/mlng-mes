@@ -117,7 +117,7 @@
       <div class="kpi"><div class="lab">발행한 여권</div><div class="val">${n}<small>건</small></div><div class="foot">출하 LOT 단위 · 우리 회사 서명</div></div>
       <div class="kpi click" data-row="ctr:${esc((T.contracts.find(c => c.provider === 'MLNG' && c.scopes.includes('lot_passport') && T.contractState(c) === 'active') || {}).id || '')}"><div class="lab">여권 공유 계약</div><div class="val">${T.contracts.filter(c => c.provider === 'MLNG' && c.scopes.includes('lot_passport') && T.contractState(c) === 'active').length}<small>곳</small></div><div class="foot">계약된 고객사만 조회 가능</div></div>
       <div class="kpi"><div class="lab">이 여권 검증</div><div class="val" style="color:${vres ? (vres.ok ? 'var(--ok)' : 'var(--danger-ink)') : 'inherit'}">${vres ? (vres.ok ? '진본' : '위변조') : '—'}</div><div class="foot">${vres ? `사슬 ${vres.steps.filter(s => s.ok).length}/${vres.steps.length} · 서명 ${vres.sig.ok ? '일치' : '불일치'}` : '「검증」을 누르세요'}</div></div>
-      <div class="kpi"><div class="lab">부품 1개당 탄소</div><div class="val">${p && p.pcf ? f(p.pcf.total * 1000, 0) : '—'}<small>gCO₂e</small></div><div class="foot">소재 포함 · 추정값</div></div>
+      <div class="kpi"><div class="lab">부품 1개당 탄소${M.asmTag ? M.asmTag('pcf') : ''}</div><div class="val">${p && p.pcf ? f(p.pcf.total * 1000, 0) : '—'}<small>gCO₂e</small></div><div class="foot">소재 포함 · 추정값</div></div>
     </div>
     <div class="card"><div class="tools"><select class="in" id="pp-lot" style="min-width:300px">${lots.map(l => `<option value="${esc(l.id)}" ${l.id === cur ? 'selected' : ''}>${esc(l.id)} · ${esc(l.date)} · ${f(l.qty, 0)}개${PP[l.id] ? ' · 발행됨' : ''}</option>`).join('')}</select>
       ${p ? `<button class="btn pri sm" id="pp-verify">검증</button>${tamp ? '<button class="btn sm" id="pp-untamp">원래대로</button>' : '<button class="btn sm" id="pp-tamp">위변조 시험</button>'}
@@ -209,7 +209,7 @@
     const avg = rows.length ? rows.reduce((s, r) => s + r.total, 0) / rows.length : 0, keys = Object.keys((rows[0] || { part: {} }).part);
     const pAvg = k => rows.reduce((s, r) => s + r.part[k], 0) / Math.max(1, rows.length);
     return `<div class="kstrip">
-      <div class="kpi"><div class="lab">부품 1개당 (평균)</div><div class="val">${f(avg * 1000, 0)}<small>gCO₂e</small></div><div class="foot">최근 ${rows.length}개 LOT · 소재 포함</div></div>
+      <div class="kpi"><div class="lab">부품 1개당 (평균)${M.asmTag ? M.asmTag('pcf') : ''}</div><div class="val">${f(avg * 1000, 0)}<small>gCO₂e</small></div><div class="foot">최근 ${rows.length}개 LOT · 소재 포함</div></div>
       <div class="kpi"><div class="lab">공정 배출만</div><div class="val">${f((avg - pAvg('소재')) * 1000, 1)}<small>g</small></div><div class="foot">우리 공장 에너지분</div></div>
       <div class="kpi"><div class="lab">가장 큰 공정</div><div class="val">${esc(keys.filter(k => k !== '소재').sort((a, b) => pAvg(b) - pAvg(a))[0] || '—')}</div><div class="foot">감축 우선 대상</div></div>
       <div class="kpi click" data-row="ctr:${esc((T.contracts.find(x => x.scopes.includes('pcf') && x.consumer === 'OEM-A') || {}).id || '')}"><div class="lab">완성차 보고</div><div class="val">${T.contracts.some(x => x.scopes.includes('pcf') && x.consumer === 'OEM-A' && T.contractState(x) === 'active') ? '연결' : '서명 대기'}</div><div class="foot">디지털 제품 여권 · 탄소 보고</div></div>

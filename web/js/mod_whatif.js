@@ -91,7 +91,7 @@
       <div class="kpi"><div class="lab">하루 산출</div><div class="val">${f(R.out, 0)}<small>개</small></div><div class="foot">${dv(R.out, B.out, 0)} · 병목 ${esc(nm(R.lim.p))} (능력 기준)${MR ? ` · 실적 흔들림 반영 P10~P90 ${f(MR.p10, 0)}~${f(MR.p90, 0)} · 목표 달성 확률 ${pct(MR.pMeet, 0)}` : ''}</div></div>
       <div class="kpi"><div class="lab">하루 판단 이익</div><div class="val" style="color:${R.profit >= B.profit ? 'var(--ok)' : 'var(--danger-ink)'}">${DX.wonShort(R.profit)}<small>원</small></div><div class="foot">지금 대비 ${dv(R.profit, B.profit, 'won')}원</div></div>
       <div class="kpi"><div class="lab">고객 발주</div><div class="val" style="color:${R.ok ? 'var(--ok)' : feasible(R, B) ? 'var(--warn-ink)' : 'var(--danger-ink)'};font-size:${R.ok ? '' : '17px'}">${R.ok ? '충족' : feasible(R, B) ? '지금도 위반' : '새로 위반'}</div><div class="foot">${R.checks.map(c => `${c.ok ? '✓' : '✕'} ${c.t} ${c.v}`).join(' · ') || '활성 계약 없음'}${!R.ok && feasible(R, B) ? ' — 손잡이로 바뀌지 않는 조항은 출하 승인이 LOT 단위로 거릅니다' : ''}</div></div>
-      <div class="kpi"><div class="lab">부품 1개당 탄소</div><div class="val">${R.pcfG != null ? f(R.pcfG, 0) : '—'}<small>g</small></div><div class="foot">지금 ${B.pcfG != null ? f(B.pcfG, 0) : '—'} g</div></div>
+      <div class="kpi"><div class="lab">부품 1개당 탄소${M.asmTag ? M.asmTag('pcf') : ''}</div><div class="val">${R.pcfG != null ? f(R.pcfG, 0) : '—'}<small>g</small></div><div class="foot">지금 ${B.pcfG != null ? f(B.pcfG, 0) : '—'} g</div></div>
     </div>
     <div class="card"><h2>조정 변수 <span class="h2sub">값을 바꾸면 아래가 바로 다시 계산됩니다 — 실제 라인은 「계획으로 적용」 전까지 그대로</span>
       <span class="more" style="display:flex;gap:6px"><button class="btn sm" id="wi-reset">지금 값으로</button><button class="btn sm" id="wi-save" ${saved.length >= 3 ? 'disabled' : ''}>시나리오 저장</button><button class="btn sm" id="wi-opt">최적 찾기</button><button class="btn pri sm" id="wi-apply">계획으로 적용</button></span></h2>
@@ -108,7 +108,7 @@
       ${msg ? `<p class="note">${msg}</p>` : ''}
       ${best ? `<div class="cnext"><b>최적 조합</b> 프레스 ${best.s.press}% · 용접기 ${best.s.weld}대 · 열처리 ${best.s.heat}% · VB ${f(best.s.vb, 2)} · 히터 ${best.s.heater ? '정비' : '그대로'} · 열처리 이탈 ${best.s.dev}% → 산출 ${f(best.out, 0)}개 · 이익 ${DX.won(best.profit)}/일 (지금 대비 ${dv(best.profit, B.profit, 'won')}원) <button class="btn pri sm" id="wi-usebest">이 조합 넣기</button></div>` : ''}</div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
-      <div class="card"><h2>현재 대비 변경안 <span class="h2sub">하루 기준</span></h2>
+      <div class="card"><h2>현재 대비 변경안 ${M.asmTag ? M.asmTag('loss', 'opp') : ''}<span class="h2sub">하루 기준</span></h2>
         <table class="tb"><thead><tr><th></th><th class="n">지금</th><th class="n">바꾸면</th><th class="n">차이</th></tr></thead><tbody>
           ${row('하루 산출 (개, 능력 기준)', B.out, R.out, 0, 1)}
           ${MB && MR ? row('하루 산출 중앙값 (몬테카를로)', MB.p50, MR.p50, 0, 1) + row('목표 달성 확률 (%)', MB.pMeet * 100, MR.pMeet * 100, 0, 1) : ''}

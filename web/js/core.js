@@ -163,6 +163,7 @@
     { id: 'mat', t: '자재 · 구매', i: 'cart', tabs: [['buy_home', '구매 요청'], ['buy_orders', '발주 승인']] },
     { id: 'plan', t: '생산 계획', i: 'range', tabs: [['plan_home', '생산 계획'], ['plan_wo', '작업지시'], ['line', '라인 밸런스'], ['whatif', '계획 시뮬레이션'], ['sync', '수급 계획']] },
     { id: 'proc', t: '공정 실적', i: 'gauge', tabs: [
+      ['procmap', '전체 공정'],
       ['press_home', '프레스', [['press_home', '현황'], ['press_lots', '작업 실적'], ['press_recipe', '공정 조건'], ['press_equip', '설비']]],
       ['weld_home', '점용접', [['weld_home', '현황'], ['weld_days', '작업 실적'], ['weld_window', '공정 조건'], ['weld_queue', '검사 우선순위']]],
       ['heat_home', '열처리', [['heat_home', '현황'], ['heat_lots', '작업 실적'], ['heat_recipe', '공정 조건'], ['heat_equip', '설비']]],
@@ -174,7 +175,7 @@
     ['분석', [['cost', '품질 비용(COPQ)'], ['replay', '과거 시점 조회'], ['models', 'AI 모델 상태'], ['prove', 'AI 판정 이력']]],
     ['AI', [['ask', 'AI 질의응답'], ['agent', 'AI 자동 조치'], ['fed', '공동 학습']]],
     ['데이터 신뢰', [['net_contracts', '데이터 공유 계약'], ['net_ledger', '신뢰 원장'], ['net_security', '보안 구조'], ['pass_cred', '공정 능력 성적서'], ['pass_pcf', '탄소 배출량(PCF)']]],
-    ['시스템', [['masters', '기준 정보'], ['data', '데이터 상태']]],
+    ['시스템', [['assume', '가정값 관리'], ['masters', '기준 정보'], ['data', '데이터 상태']]],
   ];
   const keysOf = tab => tab[2] ? tab[2].map(x => x[0]) : [tab[0]];
   // 화면 키 → { item, tab, sub, title } (메뉴 강조 · 제목 · 탭 그리기에 같이 쓴다)
@@ -184,7 +185,7 @@
     return null;
   };
   function moreGroups() {
-    const known = new Set([].concat(...M.NAV.map(it => [].concat(...it.tabs.map(keysOf)))), ...M.NAV_MORE.map(([, xs]) => xs.map(x => x[0])));
+    const known = new Set([].concat(...M.NAV.map(it => [].concat(...it.tabs.map(keysOf))), ...M.NAV_MORE.map(([, xs]) => xs.map(x => x[0]))));
     const vs = M.views(), rest = [];
     M.mods.forEach(m => (m.menu || []).forEach(([k, t]) => { if (!known.has(k) && vs[k]) rest.push([k, t]); }));
     return M.NAV_MORE.map(([g, xs]) => [g, xs.filter(x => vs[x[0]])]).concat(rest.length ? [['기타', rest]] : []).filter(([, xs]) => xs.length);

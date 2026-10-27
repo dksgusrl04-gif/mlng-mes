@@ -67,7 +67,19 @@ const ok = (c, m) => { if (c) pass++; else fails.push(m); console.log(`${c ? '�
   ok(await ev(() => MLNG.flow.book().orders.every(o => o.lots.every(l => MLNG.S.heat.lots.some(h => h.id === l.id)))), '주문은 실제 열처리 LOT 에 묶임');
   await go('orders'); await W(); await p.click('#view tr.click'); await W(300); ok(await ev(() => /수주 OR-/.test(document.querySelector('#dttl').textContent)), '주문 상세 서랍');
   await ev(() => MLNG.closeDrawer());
-  ok(await ev(() => { MLNG.go('heat_lots'); return document.querySelectorAll('#tabs .tabs button').length === 4 && document.querySelectorAll('#tabs .subtabs button').length === 4; }), '공정 실적: 공정 탭 + 세부 탭');
+  ok(await ev(() => { MLNG.go('heat_lots'); return document.querySelectorAll('#tabs .tabs button').length === 5 && document.querySelectorAll('#tabs .subtabs button').length === 4; }), '공정 실적: 전체 공정 + 공정 탭 + 세부 탭');
+
+  // 5.3 가정값 관리 · 전체 공정
+  ok(await ev(() => !document.querySelector('#nav .nsub').textContent.includes('기타')), '더보기에 중복 «기타» 없음');
+  ok(await ev(() => /가정 포함/.test((MLNG.go('cost'), document.querySelector('#view').innerText))), '손실 금액에 「가정 포함」 표시');
+  const w0 = await ev(() => MLNG.gate.predict(MLNG.gate.candidates()[0].id).claimCost);
+  await go('assume'); await W(); await p.fill('[data-ap="COST.CLAIM_FIXED"]', '1000000'); await p.click('#as-save'); await W(500);
+  ok(await ev(() => MLNG.CFG.COST.CLAIM_FIXED === 1000000), '가정값 저장 → 설정 반영');
+  ok(await p.evaluate(w0 => MLNG.gate.predict(MLNG.gate.candidates()[0].id).claimCost > w0, w0), '가정값 바꾸면 클레임 비용 · 출하 판정 다시 계산');
+  ok(await ev(() => MLNGTrust.ledger.some(e => e.kind === 'config')), '가정값 변경이 신뢰 원장에 기록');
+  await p.click('#as-reset'); await W(500); ok(await ev(() => MLNG.CFG.COST.CLAIM_FIXED === 500000), '기본값으로 되돌리기');
+  await go('procmap'); await W(); ok(await ev(() => document.querySelectorAll('.pmap .pnode').length === 7 && document.querySelectorAll('.lftab tbody tr').length > 0), '전체 공정 흐름 7단계 + LOT 흐름');
+  ok(await ev(() => { const t = [...document.querySelectorAll('.pmap .pnode')].map(n => n.getBoundingClientRect()); return t.every(r => Math.abs(r.top - t[0].top) < 1 && Math.abs(r.height - t[0].height) < 1); }), '공정 카드 위·높이 맞춤');
 
   // 끝: 모든 동작 뒤에도 원장이 온전한가
   await go('net_ledger'); await W(); await p.click('#lg-verify'); await W(1000); ok(/모두 사슬과 서명이 맞습니다/.test(await note()), '모든 시나리오 뒤 원장 검증');
