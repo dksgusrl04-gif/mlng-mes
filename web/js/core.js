@@ -161,7 +161,7 @@
     { id: 'home', t: '대시보드', i: 'home', tabs: [['overview', '종합 현황'], ['alerts', '알람 이력'], ['shift', '교대 인수인계']] },
     { id: 'order', t: '수주', i: 'deal', tabs: [['orders', '수주 현황'], ['deal_home', '고객 발주 · 납품']] },
     { id: 'mat', t: '자재 · 구매', i: 'cart', tabs: [['buy_home', '구매 요청'], ['buy_orders', '발주 승인']] },
-    { id: 'plan', t: '생산 계획', i: 'range', tabs: [['plan_home', '생산 계획'], ['plan_wo', '작업지시'], ['line', '라인 밸런스'], ['whatif', '계획 시뮬레이션'], ['sync', '수급 계획']] },
+    { id: 'plan', t: '생산 계획', i: 'range', tabs: [['line', '라인 밸런스'], ['plan_home', '생산 계획'], ['plan_wo', '작업지시'], ['whatif', '계획 시뮬레이션'], ['sync', '수급 계획']] },
     { id: 'proc', t: '공정 실적', i: 'gauge', tabs: [
       ['procmap', '전체 공정'],
       ['press_home', '프레스', [['press_home', '현황'], ['press_lots', '작업 실적'], ['press_recipe', '공정 조건'], ['press_equip', '설비']]],

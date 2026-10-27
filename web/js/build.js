@@ -1,10 +1,10 @@
 /* 자동 생성 — tools/stamp_version.py. 손으로 고치지 않는다 */
 window.MLNG_BUILD = {
- "hash": "1de3ad3061997797bd90a919baa9a37c5f310ef71a9adf8bb41a32d1f2cf2ae9",
+ "hash": "fe3bb48b5423ae500cba6f261ec92c844482df69049534e563d71e4af404218e",
  "files": {
   "js/config.js": "2e2e263fccc9c161",
   "js/data.js": "2500a1d2d8d1e8ae",
-  "js/core.js": "2975efba9b098cf2",
+  "js/core.js": "ee11ffc4a56c4cd6",
   "js/mod_common.js": "0737f341d8a133de",
   "js/mod_line.js": "3bfe192c8fdb99ea",
   "js/mod_press.js": "6e820f8a7f9879dd",
