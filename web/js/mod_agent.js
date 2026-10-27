@@ -72,6 +72,10 @@
     return ps.length;
   }
   T.agentScan = scan;
+  // 다른 화면(질의응답 · 사건실)에서 조치안을 만들어 넣는다 — 정책에 따라 승인 대기 또는 자동 실행
+  T.agentAdd = async (kind, act, why, exec, trig) => { const it = Object.assign({ id: `AG-${String(++seq).padStart(3, '0')}`, at: T.stamp(), key: kind + ':' + act + seq, kind, act, why, exec, trig: trig || { title: '질의응답 지시', go: 'ask' }, mode: pol[kind], status: pol[kind] === 'suggest' ? 'suggested' : 'pending' });
+    Q.items.unshift(it); if (it.mode === 'auto') await run(it); return it; };
+  T.agentRun = async (id, by) => { const it = Q.items.find(x => x.id === id); if (!it) throw new Error('조치안 없음'); if (it.status === 'done') return it.result; it.approvedBy = by || M.D.user().name; await run(it); return it.result; };
   T.onInit(async () => { await scan(); });
   // 실시간 반영이 켜져 있으면 1분마다 다시 점검
   setInterval(() => { if (T.ready && Q.autoOn && M.live && M.live.on() && M.D.LIVE) scan().then(n => { if (n && M.cur === 'agent') M.render(); }); }, 60000);

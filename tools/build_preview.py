@@ -22,7 +22,7 @@ def main():
     cfg = read('js/config.js')
     cfg = re.sub(r"SUPABASE_URL: '[^']*'", "SUPABASE_URL: ''", cfg)       # 미리보기는 언제나 데모 모드
     cfg = re.sub(r"SUPABASE_ANON_KEY: '[^']*'", "SUPABASE_ANON_KEY: ''", cfg)
-    js = ['data.js', 'core.js', 'mod_common.js', 'mod_line.js', 'mod_press.js', 'mod_weld.js', 'mod_heat.js', 'mod_mach.js', 'mod_insp.js', 'mod_plan.js', 'catalog.js', 'mod_buy.js', 'mod_ask.js', 'vendor/qrcode.js', 'trust.js', 'mod_net.js', 'mod_pass.js', 'mod_deal.js', 'mod_agent.js', 'mod_sync.js', 'mod_fed.js', 'boot.js']
+    js = ['data.js', 'core.js', 'mod_common.js', 'mod_line.js', 'mod_press.js', 'mod_weld.js', 'mod_heat.js', 'mod_mach.js', 'mod_insp.js', 'mod_plan.js', 'catalog.js', 'mod_buy.js', 'mod_ask.js', 'vendor/qrcode.js', 'trust.js', 'mod_net.js', 'mod_pass.js', 'mod_deal.js', 'mod_agent.js', 'mod_sync.js', 'mod_fed.js', 'decide.js', 'mod_gate.js', 'mod_case.js', 'mod_cost.js', 'mod_whatif.js', 'mod_replay.js', 'mod_shift.js', 'mod_palette.js', 'boot.js']
     scripts = (f'<script>\n{cfg}\n</script>\n<script>window.MLNG_DEMO = {json.dumps(demo, ensure_ascii=False, separators=(",", ":"))};</script>\n'
                + '\n'.join(f'<script>\n{read("js/" + j)}\n</script>' for j in js))
     html = re.sub(r'<script src="js/config\.js(\?v=\d+)?"></script>.*<script src="js/boot\.js(\?v=\d+)?"></script>', lambda m: scripts, html, flags=re.S)

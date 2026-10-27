@@ -58,6 +58,26 @@ window.MLNG_CONFIG = {
     HEAT_ZONE_KW: { op1: 60, op2: 60, op3: 60, op4: 60, opd1: 20, opd2: 20 },   // 열처리 존별 정격 kW
     PRESS_KWH_PER_STROKE: 0.0022, WELD_KWH_PER_SPOT: 0.0015, SPOTS_PER_PART: 2, MACH_KW: 7.5, INSP_KWH_PER_PART: 0.002,
   },
+  // 3.0 돈으로 보는 공장 — 모두 예시값. 회사 원가표·전기요금·배출권 가격으로 바꿔 쓴다
+  COST: {
+    PRICE: 420,               // 브래킷 판매 단가 (원/개)
+    MARGIN: 120,              // 공헌이익 (원/개) = 단가 − 재료비 − 변동 가공비 → 못 만든 1개의 기회 손실
+    SCRAP: { press: 160, weld: 185, heat: 230, mach: 1800, insp: 1800 },   // 그 공정에서 불량 1개 = 그때까지 들어간 재료·가공비 (원)
+    MACH_PART_PRICE: 2600,    // 가공 사양 부품 단가 (원/개) — 검사 보류 묶임 금액
+    INSERT: 12000,            // 페이스커터 인서트 1개 (원)
+    KWH: 140,                 // 산업용 전기 요금 (원/kWh)
+    INSP_PART: 350,           // 부품 1개 전수 측정 비용 (원)
+    OVERWEAR_DEFECT: 0.08,    // 교체 기준을 넘긴 공구로 가공한 부품의 불량 비율 (가정)
+    CLAIM_FIXED: 500000,      // 클레임 1건 대응 고정비 (원)
+    CLAIM_PER_PART: 12,       // 클레임 LOT 선별·재검사 비용 (원/개)
+    STOP_H: 4,                // 설비 고장 시 정지 시간 (h)
+    STOP_P: 0.3,              // 진동 이상이 방치되면 고장으로 이어질 확률 (가정)
+    MAINT: 250000,            // 설비 점검 1회 (원)
+    PLAN_PRICE: 3000,         // 계획 품목(기어) 1개 결품 손실 (원)
+    CO2_WON: 10,              // 탄소 비용 (원/kgCO2e, 배출권 가격 예시)
+  },
+  // 3.0 교대 — 주간 시작 시각 (12시간 2교대)
+  SHIFT: { DAY_START: 8, HOURS: 12 },
   // 2.0 공급망 동기 계획 — 다른 회사 능력은 데이터 계약으로 받는 값 (데모는 예시값)
   SYNC: { SEATS_PER_VEHICLE: 2, BRACKETS_PER_SEAT: 2, B_SEAT_CAP: 26000, STEEL_KG: 0.35, STEEL_YIELD: 0.72, D_STEEL_TPD: 22 },
   // 질의응답 (Claude API) — 키는 Supabase Edge Function 에만 둔다 (supabase/functions/mlng-ask)

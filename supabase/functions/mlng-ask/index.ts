@@ -43,6 +43,8 @@ const SYSTEM = `당신은 MLNG MES(중소 제조 모듈형 MES)의 공정 분석
 - 질문에 답하려면 어떤 도구가 필요한지 먼저 생각하고, 필요한 것만 조회한다. 여러 공정이 얽힌 질문은 각 공정을 조회한 뒤 연결해서 설명한다.
 - 원인을 말할 때는 "후보" 로 말하고, 근거가 된 알림·값을 함께 든다.
 - 조치가 필요하면 무엇을 먼저 할지 한 줄로 제안한다 (예: 어느 화면을 보라, 어떤 발주가 결재 대기다).
+- 3.0: 우선순위는 돈(money_overview·cases 의 금액)으로 판단하고, 사용자가 «해줘·올려줘·보류해» 처럼 지시하면 propose_action 으로 제안 카드를 만든다. 실행은 사용자가 승인해야 된다고 말한다.
+- «만약 ~하면» 질문은 what_if 로 계산한 숫자로 답하고, 가정이 들어간 값은 가정이라고 밝힌다.
 - 한국어로, 결론을 첫 줄에. 5~7줄 안쪽. 머리말·맺음말은 쓰지 않는다. 강조는 **굵게** 만 쓴다.`;
 
 // 도구 — 이름·입력은 web/js/mod_ask.js 의 TOOLS 와 같아야 한다
@@ -56,6 +58,12 @@ const TOOLS = [
   { name: 'plan_status', description: '생산 계획 품목별 마감 재고, 최근 7일 평균 수주·생산', input_schema: { type: 'object', properties: {} } },
   { name: 'purchase_orders', description: '발주 목록(품목·수량·결재 단계·상태)과 최근 활동 기록. status: pending(결재 대기) · approved(결재 완료·미입고) · received(입고 완료)', input_schema: { type: 'object', properties: { status: { type: 'string', enum: ['pending', 'approved', 'received'] } } } },
   { name: 'buy_recommendations', description: '알림·사용량에서 계산한 발주 추천 품목(수량·사유)과 공구 주문에 등록된 전체 품목 목록', input_schema: { type: 'object', properties: {} } },
+  { name: 'money_overview', description: '3.0 돈 환산: 30일 품질 손실(COPQ)과 매출 대비 비율, 공정별 손실, 매일 새는 돈(히터 낭비 전력), 라인 기회 손실, 금액이 큰 알림 순위와 계산 근거', input_schema: { type: 'object', properties: {} } },
+  { name: 'cases', description: '3.0 사건실: 알림을 묶은 사건 목록(단계·금액·영향 LOT·다음 조치). case_id 를 주면 영향 LOT·원인 후보(근거 강도)·조치 목록·처음 징후', input_schema: { type: 'object', properties: { case_id: { type: 'string', description: '예: CS-HEAT-220706' } } } },
+  { name: 'ship_gate', description: '3.0 출하 게이트: 출하 대기 LOT 마다 고객 계약 조항 미리 판정(만족·근접·미달), 보류 권고 사유, 다음 LOT 기준 초과 확률', input_schema: { type: 'object', properties: {} } },
+  { name: 'what_if', description: '3.0 What-if: 손잡이를 바꿨을 때 하루 산출·병목·판단 이익·불량·인서트 비용·탄소·계약 충족을 지금과 비교. 생략한 손잡이는 지금 값', input_schema: { type: 'object', properties: { target: { type: 'number', description: '목표 산출 개/일' }, press: { type: 'number', description: '프레스 속도 % (70~130)' }, weld: { type: 'number', description: '점용접기 대수 1~3' }, heat: { type: 'number', description: '열처리 가동 % (80~130)' }, vb: { type: 'number', description: '공구 교체 기준 VB mm (0.25~0.7)' }, heater: { type: 'boolean', description: '소입로 히터 정비 여부' }, dev: { type: 'number', description: '열처리 설정값 이탈 작업 비율 % (0~40)' } } } },
+  { name: 'shift_brief', description: '3.0 교대 인수인계: 이번 교대 생산·새 알림·열린 사건·다음 교대가 꼭 할 일', input_schema: { type: 'object', properties: {} } },
+  { name: 'propose_action', description: '조치를 «제안 카드» 로 화면에 올린다. 사용자가 승인 버튼을 눌러야 실행된다(직접 실행 불가). kind: case_action(case_id, action_id) · maint(target 설비·구역, reason — 에이전트 점검 조치안) · hold_lot(lot, reason) · release_lot(lot) · ship_lot(lot) · purchase(items=등록 품목 코드 배열, reason) · whatif_apply(levers)', input_schema: { type: 'object', properties: { kind: { type: 'string', enum: ['case_action', 'maint', 'hold_lot', 'release_lot', 'ship_lot', 'purchase', 'whatif_apply'] }, case_id: { type: 'string' }, action_id: { type: 'string' }, target: { type: 'string' }, lot: { type: 'string' }, items: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' }, levers: { type: 'object' } }, required: ['kind'] } },
   { name: 'trust_network', description: '2.0 연결·신뢰 계층: 회사 간 데이터 공유 계약(상태·접근 기록), 스마트 발주(자동 검수 합격·클레임), LOT 디지털 여권(단계·탄소), 공정 능력 증명서, AI 에이전트 승인 대기 조치, 신뢰 원장 검증 결과. part 로 일부만 조회', input_schema: { type: 'object', properties: { part: { type: 'string', enum: ['all', 'contracts', 'orders', 'passports', 'credentials', 'agent', 'ledger'] } } } },
 ];
 

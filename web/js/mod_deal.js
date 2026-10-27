@@ -44,6 +44,7 @@
     return d;
   }
   T.dealEvaluate = evaluate;
+  T.dealCL = CL; T.dealFmt = fmtV;
 
   async function newOrder(o, sellerSign) {
     const so = Object.assign({ id: `SO-${today().slice(2, 7).replace('-', '')}-${String(SO.length + 1).padStart(2, '0')}`, buyer: 'T1-B', seller: 'MLNG', deliveries: [], signs: {}, created: T.stamp() }, o);

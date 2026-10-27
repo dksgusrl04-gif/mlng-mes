@@ -31,6 +31,7 @@
     });
   }
 
+  M.heatApi = { heaterDrift: () => heaterDrift(), target: () => target() };
   // ── 현장 알림
   function alerts() {
     const out = [], t = target(), rl = recent(), at = M.S.asof;

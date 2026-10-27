@@ -82,6 +82,9 @@
     return p;
   }
   T.issuePassport = issue;
+  // 3.0 출하 게이트: 원장에 남기지 않고 여권 내용만 미리 계산
+  T.passportPreview = hid => { const { steps, qty } = stepsOf(hid); return { id: 'PP-' + hid, lot: hid, steps, qty, pcf: pcf(hid) }; };
+  M.heatDev = heatDev;
   // 검증: 사슬 다시 계산 → 루트 비교 → 회사 서명 → 소재 성적서 서명
   async function verify(p) {
     const res = [], copy = JSON.parse(JSON.stringify(p.steps));

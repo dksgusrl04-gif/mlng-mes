@@ -20,7 +20,8 @@
 
   // ── 형식
   M.esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  M.f = (v, d = 1) => (v == null || v === '' || isNaN(v)) ? '—' : Number(v).toLocaleString('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const NF = {};   // 숫자 형식기는 자릿수별로 한 번만 만든다 (toLocaleString 은 호출마다 새로 만들어 느림)
+  M.f = (v, d = 1) => (v == null || v === '' || isNaN(v)) ? '—' : (NF[d] || (NF[d] = new Intl.NumberFormat('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d }))).format(Number(v));
   M.pct = (v, d = 1) => (v == null || isNaN(v)) ? '—' : (Number(v) * 100).toFixed(d) + '%';
   M.median = a => { const b = a.filter(x => x != null && !isNaN(x)).sort((x, y) => x - y); if (!b.length) return null; const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
   M.toDate = s => new Date(String(s || '').replace(' ', 'T'));
@@ -31,7 +32,7 @@
   const { esc, f } = M;
 
   // ── 공정 표시
-  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획', buy: '구매', net: '연결', deal: '스마트 발주', agent: '에이전트' };
+  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획', buy: '구매', net: '연결', deal: '스마트 발주', agent: '에이전트', gate: '출하 게이트', case: '사건' };
   M.procTag = p => `<span class="proc p-${esc(p)}">${esc(M.PROC[p] || p)}</span>`;
   M.tag = (t, cls) => `<span class="tag ${cls || 't-' + esc(t)}">${esc(t)}</span>`;
   M.dot = (st, t) => `<span class="dot ${st}"></span>${esc(t)}`;
@@ -58,6 +59,12 @@
     agent: '<rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9 15h6"/>',
     sync: '<path d="M20 11a8 8 0 0 0-14-5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 5l2-2"/><path d="M20 20v-4h-4"/>',
     fed: '<circle cx="12" cy="12" r="3"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/><path d="M6 7l4 3M18 7l-4 3M6 17l4-3M18 17l-4-3"/>',
+    case: '<path d="M4 7h16v12H4z"/><path d="M9 7V5h6v2"/><path d="M4 12h16"/><path d="M11 12v2h2v-2"/>',
+    won: '<path d="M4 6l3 12 5-10 5 10 3-12"/><path d="M3 10h18M3 14h18"/>',
+    gate: '<path d="M3 21V8l9-5 9 5v13"/><path d="M8 21v-8h8v8"/><path d="M8 17h8"/>',
+    whatif: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+    replay: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+    shift: '<circle cx="8" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20c0-4 3-6 6-6s6 2 6 6"/><path d="M14 15c2.5-.8 7 0 7 4"/>',
   };
   M.ic = k => `<svg class="ic" viewBox="0 0 24 24">${IC[k] || ''}</svg>`;
 
@@ -76,7 +83,18 @@
   M.inspections = () => D.LIVE ? (M.S.inspections || []) : D.demoInspections();
 
   // 알림 = 저장된 알림(mlng_alerts) + 각 모듈이 데이터에서 찾은 현장 알림
+  let alertCache = null;   // 한 번 그리는 동안 여러 곳에서 부르므로 같은 작업 안에서는 한 번만 계산
+  let computing = false;   // 알림 계산 중에 다른 모듈이 다시 알림을 부르면(사건·출하 게이트) 빈 목록 — 무한 반복 방지
   M.alerts = () => {
+    if (alertCache) return alertCache.slice();
+    if (computing) return [];
+    computing = true; try { alertCache = computeAlerts(); } finally { computing = false; } queueMicrotask(() => { alertCache = null; });
+    return alertCache.slice();
+  };
+  // 3.0 공장 되감기: 데이터를 그 시점까지로 자른 S 로 알림을 다시 계산 (화면의 M.S 는 잠시 바꿨다가 되돌린다)
+  M.withS = (S2, fn) => { const keep = M.S; M.S = S2; try { return fn(); } finally { M.S = keep; } };
+  M.alertsFor = S2 => M.withS(S2, () => computeAlerts());
+  const computeAlerts = () => {
     const rank = { danger: 0, warn: 1, info: 2 };
     const stored = (M.S.alerts || []).map(a => Object.assign({ proc: a.proc || 'data' }, a));
     const found = [].concat(...M.mods.map(m => { try { return m.alerts ? m.alerts(M.S) : []; } catch (e) { console.warn(e); return []; } }));
@@ -132,6 +150,13 @@
   };
 
   // ── 왼쪽 기둥
+  function pill() {   // 통합 알림의 긴급 개수만 갱신
+    const b = $('#nav button[data-k="alerts"]'); if (!b) return;
+    const n = M.alerts().filter(a => a.level === 'danger').length; let el = b.querySelector('.pill-n');
+    if (!n) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('span'); el.className = 'pill-n'; b.appendChild(el); }
+    if (el.textContent !== String(n)) el.textContent = n;
+  }
   function rail() {
     const n = M.alerts().filter(a => a.level === 'danger').length;
     const groups = [];
@@ -148,13 +173,14 @@
     const u = D.user();
     $('#who').textContent = u ? `${u.name} · ${u.role === 'manager' ? '관리자' : '작업자'}` : '';
   }
-  M.go = k => { M.cur = k; rail(); M.render(); $('#view').scrollTop = 0; };
+  // 메뉴는 다시 그리지 않고 선택 표시만 옮긴다 (메뉴 40여 개를 매번 새로 그리면 글자 배치에 시간이 든다)
+  M.go = k => { M.cur = k; const nav = $('#nav'); if (nav && nav.firstChild) nav.querySelectorAll('button[data-k]').forEach(b => b.classList.toggle('on', b.dataset.k === k)); else rail(); M.render(); $('#view').scrollTop = 0; };
 
   M.render = () => {
     let title = M.cur, grp = '';
     M.mods.forEach(m => (m.menu || []).forEach(([k, t, , g]) => { if (k === M.cur) { title = t; grp = g || m.group; } }));
     $('#ttl').textContent = title; $('#crumb').textContent = grp;
-    updBar();
+    updBar(); pill();
     const v = M.views()[M.cur];
     $('#view').innerHTML = v ? v() : '';
     sideLayout($('#view'));
@@ -263,8 +289,10 @@
   M.start = async () => {
     if (D.needLogin()) { $('#login').style.display = 'flex'; return; }
     $('#login').style.display = 'none';
-    try { M.S = await D.load(); if (window.MLNGTrust) await window.MLNGTrust.init(); } catch (e) { $('#view').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 — ${esc(e.message)}</div>`; return; }
+    try { M.S = await D.load(); } catch (e) { $('#view').innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 — ${esc(e.message)}</div>`; return; }
     lastPull = D.LIVE ? new Date() : null; rail(); M.render(); setLive(liveOn);
+    // 2.0 신뢰 계층(키 생성·서명)은 첫 화면을 그린 뒤 이어서 준비 — 끝나면 다시 그린다
+    if (window.MLNGTrust) window.MLNGTrust.init().then(() => { rail(); M.render(); }).catch(e => console.warn('[trust]', e));
   };
   M.init = () => {
     $('#l-go').onclick = async () => { $('#l-err').textContent = ''; try { await D.login($('#l-id').value.trim(), $('#l-pw').value); M.start(); } catch (e) { $('#l-err').textContent = e.message; } };
