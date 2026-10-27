@@ -32,7 +32,7 @@
   const { esc, f } = M;
 
   // ── 공정 표시
-  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획', buy: '구매', net: '연결', deal: '스마트 발주', agent: '에이전트', gate: '출하 게이트', case: '사건' };
+  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획', buy: '구매', net: '연결', deal: '스마트 발주', agent: '에이전트', gate: '출하 판정', case: '품질 문제', flow: '주문' };
   M.procTag = p => `<span class="proc p-${esc(p)}">${esc(M.PROC[p] || p)}</span>`;
   M.tag = (t, cls) => `<span class="tag ${cls || 't-' + esc(t)}">${esc(t)}</span>`;
   M.dot = (st, t) => `<span class="dot ${st}"></span>${esc(t)}`;
@@ -155,54 +155,106 @@
     </svg>`;
   };
 
-  // ── 왼쪽 기둥
-  function pill() {   // 통합 알림의 긴급 개수만 갱신
-    const b = $('#nav button[data-k="alerts"]'); if (!b) return;
+  // ── 메뉴: 주문 → 자재 → 생산 → 품질 → 출하 흐름대로 7개. 화면은 메뉴 안의 탭, 세부는 작은 탭.
+  //   모듈이 만든 화면 중 여기 없는 것은 «더보기» 아래로 자동으로 들어간다 (아무 화면도 잃지 않는다).
+  M.NAV = [
+    { id: 'home', t: '대시보드', i: 'home', tabs: [['overview', '한눈에 보기'], ['alerts', '전체 알림'], ['shift', '교대 인수인계']] },
+    { id: 'order', t: '주문', i: 'deal', tabs: [['orders', '주문 현황'], ['deal_home', '고객 계약 · 납품']] },
+    { id: 'mat', t: '자재 · 구매', i: 'cart', tabs: [['buy_home', '공구 · 자재 주문'], ['buy_orders', '발주 결재']] },
+    { id: 'plan', t: '생산 계획', i: 'range', tabs: [['plan_home', '생산 계획'], ['plan_wo', '작업지시'], ['line', '라인 균형'], ['whatif', '계획 시뮬레이션'], ['sync', '공급망 계획']] },
+    { id: 'proc', t: '공정 실적', i: 'gauge', tabs: [
+      ['press_home', '프레스', [['press_home', '현황'], ['press_lots', '작업 실적'], ['press_recipe', '공정 조건'], ['press_equip', '설비']]],
+      ['weld_home', '점용접', [['weld_home', '현황'], ['weld_days', '작업 실적'], ['weld_window', '공정 조건'], ['weld_queue', '검사 우선순위']]],
+      ['heat_home', '열처리', [['heat_home', '현황'], ['heat_lots', '작업 실적'], ['heat_recipe', '공정 조건'], ['heat_equip', '설비']]],
+      ['mach_home', 'MCT 가공', [['mach_home', '현황'], ['mach_tools', '공구 수명'], ['mach_cond', '가공 조건']]]] },
+    { id: 'qual', t: '품질', i: 'check', tabs: [['cases', '품질 문제'], ['insp_home', '검사', [['insp_home', '현황'], ['insp_parts', '부품 이력'], ['insp_signal', '가공 신호']]], ['trace', 'LOT 추적'], ['pass_home', '품질 증명서']] },
+    { id: 'ship', t: '출하', i: 'gate', tabs: [['gate', '출하 판정']] },
+  ];
+  M.NAV_MORE = [
+    ['분석', [['cost', '손실 비용'], ['replay', '과거 시점 보기'], ['models', 'AI 모델 상태'], ['prove', '판단 기록']]],
+    ['AI', [['ask', 'AI 질의응답'], ['agent', 'AI 자동 조치'], ['fed', '공동 학습']]],
+    ['데이터 신뢰', [['net_contracts', '데이터 공유 계약'], ['net_ledger', '신뢰 원장'], ['net_security', '보안 구조'], ['pass_cred', '공정 능력 증명'], ['pass_pcf', '탄소 발자국']]],
+    ['시스템', [['masters', '기준 정보'], ['data', '데이터 상태']]],
+  ];
+  const keysOf = tab => tab[2] ? tab[2].map(x => x[0]) : [tab[0]];
+  // 화면 키 → { item, tab, sub, title } (메뉴 강조 · 제목 · 탭 그리기에 같이 쓴다)
+  M.where = k => {
+    for (const it of M.NAV) for (const tb of it.tabs) if (keysOf(tb).includes(k)) return { item: it, tab: tb, sub: tb[2] ? tb[2].find(x => x[0] === k) : null };
+    for (const [g, xs] of moreGroups()) for (const x of xs) if (x[0] === k) return { more: g, tab: x };
+    return null;
+  };
+  function moreGroups() {
+    const known = new Set([].concat(...M.NAV.map(it => [].concat(...it.tabs.map(keysOf)))), ...M.NAV_MORE.map(([, xs]) => xs.map(x => x[0])));
+    const vs = M.views(), rest = [];
+    M.mods.forEach(m => (m.menu || []).forEach(([k, t]) => { if (!known.has(k) && vs[k]) rest.push([k, t]); }));
+    return M.NAV_MORE.map(([g, xs]) => [g, xs.filter(x => vs[x[0]])]).concat(rest.length ? [['기타', rest]] : []).filter(([, xs]) => xs.length);
+  }
+  let moreOpen = (() => { try { return localStorage.getItem('mlng_more') === 'on'; } catch (e) { return false; } })();
+  function pill() {   // 대시보드 옆 긴급 개수만 갱신
+    const b = $('#nav button[data-k="overview"]'); if (!b) return;
     const n = M.alerts().filter(a => a.level === 'danger').length; let el = b.querySelector('.pill-n');
     if (!n) { if (el) el.remove(); return; }
     if (!el) { el = document.createElement('span'); el.className = 'pill-n'; b.appendChild(el); }
     if (el.textContent !== String(n)) el.textContent = n;
   }
   function rail() {
-    const n = M.alerts().filter(a => a.level === 'danger').length;
-    const groups = [];
-    M.mods.forEach(m => (m.menu || []).forEach(([k, t, i, g]) => {
-      const name = g || m.group; let grp = groups.find(x => x.name === name);
-      if (!grp) groups.push(grp = { name, items: [] });
-      grp.items.push([k, t, i]);
-    }));
+    const vs = M.views(), w = M.where(M.cur) || {};
     $('#plant').textContent = `${M.S.factory.name}${M.S.factory.line ? ' · ' + M.S.factory.line : ''}`;
-    $('#nav').innerHTML = groups.map(g => `<div class="ngrp">${esc(g.name)}</div>` + g.items.map(([k, t, i]) =>
-      `<button data-k="${k}" class="${k === M.cur ? 'on' : ''}" title="${esc(t)}">${M.ic(i)}<span>${esc(t)}</span>${k === 'alerts' && n ? `<span class="pill-n">${n}</span>` : ''}</button>`).join('')).join('')
+    const main = M.NAV.filter(it => it.tabs.some(tb => keysOf(tb).some(k => vs[k]))).map(it => { const first = it.tabs.map(tb => tb[0]).find(k => vs[k]);
+      return `<button data-k="${first}" data-item="${it.id}" class="${w.item === it ? 'on' : ''}">${M.ic(it.i)}<span>${esc(it.t)}</span></button>`; }).join('');
+    const more = moreGroups().map(([g, xs]) => `<div class="ngrp">${esc(g)}</div>` + xs.map(([k, t]) => `<button data-k="${k}" class="sm ${k === M.cur ? 'on' : ''}"><span>${esc(t)}</span></button>`).join('')).join('');
+    $('#nav').innerHTML = `<div class="nmain">${main}</div>
+      <button class="nmore ${moreOpen || w.more ? 'open' : ''}" id="nmore"><span>더보기</span><small>분석 · AI · 데이터 신뢰 · 시스템</small><i>›</i></button>
+      <div class="nsub ${moreOpen || w.more ? 'open' : ''}">${more}</div>`
       + Object.entries(CFG.LINKS || {}).filter(([, u]) => u).map(([p, u]) => `<a class="ext" href="${esc(u)}" target="_blank" rel="noopener">${M.ic('out')}<span>${esc(M.PROC[p] || p)} 열기</span></a>`).join('');
-    $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => M.go(b.dataset.k));
+    $('#nav').querySelectorAll('button[data-k]').forEach(b => b.onclick = () => { document.body.classList.remove('navon'); M.go(b.dataset.k); });
+    $('#nmore').onclick = () => { moreOpen = !$('#nmore').classList.contains('open'); try { localStorage.setItem('mlng_more', moreOpen ? 'on' : 'off'); } catch (e) { /* 무시 */ }
+      $('#nmore').classList.toggle('open', moreOpen); $('.nsub').classList.toggle('open', moreOpen); };
+    pill();
     const u = D.user();
     $('#who').textContent = u ? `${u.name} · ${u.role === 'manager' ? '관리자' : '작업자'}` : '';
   }
-  // 메뉴는 다시 그리지 않고 선택 표시만 옮긴다 (메뉴 40여 개를 매번 새로 그리면 글자 배치에 시간이 든다)
-  M.go = k => { M.cur = k; const nav = $('#nav'); if (nav && nav.firstChild) nav.querySelectorAll('button[data-k]').forEach(b => b.classList.toggle('on', b.dataset.k === k)); else rail(); M.render(); $('#view').scrollTop = 0; };
+  M.rail = rail;
+  // 메뉴는 다시 그리지 않고 선택 표시만 옮긴다
+  function markNav() { const w = M.where(M.cur) || {}; $('#nav').querySelectorAll('button[data-k]').forEach(b => b.classList.toggle('on', b.dataset.item ? !!(w.item && w.item.id === b.dataset.item) : b.dataset.k === M.cur));
+    if (w.more) { $('#nmore').classList.add('open'); $('.nsub').classList.add('open'); } }
+  M.go = k => { M.cur = k; const nav = $('#nav'); if (nav && nav.firstChild) markNav(); else rail(); M.render(); $('#view').scrollTop = 0; };
+
+  // 메뉴 안의 탭 줄 (화면이 하나뿐이면 감춘다)
+  function tabs() {
+    const el = $('#tabs'); if (!el) return;
+    const w = M.where(M.cur), vs = M.views();
+    if (!w || !w.item) { el.innerHTML = ''; el.hidden = true; return; }
+    const ts = w.item.tabs.filter(tb => keysOf(tb).some(k => vs[k]));
+    const subs = w.tab[2] ? w.tab[2].filter(x => vs[x[0]]) : [];
+    el.hidden = ts.length < 2 && subs.length < 2;
+    el.innerHTML = (ts.length > 1 ? `<div class="tabs">${ts.map(tb => `<button data-k="${keysOf(tb).find(k => vs[k])}" class="${tb === w.tab ? 'on' : ''}">${esc(tb[1])}</button>`).join('')}</div>` : '')
+      + (subs.length > 1 ? `<div class="subtabs">${subs.map(([k, t]) => `<button data-k="${k}" class="${k === M.cur ? 'on' : ''}">${esc(t)}</button>`).join('')}</div>` : '');
+    el.querySelectorAll('button[data-k]').forEach(b => b.onclick = () => M.go(b.dataset.k));
+  }
 
   M.render = () => {
+    const w = M.where(M.cur);
     let title = M.cur, grp = '';
-    M.mods.forEach(m => (m.menu || []).forEach(([k, t, , g]) => { if (k === M.cur) { title = t; grp = g || m.group; } }));
+    if (w && w.item) { title = w.item.tabs.length > 1 || w.tab[2] ? w.tab[1] : w.item.t; grp = w.item.tabs.length > 1 || w.tab[2] ? w.item.t : ''; }
+    else if (w) { title = w.tab[1]; grp = '더보기 · ' + w.more; }
     $('#ttl').textContent = title; $('#crumb').textContent = grp;
-    updBar(); pill();
+    updBar(); pill(); tabs();
     const v = M.views()[M.cur];
     $('#view').innerHTML = v ? v() : '';
-    sideLayout($('#view'));
+    tidy($('#view'));
     bind($('#view'));
   };
-  // 요약 띠가 있는 화면은 «본문 + 오른쪽 요약 목록» 으로 배치한다 (항목을 누르면 지금처럼 상세 서랍)
-  function sideLayout(v) {
-    const ks = v.querySelector(':scope > .kstrip:not(.nside)');
-    v.classList.toggle('hasside', !!ks);
-    if (!ks) return;
-    const main = document.createElement('div'), side = document.createElement('aside');
-    main.className = 'vmain'; side.className = 'vside';
-    ks.classList.add('kside'); side.innerHTML = '<div class="vsh">요약</div>'; side.appendChild(ks);
-    while (v.firstChild) main.appendChild(v.firstChild);
-    v.append(main, side);
+  // 화면 정돈: 긴 부제는 ⓘ 안으로, 요약 띠 설명은 한 줄로, 긴 안내문은 두 줄로 접는다
+  function tidy(root) {
+    root.querySelectorAll('h2 > .h2sub, h3 > .h2sub').forEach(s => { const t = s.textContent.trim(); if (!t) { s.remove(); return; }
+      if (t.length <= 14) return;   // 짧은 부제(번호·개수)는 그대로
+      const i = document.createElement('span'); i.className = 'hint'; i.tabIndex = 0; i.setAttribute('data-tip', t); i.setAttribute('aria-label', t); i.textContent = 'i'; s.replaceWith(i); });
+    root.querySelectorAll('.kstrip').forEach(k => k.classList.add('kbar'));   // 모든 화면의 요약 줄을 같은 상자 · 같은 칸 폭으로
+    root.querySelectorAll('.kstrip .kpi .foot').forEach(x => { if (!x.title) x.title = x.textContent.trim(); });
+    root.querySelectorAll('.note').forEach(n => { if (n.textContent.length > 110 && !n.dataset.fold) { n.dataset.fold = '1'; n.classList.add('fold'); n.onclick = () => n.classList.toggle('open'); } });
   }
+  M.tidy = tidy;
   // 화면 안의 공통 동작: data-go(화면 이동) · data-row(상세) · data-insp(검사 기록) · data-set(모듈 상태 바꾸고 다시 그리기)
   function bind(root) {
     root.querySelectorAll('[data-go]').forEach(a => a.onclick = e => { e.preventDefault(); M.nav(a.dataset.go); });
@@ -221,7 +273,7 @@
   M.drawer = (sub, title, html) => {
     $('#dsub').textContent = sub; $('#dttl').textContent = title; $('#dbody').innerHTML = html;
     $('#drawer').classList.add('on'); $('#shade').classList.add('on'); $('#dbody').scrollTop = 0;
-    bind($('#dbody'));
+    tidy($('#dbody')); bind($('#dbody'));
   };
   // 요약 띠 항목 상세 — 제목·부제 + 블록 [{ h, html }]
   M.kdrawer = (sub, title, blocks) => M.drawer(sub, title, blocks.filter(Boolean).map(b => `${b.h ? `<h3 class="dh">${esc(b.h)}</h3>` : ''}${b.html}`).join(''));
@@ -255,7 +307,7 @@
   function setTheme(t) {
     if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
     try { t === 'system' ? localStorage.removeItem('mlng_theme') : localStorage.setItem('mlng_theme', t); } catch (e) { /* 저장 못 해도 화면은 바뀐다 */ }
-    $('#themebtn').innerHTML = THEME_IC[t] + THEME_TXT[t];
+    $('#themebtn').innerHTML = THEME_IC[t]; $('#themebtn').title = `화면 테마: ${THEME_TXT[t]} (누르면 바꿈)`;
   }
 
   // ── 실시간 반영: 켜면 서버에서 주기적으로 다시 읽어 화면 수치를 바꾸고, 끄면 지금 화면을 멈춘 채로 둔다
@@ -265,9 +317,9 @@
   function updBar() {
     const S = M.S || {}, t = lastPull ? lastPull.toTimeString().slice(0, 8) : '';
     $('#upd').innerHTML = D.LIVE ? (liveOn ? `<span class="dot ok pulse"></span>실시간 · 갱신 ${esc(t || String(S.built || '').slice(11, 19))}` : `<span class="dot warn"></span>멈춤 · ${esc(t || String(S.built || '').slice(11, 19))} 기준`)
-      : `<span class="dot ok"></span>데이터 기준 ${esc(S.asof || '')}`;
+      : `<span class="dot ok"></span>${esc(S.asof || '')} 기준`;
     const b = $('#livebtn'); if (!b) return;
-    b.disabled = !D.CONNECTED;
+    b.disabled = !D.CONNECTED; b.hidden = !D.CONNECTED;
     b.classList.toggle('on', D.CONNECTED && liveOn);
     b.innerHTML = !D.CONNECTED ? '실시간 · 서버 미연결' : liveOn ? '<i></i>실시간 반영 중' : '<i></i>멈춤 (누르면 실시간)';
     b.title = !D.CONNECTED ? 'config.js 에 Supabase 주소·키를 넣으면 실시간 반영을 쓸 수 있습니다'

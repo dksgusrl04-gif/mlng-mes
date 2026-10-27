@@ -58,8 +58,11 @@
     const item = M.S.masters.items[0] || {};
     const o = await newOrder({ item: `${item.code} ${item.name}`, qty: 600000, price: 420, due: addDays(today(), 30),
       clauses: [{ k: 'passport' }, { k: 'heat_ppm', op: '≤', v: 350 }, { k: 'heat_dev', op: '≤', v: 0.05 }, { k: 'press_cpk', op: '≥', v: 0.9 }, { k: 'pcf', op: '≤', v: 900 }] }, true);
-    const hl = (M.S.heat || { lots: [] }).lots.slice(-8);
-    for (const l of hl) await evaluate(o, l.id);
+    // 데모 납품 이력: 최근 LOT 들(오늘 끝난 2 LOT 은 출하 대기로 남김) + 그 앞 2주 안에서 계약 조항을 모두 통과한 LOT
+    const all = (M.S.heat || { lots: [] }).lots, hl = all.slice(-8, -2), t0 = M.sinceDay(14).getTime(), pick = new Set(hl.map(l => l.id));
+    const pass = id => { try { const p = T.passportPreview(id); return o.clauses.filter(c => c.k !== 'passport').every(c => { const a = CL[c.k].get(p); return a === undefined || (a != null && (c.op === '≤' ? a <= c.v : a >= c.v)); }); } catch (e) { return false; } };
+    all.slice(0, -8).filter(l => M.toDate(l.end).getTime() >= t0 && T.passportPreview && pass(l.id)).forEach(l => pick.add(l.id));
+    for (const l of all.filter(x => pick.has(x.id))) await evaluate(o, l.id);
   });
 
   // ── 화면

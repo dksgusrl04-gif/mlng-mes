@@ -12,8 +12,8 @@ const ok = (c, m) => { if (c) pass++; else fails.push(m); console.log(`${c ? '�
   for (const th of ['light', 'dark']) {
     const p = await b.newPage({ viewport: { width: 1440, height: 1000 }, colorScheme: th }), errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.goto(url); await p.waitForFunction(() => window.MLNGTrust && MLNGTrust.ready, null, { timeout: 60000 });
-    const ks = await p.$$eval('#nav button', a => a.map(x => x.dataset.k)), empty = [];
-    for (const k of ks) { await p.click(`#nav [data-k="${k}"]`); await p.waitForTimeout(60); if ((await p.$eval('#view', e => e.innerText.length)) < 50) empty.push(k); }
+    const ks = await p.evaluate(() => Object.keys(MLNG.views())), empty = [];
+    for (const k of ks) { await p.evaluate(k => MLNG.go(k), k); await p.waitForTimeout(60); if ((await p.$eval('#view', e => e.innerText.length)) < 50) empty.push(k); }
     ok(!empty.length && !errs.length, `${th} 화면 ${ks.length}개 — 빈 화면 ${empty.join(',') || '없음'} · 오류 ${errs.length}`);
     await p.close();
   }
@@ -55,6 +55,19 @@ const ok = (c, m) => { if (c) pass++; else fails.push(m); console.log(`${c ? '�
   ok(await ev(() => MLNG.prove.log.filter(r => MLNG.prove.canReplay(r.id)).every(r => MLNG.prove.replay(r.id).same)), '판단 재현 — 같은 입력 → 같은 결과');
   await go('models'); await W(); ok(await ev(() => /자기 의심 정책/.test(document.querySelector('#view').innerText)), '모델 상태 화면');
   await go('prove'); await W(); await p.click('#pv-all').catch(() => {}); await W(300); ok(await ev(() => /같은 결과/.test(document.querySelector('#view').innerText)), '판단 증명 화면 재현');
+
+  // 5.0 정돈: 메뉴 7개 · 주문 → 출하 대시보드
+  ok(await ev(() => document.querySelectorAll('#nav .nmain button').length === 7), '왼쪽 메뉴 7개 (나머지는 더보기)');
+  ok(await ev(() => Object.keys(MLNG.views()).every(k => MLNG.where(k))), '모든 화면이 메뉴 · 탭 · 더보기 어딘가에 있음');
+  await go('overview'); await W(); ok(await ev(() => document.querySelectorAll('.mtx th.sth').length === 5 && document.querySelectorAll('.mtx tbody tr').length > 0), '대시보드 주문 현황판 — 주문 × 5단계');
+  ok(await ev(() => [...document.querySelectorAll('.mtx tbody tr')].every(r => r.querySelectorAll('.mc').length === 5)), '현황판 모든 행에 5단계 칸 (열 맞춤)');
+  ok(await ev(() => { const cs = [...document.querySelectorAll('.dgrid > .card')].map(c => c.getBoundingClientRect()); return cs.length === 2 && Math.abs(cs[0].top - cs[1].top) < 1 && Math.abs(cs[0].height - cs[1].height) < 1; }), '나란한 카드 위·높이 맞춤');
+  await p.click('.mtx th.sth[data-fsel="qual"]'); await W(); ok(await ev(() => [...document.querySelectorAll('.itab tbody tr td:nth-child(2)')].every(x => x.textContent === '품질')), '단계 머리를 누르면 문제 목록이 그 단계로 좁혀짐');
+  await p.click('.mtx th.sth[data-fsel="qual"]'); await W();
+  ok(await ev(() => MLNG.flow.book().orders.every(o => o.lots.every(l => MLNG.S.heat.lots.some(h => h.id === l.id)))), '주문은 실제 열처리 LOT 에 묶임');
+  await go('orders'); await W(); await p.click('#view tr.click'); await W(300); ok(await ev(() => /주문 OR-/.test(document.querySelector('#dttl').textContent)), '주문 상세 서랍');
+  await ev(() => MLNG.closeDrawer());
+  ok(await ev(() => { MLNG.go('heat_lots'); return document.querySelectorAll('#tabs .tabs button').length === 4 && document.querySelectorAll('#tabs .subtabs button').length === 4; }), '공정 실적: 공정 탭 + 세부 탭');
 
   // 끝: 모든 동작 뒤에도 원장이 온전한가
   await go('net_ledger'); await W(); await p.click('#lg-verify'); await W(1000); ok(/모두 사슬과 서명이 맞습니다/.test(await note()), '모든 시나리오 뒤 원장 검증');

@@ -9,7 +9,9 @@
   let box = null, items = [], sel = 0, list = [];
   function index() {
     const T = window.MLNGTrust || {}, out = [];
-    M.mods.forEach(m => (m.menu || []).forEach(([k, t, , g]) => out.push({ k: '화면', t, s: g || m.group, go: k })));
+    const vs = M.views(), seen = new Set();
+    M.mods.forEach(m => (m.menu || []).forEach(([k]) => { if (!vs[k] || seen.has(k)) return; seen.add(k); const w = M.where(k);
+      const t = w ? (w.sub ? `${w.tab[1]} ${w.sub[1]}` : w.tab[1]) : k; out.push({ k: '화면', t, s: w ? (w.item ? w.item.t : '더보기 · ' + w.more) : '', go: k }); }));
     (M.S.lots || []).forEach(l => out.push({ k: 'LOT', t: l.id, s: `${M.PROC[l.proc] || (l.kind === 'material' ? '소재' : '')} · ${f(l.qty, 0)}개 · ${String(l.end_at || l.start_at || l.first || '').slice(0, 10)}`, go: 'trace:' + l.id }));
     if (M.buyApi) M.buyApi.orders().forEach(o => out.push({ k: '발주', t: o.id, s: `${o.status} · ${o.lines.map(l => l.name).join(', ')}`, go: 'po:' + o.id }));
     if (M.caseApi && T.ready) M.caseApi.list().forEach(c => out.push({ k: '사건', t: `${c.id} ${c.name}`, s: `${M.caseApi.STAGES[c.st.stage]} · ${M.dx.won(c.money.won)}`, go: 'case:' + c.id }));
@@ -17,7 +19,7 @@
     (T.orders || []).forEach(o => out.push({ k: '스마트 발주', t: o.id, s: `${T.co(o.buyer).name} · ${f(o.qty, 0)}개`, go: 'deal_home' }));
     ((M.S.mach || {}).tools || []).forEach(t => out.push({ k: '공구', t: t.id, s: `${t.material} · VB ${f(t.vb_last, 2)} · ${t.date}`, go: 'mach:' + t.id }));
     (M.S.masters.equipment || []).forEach(e => out.push({ k: '설비', t: `${e.id} ${e.name}`, s: M.PROC[e.proc] || e.proc, go: { press: 'press_equip', heat: 'heat_equip', weld: 'weld_home', mach: 'mach_home', insp: 'insp_home' }[e.proc] || 'masters' }));
-    [['지금 가장 먼저 할 일', 'cases'], ['오늘 손실은 얼마?', 'cost'], ['출하해도 되나?', 'gate'], ['교대 넘기기', 'shift'], ['프레스 속도 바꿔 보기', 'whatif'], ['그날로 되감기', 'replay']].forEach(([t, go]) => out.push({ k: '바로가기', t, s: '', go }));
+    [['주문 진행 보기', 'orders'], ['품질 문제 처리', 'cases'], ['출하해도 되나?', 'gate'], ['교대 넘기기', 'shift'], ['계획 바꿔 보기', 'whatif'], ['손실 비용', 'cost']].forEach(([t, go]) => out.push({ k: '바로가기', t, s: '', go }));
     return out;
   }
   function search(q) {
@@ -53,7 +55,8 @@
     if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); box && box.classList.contains('on') ? close() : open(); }
     else if (e.key === '/' && !typing) { e.preventDefault(); open(); }
   });
-  const addBtn = () => { const th = document.getElementById('themebtn'); if (!th || document.getElementById('palbtn')) return; const b = document.createElement('button'); b.id = 'palbtn'; b.className = 'palbtn'; b.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>찾기 · 이동 <kbd>Ctrl K</kbd>'; b.onclick = open; th.before(b); };
+  const addBtn = () => { const th = document.getElementById('themebtn'); if (!th || document.getElementById('palbtn')) return; const b = document.createElement('button'); b.id = 'palbtn'; b.className = 'palbtn'; b.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>LOT · 주문 찾기 <kbd>Ctrl K</kbd>'; b.onclick = open; th.before(b);
+    if (M.views().ask && !document.getElementById('askbtn')) { const a = document.createElement('button'); a.id = 'askbtn'; a.className = 'palbtn'; a.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>AI에게 묻기'; a.onclick = () => M.go('ask'); b.after(a); } };
   // 좁은 화면: 왼쪽 메뉴를 서랍으로 (☰ 단추로 열고, 메뉴를 고르면 닫힘)
   const addNav = () => { const top = document.getElementById('top'); if (!top || document.getElementById('navbtn')) return;
     const b = document.createElement('button'); b.id = 'navbtn'; b.setAttribute('aria-label', '메뉴'); b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>'; top.insertBefore(b, top.firstChild);
