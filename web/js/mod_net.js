@@ -88,7 +88,7 @@
       ${M.table([['계약', c => `<b>${esc(c.id)}</b>`], ['제공 → 이용', c => `${coTag(c.provider)} → ${coTag(c.consumer)}`], ['공유 범위', c => c.scopes.map(s => `<span class="chip c-ext">${esc(SCOPES[s].name)}</span>`).join(' ')],
         ['목적', c => `<span style="font-size:12.5px">${esc(c.purpose)}</span>`], ['기간', c => `<span class="muted" style="font-size:12px">${esc(c.start)} ~ ${esc(c.end)}</span>`], ['서명', c => `${c.signs.provider ? '●' : '○'}${c.signs.consumer ? '●' : '○'}`], ['상태', stTag]],
         list, { click: c => 'ctr:' + c.id, hl: c => stOf(c) === 'proposed', empty: '계약이 없습니다' })}
-      ${msg ? `<p class="note">${esc(msg)}</p>` : ''}</div>
+      ${msg ? `<p class="note msg">${esc(msg)}</p>` : ''}</div>
     <div class="card" style="margin-top:16px"><h2>공유 범위 정의 <span class="h2sub">민감도가 «매우 높음» 인 항목은 기본적으로 공유하지 않는 것을 권장합니다</span></h2>
       ${M.table([['범위', k => `<b>${esc(SCOPES[k].name)}</b>`], ['포함 내용', k => esc(SCOPES[k].desc)], ['민감도', k => `<span class="tag ${SCOPES[k].sens === '매우 높음' ? 'j-danger' : SCOPES[k].sens === '높음' ? 'j-warn' : 'j-ok'}">${esc(SCOPES[k].sens)}</span>`],
         ['우리가 제공 중', k => C.filter(c => c.provider === T.me && stOf(c) === 'active' && c.scopes.includes(k)).map(c => T.co(c.consumer).short).join(', ') || '—']], Object.keys(SCOPES), { wrap: false })}</div>`;

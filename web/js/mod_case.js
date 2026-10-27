@@ -258,7 +258,7 @@
     return `<div class="card cdet" style="margin-top:16px">
       <h2>${esc(c.name)} <span class="h2sub">${esc(c.id)}</span><span class="more" style="display:flex;gap:6px">${c.st.stage < 4 ? `<button class="btn sm" data-call="${esc(c.id)}" title="남은 조치(화면 이동 제외)를 순서대로 모두 실행하고 단계를 올립니다">조치 일괄 승인</button>` : ''}<button class="btn sm" data-crep="${esc(c.id)}">8D 보고서</button>${c.st.stage < 5 ? `<button class="btn pri sm" data-cadv="${esc(c.id)}">${esc(STAGES[c.st.stage + 1])} 단계로 (서명)</button>` : ''}</span></h2>
       ${stepper(c)}
-      ${msg ? `<p class="note" style="margin-top:6px">${esc(msg)}</p>` : ''}
+      ${msg ? `<p class="note msg" style="margin-top:6px">${esc(msg)}</p>` : ''}
       ${nx && c.st.stage < 5 ? `<div class="cnext"><b>다음 조치</b> ${esc(nx.label)} <button class="btn pri sm" data-crun="${esc(c.id)}|${esc(nx.id)}">실행</button><button class="btn sm" data-askq="${esc(`이슈 ${c.id} (${c.name}) — 추정 원인과 「${nx.label}」 말고 다른 선택지를 알려줘`)}">AI 문의</button></div>` : ''}
       <div class="grid g2" style="align-items:start;margin-top:12px">
         <div><h3 class="dh" style="margin-top:0">손실 금액 ${M.asmTag ? M.asmTag('loss') : ''}<span class="h2sub">항목에 마우스를 올리면 산출 근거</span></h3>${moneyRow(c.money)}

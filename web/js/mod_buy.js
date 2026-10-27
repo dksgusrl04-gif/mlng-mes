@@ -253,7 +253,7 @@
         <button class="btn" id="bx-clr">선택 해제</button>
         <button class="btn" id="bx-open" ${notIn.length ? '' : 'disabled'}>미입고 발주서 출력</button>
         <span class="muted" style="font-size:12px">추천이 없는 품목도 체크해서 함께 발주할 수 있습니다</span></div>
-      ${msg ? `<p class="note" style="margin:0 0 10px">${esc(msg)}</p>` : ''}
+      ${msg ? `<p class="note msg" style="margin:0 0 10px">${esc(msg)}</p>` : ''}
       ${M.table([
         ['<input type="checkbox" id="allchk" title="보이는 품목 모두">', x => `<input type="checkbox" data-pick="${esc(x.it.code)}" ${sel.has(x.it.code) ? 'checked' : ''}>`],
         ['코드', x => `<b>${esc(x.it.code)}</b>`],

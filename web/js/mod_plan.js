@@ -51,7 +51,7 @@
           return `<div class="sug"><div class="sh"><b>${esc(x.it)}</b> ${esc(itemName(x.it))} ${x.short ? '<span class="tag j-warn">부족 위험</span>' : '<span class="tag j-ok">충분</span>'}</div>
           <dl class="stat"><dt>예상 수주</dt><dd>${f(x.avg, 0)}</dd><dt>마감 재고</dt><dd>${f(x.last.inv_close, 0)}</dd><dt>필요 생산</dt><dd>${f(x.need, 0)} (${x.runs}회 × ${x.lot})</dd></dl>
           ${x.need ? (has ? '<div class="note">작업지시 초안이 있습니다 → 작업지시 화면</div>' : `<button class="btn pri sm" data-mkwo="${esc(x.it)}|${x.need}">작업지시 만들기</button>`) : ''}</div>`; }).join('')}
-        ${woErr ? `<p class="note" style="color:var(--danger-ink)">${esc(woErr)}</p>` : ''}<p class="note">안전재고 = 예상 수주의 ${pct(PCF().SAFETY_DAYS, 0)}. 기준값은 config.js 의 PLAN 에서 바꿉니다.</p></div>
+        ${woErr ? `<p class="note msg" style="color:var(--danger-ink)">${esc(woErr)}</p>` : ''}<p class="note">안전재고 = 예상 수주의 ${pct(PCF().SAFETY_DAYS, 0)}. 기준값은 config.js 의 PLAN 에서 바꿉니다.</p></div>
     </div>
     <div class="card" style="margin-top:16px"><h2>일별 계획 대비 실적 <span class="h2sub">${esc(pit)} · 최근 14작업일</span></h2>
       ${M.table([['날짜', 'date'], ['수주', r => f(r.order, 0), 'n'], ['생산', r => f(r.prod, 0), 'n'], ['생산 횟수', r => r.runs, 'n'], ['시작 재고', r => f(r.inv_open, 0), 'n'],

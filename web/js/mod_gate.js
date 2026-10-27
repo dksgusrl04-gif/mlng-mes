@@ -90,7 +90,7 @@
         .concat([['이슈', r => r.cases.length ? r.cases.map(c => `<a href="#" data-go="case:${esc(c.id)}" class="chip c-ext">${esc(c.id)}</a>`).join(' ') : '<span class="muted">—</span>'],
           ['판정 · 처리', r => `${r.held ? '<span class="tag j-danger">보류 중</span>' : r.rec === 'hold' ? `<span class="tag j-warn" title="${esc(r.why.join('\n'))}">보류 권고</span>` : `<span class="tag ${ST[r.status][0]}">${ST[r.status][1]}</span>`}<div style="display:flex;gap:4px;margin-top:5px">${`<div style="display:flex;gap:4px">` + (r.held ? `<button class="btn sm" data-grel="${esc(r.lot)}">해제</button>` : `${r.rec === 'hold' ? `<button class="btn sm" data-ghold="${esc(r.lot)}">보류</button>` : ''}<button class="btn sm ${r.rec === 'ship' ? 'pri' : ''}" data-gship="${esc(r.lot)}">출하</button>`) + '</div>'}</div>`]]),
         show, { wrap: false, click: r => 'gate:' + r.lot, hl: r => r.rec === 'hold' || r.held, empty: '해당하는 출하 대기 LOT 이 없습니다' })}
-      ${msg ? `<p class="note">${esc(msg)}</p>` : ''}
+      ${msg ? `<p class="note msg">${esc(msg)}</p>` : ''}
       <p class="note">판정은 LOT 디지털 여권과 같은 기준으로 출하 전에 미리 계산한 결과입니다. 보류 · 해제 · 출하는 신뢰 원장에 기록되며, 「출하」 시 전자 발주 납품 → 고객사 자동 수입검사로 연결됩니다.</p></div>`}
     <div class="grid g2" style="margin-top:16px;align-items:start">
       <div class="card"><h2>보류 규칙 <span class="h2sub">회사가 정합니다 — 바꾸면 위 판정이 바로 다시 계산됩니다</span></h2>

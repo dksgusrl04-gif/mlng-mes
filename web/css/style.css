@@ -893,3 +893,13 @@ ul.plain.cbasis{font-size:12px;color:var(--ink-2);margin:8px 0 0;padding-left:16
 .kstrip .kpi .lab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .lab .asm{font-size:0;padding:0 5px}.lab .asm::before{content:'가정';font-size:10.5px}
 .kstrip .kpi.click .lab::after{margin-left:4px;display:inline-block}
+/* 5.4 글자 최소화 — 라인 밸런스 노드 */
+.lflow{align-items:stretch}
+.lnode{flex:1 1 0;min-width:150px;gap:7px}
+.lnode .lh{flex-wrap:nowrap}.lnode .lh .ln{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lnode .le{margin-top:-4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lnode > .lq{width:100%;font-weight:700;font-variant-numeric:tabular-nums;padding:5px 8px;font-size:13.5px}
+.lnode .lst2 dt,.lnode .lst2 dd{white-space:nowrap}
+.lnode .uset{margin-top:auto}
+.hint:hover::after,.hint:focus::after{max-width:380px}
+.lnode .lh{height:22px}

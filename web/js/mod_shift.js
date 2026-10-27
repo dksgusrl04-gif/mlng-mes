@@ -65,7 +65,7 @@
           <div class="pacts">${!h ? `<select class="in" id="sh-from">${workers.map(x => `<option>${esc(x)}</option>`).join('')}</select><button class="btn pri" id="sh-out">인계 서명</button>`
             : !h.in ? `<select class="in" id="sh-to">${workers.map(x => `<option>${esc(x)}</option>`).join('')}</select><button class="btn pri" id="sh-in" ${done < b.todo.length ? 'title="모든 항목을 확인해야 받을 수 있습니다"' : ''}>인수 서명 (${done}/${b.todo.length} 확인)</button>`
             : `<span class="tag j-ok">✓ ${esc(h.out.by)} → ${esc(h.in.by)} · ${esc(h.in.at.slice(5, 16))}</span>`}</div>
-          ${msg ? `<p class="note">${esc(msg)}</p>` : ''}</div></div></div>
+          ${msg ? `<p class="note msg">${esc(msg)}</p>` : ''}</div></div></div>
     <div class="card" style="margin-top:16px"><h2>인수인계 기록 <a class="more" href="#" data-go="net_ledger">신뢰 원장 →</a></h2>
       ${M.table([['교대', 'key'], ['인계', h2 => h2.out ? `${esc(h2.out.by)} <span class="muted">${esc(h2.out.at.slice(5, 16))}</span>` : '—'], ['인수', h2 => h2.in ? `${esc(h2.in.by)} <span class="muted">${esc(h2.in.at.slice(5, 16))}</span>` : '<span class="tag j-warn">대기</span>'], ['할 일', h2 => f(h2.items.length, 0), 'n'], ['인계 사항', h2 => `<span class="muted" style="font-size:12px">${esc(h2.note.slice(0, 60))}</span>`], ['서명', h2 => `<span class="mono" style="font-size:11px">${esc(T.short(h2.out.sig.hash))}</span>`]], HIST, { wrap: false, empty: '아직 서명한 인수인계가 없습니다' })}</div>`;
   };

@@ -106,41 +106,39 @@
       const b = m.b[s.proc], plan = m.plan[s.proc], need = m.need[s.proc], cap = b.cap, use = cap ? plan / cap : null;
       const spd = st.speed[s.proc] ?? 100, isB = bott === s.proc && m.lim.t < m.target * 0.995;
       return `<div class="lnode ${st.sel === s.proc ? 'sel' : ''} ${isB ? 'bott' : ''} ${s.side ? 'side' : ''}" data-lsel="${s.proc}">
-        <div class="lh"><span class="sq">${M.procTag(s.proc)}</span>${isB ? '<span class="tag j-danger">병목</span>' : ''}${s.side ? '<span class="chip c-off">일부 경로</span>' : ''}</div>
-        <div class="ln">${esc(s.name)}</div><div class="le">${esc(s.eq)}${b.external ? ' · 데이터 연동 전' : ''}</div>
-        <div class="lk"><span>계획 (개/일)</span><input class="in lq" type="number" min="0" step="10" data-lq="${s.proc}" value="${Math.round(plan)}"></div>
+        <div class="lh"><b class="ln">${esc(s.name)}</b>${isB ? '<span class="tag j-danger">병목</span>' : ''}</div>
+        <div class="le">${esc(s.eq)}${s.side ? ' · 일부 사양' : ''}${b.external ? ' · 연동 전' : ''}</div>
+        <input class="in lq" type="number" min="0" step="10" data-lq="${s.proc}" value="${Math.round(plan)}" title="계획 (개/일)" aria-label="${esc(s.name)} 계획 개/일">
         <div class="lsl"><input type="range" min="30" max="200" step="1" value="${Math.round(spd)}" data-lsp="${s.proc}" aria-label="${esc(s.name)} 속도"><b>${f(spd, 0)}%</b></div>
-        <dl class="lst2"><dt>목표에 필요</dt><dd style="color:${plan < need * 0.99 ? 'var(--danger-ink)' : 'inherit'}">${f(need, 0)}</dd>
-          <dt>현재 속도</dt><dd>${f(b.rate, 0)}</dd><dt>수율</dt><dd>${pct(b.yield, b.yield > 0.999 ? 3 : 1)}</dd></dl>
-        ${cap ? `<div class="use"><i style="width:${Math.min(100, use * 100)}%" class="${use > 1 ? 'over' : use > 0.9 ? 'hi' : ''}"></i></div><div class="uset">능력 사용률 <b>${pct(use, 0)}</b> <span class="muted">/ 관측 최대 ${f(cap, 0)}</span></div>`
-          : `<div class="uset muted">능력: 데이터 연동 전 <input class="in lcap" type="number" min="0" step="10" placeholder="입력" data-lcap="1" value="${st.mach_cap ?? ''}"></div>`}
-        ${spark(b.series || [])}
+        <dl class="lst2"><dt>필요</dt><dd style="color:${plan < need * 0.99 ? 'var(--danger-ink)' : 'inherit'}">${f(need, 0)}</dd>
+          <dt>현재</dt><dd>${f(b.rate, 0)}</dd><dt>수율</dt><dd>${pct(b.yield, 1)}</dd></dl>
+        ${cap ? `<div class="use" title="관측 최대 ${f(cap, 0)}개/일"><i style="width:${Math.min(100, use * 100)}%" class="${use > 1 ? 'over' : use > 0.9 ? 'hi' : ''}"></i></div><div class="uset">가동률 <b>${pct(use, 0)}</b></div>`
+          : `<div class="uset muted">능력 <input class="in lcap" type="number" min="0" step="10" placeholder="입력" data-lcap="1" value="${st.mach_cap ?? ''}"></div>`}
       </div>`;
     };
     const gap = p => { const g = m.gaps[p]; if (!g) return '<div class="lgap"></div>'; const c = Math.abs(g.d) < Math.max(1, g.dem * 0.02) ? 'ok' : g.d > 0 ? 'up' : 'down';
       return `<div class="lgap g-${c}" title="${esc(g.label)}"><div class="ga"></div><div class="gv">${Math.round(g.d) > 0 ? '+' : ''}${f(Math.round(g.d) || 0, 0)}</div><div class="gl">재공/일</div>
-        <input class="in lw" type="number" min="0" step="100" placeholder="현재 재공" data-lw="${p}" value="${st.wip[p] ?? ''}"></div>`; };
+        <input class="in lw" type="number" min="0" step="100" placeholder="재공" title="현재 재공 (입력하면 소진 시점 계산)" data-lw="${p}" value="${st.wip[p] ?? ''}"></div>`; };
     const inspLimit = Math.min(m.plan.mach * m.y('mach'), m.plan.insp);
     return `
     <div class="kstrip nside">
-      <div class="kpi click" data-row="k:line:target"><div class="lab">목표 생산량 (열처리 양품)</div><div class="val"><input class="in tgt" type="number" min="0" step="100" data-ltgt="1" value="${Math.round(m.target)}"><small>개/일</small></div>
-        <div class="foot">기본값 = 최근 열처리 속도 × 수율</div></div>
-      <div class="kpi click" data-row="k:line:lim"><div class="lab">지금 계획으로 가능한 산출</div><div class="val" style="color:${m.lim.t < m.target * 0.995 ? 'var(--danger-ink)' : 'var(--ok)'}">${f(m.lim.t, 0)}<small>개/일</small></div>
-        <div class="foot">목표 대비 ${pct(m.lim.t / m.target, 0)} · 제약 ${esc(name(m.lim.p))}</div></div>
-      <div class="kpi click" data-row="k:line:cap"><div class="lab">설비 능력 한계 (관측 최대 기준)</div><div class="val">${f(m.capT.t, 0)}<small>개/일</small></div><div class="foot">병목 ${esc(name(m.capT.p))} — 이 이상은 가동 시간 연장 필요</div></div>
-      <div class="kpi click" data-row="k:line:rty"><div class="lab">누적 수율 (주 흐름)</div><div class="val">${pct(m.rty, 2)}</div><div class="foot">검사 셀 양품 ${f(m.insp_good, 0)}개/일 · 검사 수율 ${pct(m.y('insp'), 1)}</div></div>
+      <div class="kpi click" data-row="k:line:target"><div class="lab">목표 생산량</div><div class="val"><input class="in tgt" type="number" min="0" step="100" data-ltgt="1" value="${Math.round(m.target)}"><small>개/일</small></div>
+        <div class="foot">열처리 양품 기준</div></div>
+      <div class="kpi click" data-row="k:line:lim"><div class="lab">계획 산출</div><div class="val" style="color:${m.lim.t < m.target * 0.995 ? 'var(--danger-ink)' : 'var(--ok)'}">${f(m.lim.t, 0)}<small>개/일</small></div>
+        <div class="foot">달성률 ${pct(m.lim.t / m.target, 0)} · 제약 ${esc(name(m.lim.p))}</div></div>
+      <div class="kpi click" data-row="k:line:cap"><div class="lab">최대 능력</div><div class="val">${f(m.capT.t, 0)}<small>개/일</small></div><div class="foot">병목 ${esc(name(m.capT.p))}</div></div>
+      <div class="kpi click" data-row="k:line:rty"><div class="lab">누적 수율</div><div class="val">${pct(m.rty, 2)}</div><div class="foot">검사 수율 ${pct(m.y('insp'), 1)}</div></div>
     </div>
-    <div class="card" style="margin-top:16px"><h2>공정 간 수급 조정 <span class="h2sub">속도를 움직이거나 계획 수량을 입력하면 앞뒤 공정 수급이 바로 다시 계산됩니다</span>
+    <div class="card" style="margin-top:16px"><h2>공정 간 수급 조정 <span class="h2sub">속도 · 계획 수량을 바꾸면 앞뒤 공정 수급이 다시 계산됩니다. 현재 = 최근 7일 평균(100%), 가동률 = 계획 ÷ 관측 최대, 사이 숫자 = 앞 공정 양품 − 뒤 공정 투입(하루).</span>
       <div style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-lauto="target">목표에 맞춤</button><button class="btn sm" data-lauto="cap">능력 한계에 맞춤</button><button class="btn sm" data-lauto="reset">현재로</button></div></h2>
       <div class="lflow">${STEPS.map((s, i) => (i ? gap(STEPS[i - 1].proc) : '') + node(s)).join('')}</div>
-      <p class="note">현재 속도 = 최근 ${M.CFG.RECENT_DAYS || 7}일 작업일 평균 처리량(100%), 관측 최대 = 데이터에서 가장 많이 처리한 날. 점용접은 프레스 물량의 ${pct(m.sh.weld, 1)}, MCT 가공·검사는 열처리 물량의 ${pct(m.sh.side, 2)}가 거치는 일부 경로(가공 사양 부품)입니다.
-        사이 숫자 = 앞 공정 양품 − 뒤 공정 투입 (하루). 현재 재공을 넣으면 소진·적체 시점을 계산합니다.</p></div>
+    </div>
     <div class="grid g21" style="margin-top:16px">
       <div class="card"><h2>조정 제안</h2>
-        <div class="lst">${adv.map(a => `<div class="it"><span class="dot ${a.lv === 'ok' ? 'ok' : a.lv}"></span><div class="m"><div class="t">${esc(a.t)}</div><div class="s">${esc(a.s)}</div></div>${a.p ? M.procTag(a.p) : ''}${a.fix ? `<button class="btn sm" data-lfix='${esc(JSON.stringify(a.fix))}'>적용</button>` : ''}</div>`).join('')}</div></div>
-      <div class="card"><h2>${M.procTag(sel.proc)} ${esc(sel.name)} <span class="h2sub">앞뒤 공정</span>${sel.go ? `<a class="more" href="#" data-go="${sel.go}">공정 화면 →</a>` : ''}</h2>
+        <div class="lst">${adv.map(a => `<div class="it"><span class="dot ${a.lv === 'ok' ? 'ok' : a.lv}"></span><div class="m" title="${esc(a.s)}"><div class="t">${esc(a.t)}</div></div>${a.fix ? `<button class="btn sm" data-lfix='${esc(JSON.stringify(a.fix))}'>적용</button>` : ''}</div>`).join('')}</div></div>
+      <div class="card"><h2>${esc(sel.name)} <span class="h2sub">앞뒤 공정</span>${sel.go ? `<a class="more" href="#" data-go="${sel.go}">공정 화면 →</a>` : ''}</h2>
         ${(() => { const i = STEPS.indexOf(sel), up = STEPS[i - 1], dn = STEPS[i + 1], al = M.alerts();
-          const row = (lbl, s) => s ? `<div class="adj"><span class="muted">${lbl}</span> ${M.procTag(s.proc)} <b>${esc(s.name)}</b> · 계획 ${f(m.plan[s.proc], 0)}/일 · 수율 ${pct(m.b[s.proc].yield, 1)}
+          const row = (lbl, s) => s ? `<div class="adj"><span class="muted">${lbl}</span> <b>${esc(s.name)}</b> <span class="muted">계획 ${f(m.plan[s.proc], 0)}/일 · 수율 ${pct(m.b[s.proc].yield, 1)}</span>
             ${al.filter(a => a.proc === s.proc && a.level !== 'info').slice(0, 2).map(a => `<div class="adja ${a.level}">${esc(a.title)}</div>`).join('')}</div>` : '';
           const mine = al.filter(a => a.proc === sel.proc && a.level !== 'info');
           return `${row('앞 공정', up)}${row('뒤 공정', dn)}

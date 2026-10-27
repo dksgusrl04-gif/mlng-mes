@@ -117,7 +117,7 @@
       <div class="tbx"><table class="tb atab"><colgroup><col class="c-an"><col class="c-av"><col class="c-au"><col class="c-ab"><col class="c-as"><col class="c-at"><col class="c-ad"></colgroup>
         <thead><tr><th>항목</th><th class="n">현재값</th><th>단위</th><th class="n">기본값</th><th>상태</th><th>쓰는 곳</th><th>최근 변경</th></tr></thead>
         <tbody>${DEF.map(([g]) => `<tr class="agrp"><td colspan="7">${esc(g)}</td></tr>` + ITEMS.filter(it => it.g === g).map(row).join('')).join('')}</tbody></table></div>
-      ${msg ? `<p class="note">${esc(msg)}</p>` : ''}</div>
+      ${msg ? `<p class="note msg">${esc(msg)}</p>` : ''}</div>
     ${LOG.length ? `<div class="card"><h2>변경 이력 <span class="h2sub">이번 접속</span><a class="more" href="#" data-go="net_ledger">신뢰 원장 →</a></h2>
       ${M.table([['시각', 'at'], ['항목', x => `<b>${esc(x.n)}</b>`], ['변경 전', x => esc(String(x.from)), 'n'], ['변경 후', x => `<b>${esc(String(x.to))}</b>`, 'n'], ['변경자', 'by']], LOG, { wrap: false })}</div>` : ''}`;
   };

@@ -196,7 +196,7 @@
     <div class="card"><h2>발행할 수 있는 증명 <span class="h2sub">원본 데이터는 넘기지 않고, «기준을 만족한다» 는 사실만 서명해 건넵니다</span></h2>
       ${M.table([['항목', r => `<b>${esc(r.t.name)}</b><div class="muted" style="font-size:12px">${esc(r.t.text)}</div>`], ['현재 값 (우리만 봄)', r => r.show, 'n'], ['기준', r => r.ok ? '<span class="tag j-ok">만족</span>' : '<span class="tag j-danger">미달</span>'],
         ['발행', r => r.ok ? `<select class="in" data-craud="${r.k}" style="padding:3px 6px">${T.COMPANIES.filter(c => c.id !== 'MLNG').map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select> <button class="btn pri sm" data-crissue="${r.k}">발행</button>` : '<span class="muted">기준 미달 — 발행 불가</span>']], rows, { wrap: false })}
-      ${crmsg ? `<p class="note">${esc(crmsg)}</p>` : ''}</div>
+      ${crmsg ? `<p class="note msg">${esc(crmsg)}</p>` : ''}</div>
     <div class="card" style="margin-top:16px"><h2>발행한 증명서 <span class="h2sub">받는 회사가 「검증」으로 서명·기간을 직접 확인합니다</span></h2>
       ${M.table([['증명서', c => `<b>${esc(c.id)}</b>`], ['주장', 'claim'], ['받는 회사', c => esc(T.co(c.audience).name)], ['기간', c => `<span class="muted">${esc(c.issued)} ~ ${esc(c.expires)}</span>`], ['근거 해시', c => `<span class="mono">${esc(T.short(c.evidence))}</span>`],
         ['검증', c => crv[c.id] ? (crv[c.id].ok ? '<span class="tag j-ok">✓ 진본</span>' : `<span class="tag j-danger">✕ ${esc(crv[c.id].why)}</span>`) : `<button class="btn sm" data-crver="${esc(c.id)}">${esc(T.co(c.audience).short)}사로서 검증</button>`]], CR, { wrap: false, empty: '발행한 증명서가 없습니다' })}

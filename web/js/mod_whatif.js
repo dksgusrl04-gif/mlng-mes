@@ -105,7 +105,7 @@
         <label class="wil"><span>소입로 히터 정비</span><label class="ck"><input type="checkbox" data-wi="heater" ${S.heater ? 'checked' : ''}> 정비함 (점검비 ${DX.won(DX.C().MAINT)})</label></label>
       </div>
       ${S.vb > QL + 1e-6 ? `<p class="note" style="color:var(--danger-ink)">교체 기준 VB ${f(S.vb, 2)} 는 품질 기준 ${QL} mm 를 넘습니다 — 비용 비교용 시뮬레이션만 가능하고, 최적 찾기 · 계획 적용에서는 제외됩니다.</p>` : ''}
-      ${msg ? `<p class="note">${msg}</p>` : ''}
+      ${msg ? `<p class="note msg">${msg}</p>` : ''}
       ${best ? `<div class="cnext"><b>최적 조합</b> 프레스 ${best.s.press}% · 용접기 ${best.s.weld}대 · 열처리 ${best.s.heat}% · VB ${f(best.s.vb, 2)} · 히터 ${best.s.heater ? '정비' : '그대로'} · 열처리 이탈 ${best.s.dev}% → 산출 ${f(best.out, 0)}개 · 이익 ${DX.won(best.profit)}/일 (지금 대비 ${dv(best.profit, B.profit, 'won')}원) <button class="btn pri sm" id="wi-usebest">이 조합 넣기</button></div>` : ''}</div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
       <div class="card"><h2>현재 대비 변경안 ${M.asmTag ? M.asmTag('loss', 'opp') : ''}<span class="h2sub">하루 기준</span></h2>

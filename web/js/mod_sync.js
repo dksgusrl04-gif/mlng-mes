@@ -63,7 +63,7 @@
           <div class="synd">${f(t.need, t.d || 0)}<small> ${esc(t.unit)}</small></div>
           ${t.cap ? `<div class="sybar"><i style="--w:${Math.min(100, t.use * 100)}%"></i></div><div class="muted" style="font-size:12px">능력 ${f(t.cap, t.d || 0)} · 사용률 <b style="color:${t.state === 'danger' ? 'var(--danger-ink)' : t.state === 'warn' ? 'var(--warn-ink)' : 'inherit'}">${pct(t.use, 0)}</b></div>` : '<div class="muted" style="font-size:12px">계획 출발점</div>'}
           ${t.note ? `<div class="muted" style="font-size:11.5px;margin-top:3px">${esc(t.note)}</div>` : ''}</div>`).join('')}</div>
-      ${st.msg ? `<p class="note" style="color:var(--danger-ink)">${esc(st.msg)}</p>` : ''}
+      ${st.msg ? `<p class="note msg" style="color:var(--danger-ink)">${esc(st.msg)}</p>` : ''}
       <p class="note">차량 1대 = 시트 ${r.c.SEATS_PER_VEHICLE}세트 = 브래킷 ${r.c.SEATS_PER_VEHICLE * r.c.BRACKETS_PER_SEAT}개 · 브래킷 1개 강판 ${r.c.STEEL_KG} kg (수율 ${pct(r.c.STEEL_YIELD, 0)}). B·D 능력은 예시값 (config.js SYNC). 우리 능력은 라인 운영의 관측 최대 기준입니다.</p></div>
     <div class="card" style="margin-top:16px"><h2>전파 기록 <a class="more" href="#" data-go="net_ledger">신뢰 원장 →</a></h2>
       ${st.log.length ? st.log.map(l => `<div class="sylog"><div><b>${esc(l.at.slice(5, 16))}</b> 차량 ${f(l.veh, 0)}대/일 (${l.pct > 0 ? '+' : ''}${l.pct}%) → 브래킷 ${f(l.br, 0)}개/일</div><ul class="plain">${l.out.map(o => `<li>${esc(o)}</li>`).join('')}</ul></div>`).join('') : '<div class="empty">아직 전파한 변경이 없습니다 — 계획을 바꾸고 「변경 전파」를 누르세요</div>'}</div>`;

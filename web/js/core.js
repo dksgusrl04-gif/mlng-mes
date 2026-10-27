@@ -253,7 +253,14 @@
       const i = document.createElement('span'); i.className = 'hint'; i.tabIndex = 0; i.setAttribute('data-tip', t); i.setAttribute('aria-label', t); i.textContent = 'i'; s.replaceWith(i); });
     root.querySelectorAll('.kstrip').forEach(k => k.classList.add('kbar'));   // 모든 화면의 요약 줄을 같은 상자 · 같은 칸 폭으로
     root.querySelectorAll('.kstrip .kpi .foot').forEach(x => { if (!x.title) x.title = x.textContent.trim(); });
-    root.querySelectorAll('.note').forEach(n => { if (n.textContent.length > 110 && !n.dataset.fold) { n.dataset.fold = '1'; n.classList.add('fold'); n.onclick = () => n.classList.toggle('open'); } });
+    // 설명문(.note)은 화면에서 걷어 카드 제목의 ⓘ 안으로 — 결과 메시지(.note.msg)만 화면에 남긴다
+    root.querySelectorAll('p.note:not(.msg):not([style*="color"])').forEach(n => {
+      const t = n.textContent.replace(/\s+/g, ' ').trim(), card = n.closest('.card'), h = card && card.querySelector('h2');
+      if (!t) { n.remove(); return; }
+      if (n.previousElementSibling && n.previousElementSibling.matches('h3')) return;   // 소제목 바로 아래 = 본문 내용
+      if (h) { let hi = h.querySelector(':scope > .hint'); if (!hi) { hi = document.createElement('span'); hi.className = 'hint'; hi.tabIndex = 0; hi.textContent = 'i'; const more = h.querySelector(':scope > .more'); more ? h.insertBefore(hi, more) : h.appendChild(hi); }
+        hi.setAttribute('data-tip', ((hi.getAttribute('data-tip') || '') + ' ' + t).trim()); hi.setAttribute('aria-label', hi.getAttribute('data-tip')); n.remove(); return; }
+      if (t.length > 110 && !n.dataset.fold) { n.dataset.fold = '1'; n.classList.add('fold'); n.onclick = () => n.classList.toggle('open'); } });
   }
   M.tidy = tidy;
   // 화면 안의 공통 동작: data-go(화면 이동) · data-row(상세) · data-insp(검사 기록) · data-set(모듈 상태 바꾸고 다시 그리기)
