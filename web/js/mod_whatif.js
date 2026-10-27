@@ -1,11 +1,11 @@
 /* 3.0 ④ — What-if 샌드박스 (바꿔 보고 결정한다)
  * ───────────────────────────────────────────────────────────────
- * 라인 운영 모델(공정별 능력·수율) + 프레스 속도-불량 관계 + 공구 마모 속도 + 히터 전력 + 탄소 + 고객 계약 조항을 한 번에 엮는다.
+ * 라인 운영 모델(공정별 능력·수율) + 프레스 속도-불량 관계 + 공구 마모 속도 + 히터 전력 + 탄소 + 고객 품질 협정 기준을 한 번에 엮는다.
  * 손잡이를 움직이면 하루 산출 · 병목 · 돈(공헌이익 − 손실 − 비용) · 탄소 · 계약 충족이 같이 바뀐다.
  *   프레스 속도 → 하루 타발 수 → 불량률 (데이터 회귀, 상관계수 표시)
  *   교체 기준 VB → 공구 1세트 가공 부품 수(마모 속도 데이터) → 인서트 비용  vs  마모 구간 가공 부품의 불량 위험
  *   히터 정비 → 출력 증가분 전력 · 탄소 절감 vs 점검비
- * 「최적 찾기」 는 계약 조항을 지키는 조합 중 하루 판단 이익이 가장 큰 것을 찾는다 (격자 탐색 840가지).
+ * 「최적 찾기」 는 품질 협정 기준을 지키는 조합 중 하루 판단 이익이 가장 큰 것을 찾는다 (격자 탐색 840가지).
  */
 (function () {
   'use strict';
@@ -90,10 +90,10 @@
     return `<div class="kstrip">
       <div class="kpi"><div class="lab">하루 산출</div><div class="val">${f(R.out, 0)}<small>개</small></div><div class="foot">${dv(R.out, B.out, 0)} · 병목 ${esc(nm(R.lim.p))} (능력 기준)${MR ? ` · 실적 흔들림 반영 P10~P90 ${f(MR.p10, 0)}~${f(MR.p90, 0)} · 목표 달성 확률 ${pct(MR.pMeet, 0)}` : ''}</div></div>
       <div class="kpi"><div class="lab">하루 판단 이익</div><div class="val" style="color:${R.profit >= B.profit ? 'var(--ok)' : 'var(--danger-ink)'}">${DX.wonShort(R.profit)}<small>원</small></div><div class="foot">지금 대비 ${dv(R.profit, B.profit, 'won')}원</div></div>
-      <div class="kpi"><div class="lab">고객 계약</div><div class="val" style="color:${R.ok ? 'var(--ok)' : feasible(R, B) ? 'var(--warn-ink)' : 'var(--danger-ink)'};font-size:${R.ok ? '' : '17px'}">${R.ok ? '충족' : feasible(R, B) ? '지금도 위반' : '새로 위반'}</div><div class="foot">${R.checks.map(c => `${c.ok ? '✓' : '✕'} ${c.t} ${c.v}`).join(' · ') || '활성 계약 없음'}${!R.ok && feasible(R, B) ? ' — 손잡이로 바뀌지 않는 조항은 출하 게이트가 LOT 단위로 거릅니다' : ''}</div></div>
+      <div class="kpi"><div class="lab">고객 발주</div><div class="val" style="color:${R.ok ? 'var(--ok)' : feasible(R, B) ? 'var(--warn-ink)' : 'var(--danger-ink)'};font-size:${R.ok ? '' : '17px'}">${R.ok ? '충족' : feasible(R, B) ? '지금도 위반' : '새로 위반'}</div><div class="foot">${R.checks.map(c => `${c.ok ? '✓' : '✕'} ${c.t} ${c.v}`).join(' · ') || '활성 계약 없음'}${!R.ok && feasible(R, B) ? ' — 손잡이로 바뀌지 않는 조항은 출하 승인이 LOT 단위로 거릅니다' : ''}</div></div>
       <div class="kpi"><div class="lab">부품 1개당 탄소</div><div class="val">${R.pcfG != null ? f(R.pcfG, 0) : '—'}<small>g</small></div><div class="foot">지금 ${B.pcfG != null ? f(B.pcfG, 0) : '—'} g</div></div>
     </div>
-    <div class="card"><h2>손잡이 <span class="h2sub">값을 바꾸면 아래가 바로 다시 계산됩니다 — 실제 라인은 「계획으로 적용」 전까지 그대로</span>
+    <div class="card"><h2>조정 변수 <span class="h2sub">값을 바꾸면 아래가 바로 다시 계산됩니다 — 실제 라인은 「계획으로 적용」 전까지 그대로</span>
       <span class="more" style="display:flex;gap:6px"><button class="btn sm" id="wi-reset">지금 값으로</button><button class="btn sm" id="wi-save" ${saved.length >= 3 ? 'disabled' : ''}>시나리오 저장</button><button class="btn sm" id="wi-opt">최적 찾기</button><button class="btn pri sm" id="wi-apply">계획으로 적용</button></span></h2>
       <div class="wigrid">
         ${lever('target', '목표 산출', 'number', { min: 10000, max: 200000, step: 1000 })}
@@ -108,7 +108,7 @@
       ${msg ? `<p class="note">${msg}</p>` : ''}
       ${best ? `<div class="cnext"><b>최적 조합</b> 프레스 ${best.s.press}% · 용접기 ${best.s.weld}대 · 열처리 ${best.s.heat}% · VB ${f(best.s.vb, 2)} · 히터 ${best.s.heater ? '정비' : '그대로'} · 열처리 이탈 ${best.s.dev}% → 산출 ${f(best.out, 0)}개 · 이익 ${DX.won(best.profit)}/일 (지금 대비 ${dv(best.profit, B.profit, 'won')}원) <button class="btn pri sm" id="wi-usebest">이 조합 넣기</button></div>` : ''}</div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
-      <div class="card"><h2>지금 vs 바꾸면 <span class="h2sub">하루 기준</span></h2>
+      <div class="card"><h2>현재 대비 변경안 <span class="h2sub">하루 기준</span></h2>
         <table class="tb"><thead><tr><th></th><th class="n">지금</th><th class="n">바꾸면</th><th class="n">차이</th></tr></thead><tbody>
           ${row('하루 산출 (개, 능력 기준)', B.out, R.out, 0, 1)}
           ${MB && MR ? row('하루 산출 중앙값 (몬테카를로)', MB.p50, MR.p50, 0, 1) + row('목표 달성 확률 (%)', MB.pMeet * 100, MR.pMeet * 100, 0, 1) : ''}
@@ -125,7 +125,7 @@
           ${row('인서트 사용 (개/일)', B.inserts, R.inserts, 1, -1)}
         </tbody></table>
         <p class="note">판단 이익 = 공헌이익 − 불량 손실 − 인서트 − 마모 위험 − 설비·잔업·관리 − 낭비 전력 − 클레임 기대 비용 (계약 기준 넘는 LOT 비율 × 하루 출하 LOT × 클레임 1건) (회계 이익이 아니라 «무엇이 나은지» 를 비교하는 값). 계수는 config.js COST.</p></div>
-      <div class="card"><h2>왜 그렇게 되나 <span class="h2sub">계산에 쓴 관계</span></h2>
+      <div class="card"><h2>원인 분석 <span class="h2sub">계산에 쓴 관계</span></h2>
         <h3 class="dh" style="margin-top:0">병목 — 능력 기준 하루 최대</h3>
         <div class="hbars">${R.caps.map(c => `<div class="hb"><span>${esc(nm(c.p))}</span><i style="--w:${Math.min(100, R.out / c.t * 100).toFixed(1)}%"></i><b>${f(c.t, 0)}</b></div>`).join('')}</div>
         <h3 class="dh">프레스 속도 → 불량률</h3><p class="note" style="margin-top:0">${R.pf ? `하루 타발 수와 불량률 회귀 (${R.pf.n}일): 타발 1,000회당 ${R.pf.b >= 0 ? '+' : ''}${f(R.pf.b * 1000, 1)} PPM · 상관계수 r = ${f(R.pf.r, 2)} — ${Math.abs(R.pf.r) < 0.3 ? '관계가 약해 숫자보다 방향으로 읽어야 합니다' : '관계가 뚜렷합니다'}` : '프레스 데이터 부족'}</p>
@@ -162,7 +162,7 @@
       const on = (s, fn) => { const e = root.querySelector(s); if (e) e.onclick = fn; };
       on('#wi-reset', () => { S = defaults(); best = null; msg = ''; M.render(); });
       on('#wi-save', () => { saved.push(compute(Object.assign({}, S))); M.render(); });
-      on('#wi-opt', () => { best = optimize(); msg = best ? '' : '계약 조항을 지키는 조합이 없습니다'; M.render(); });
+      on('#wi-opt', () => { best = optimize(); msg = best ? '' : '품질 협정 기준을 지키는 조합이 없습니다'; M.render(); });
       on('#wi-usebest', () => { S = Object.assign({}, best.s); best = null; M.render(); });
       root.querySelectorAll('[data-wiload]').forEach(b => b.onclick = () => { S = Object.assign({}, saved[+b.dataset.wiload].s); M.render(); });
       root.querySelectorAll('[data-widel]').forEach(b => b.onclick = () => { saved.splice(+b.dataset.widel, 1); M.render(); });

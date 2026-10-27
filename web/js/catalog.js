@@ -7,7 +7,7 @@
  *   proc  공정 (press · weld · heat · mach · insp)
  *   cls   부류 — 마모형(닳아서 교체) · 파손형(한 번에 부러짐) · 소모품 · 예비품
  *   unit  단위   qty  발주 기본 수량   vendor  주로 사는 곳
- *   on    이 화면을 가리키는 알림이 뜨면 «추천» (예: 'press_equip')
+ *   on    이 화면을 가리키는 알람이 뜨면 «추천» (예: 'press_equip')
  *   mach  'insert' 면 MCT 마모 데이터로 수량을 계산해 추천
  * 현장에 맞게 품목을 더하거나 빼면 화면에 바로 반영된다.
  */

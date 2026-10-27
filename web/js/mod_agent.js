@@ -1,6 +1,6 @@
 /* 2.0 ④ — 에이전트 MES (감지 → 원인 → 조치안 → 승인 → 실행)
  * ───────────────────────────────────────────────────────────────
- * 1.0 은 «알려 주고 답하는» MES. 2.0 에이전트는 알림·클레임·계획 부족을 스스로 점검해 조치안을 만들고,
+ * 1.0 은 «알려 주고 답하는» MES. 2.0 에이전트는 알람·클레임·계획 부족을 스스로 점검해 조치안을 만들고,
  * 회사가 정한 정책(자동 실행 / 승인 후 실행 / 제안만)에 따라 실행한다. 모든 실행은 신뢰 원장에 우리 서명으로 남는다.
  *   조치 종류: 공구·소모품 발주 · 검사 강화 지시 · 설비 점검 지시 · 라인 속도 맞춤 · 작업지시 초안 · 협력사 통보 · 클레임 대응안
  */
@@ -28,12 +28,12 @@
     A.forEach(a => {
       const codes = buy ? buy.itemsFor(a) : [];
       if (a.proc === 'mach' && a.level === 'danger') {
-        add('buy:' + a.title, 'buy', a, ['공구 마모가 교체 기준을 넘음', '같은 재질·조건에서 마모 속도가 빠름 (스테인리스강)', `인서트 확보 — ${codes.join(', ')}`], `공구 발주 초안 (${codes.join(', ')})`, async () => { const po = await buy.createPO(codes.map(code => ({ code })), '에이전트 제안 — ' + a.title, 'AI 에이전트'); return `${po.id} 발주 등록 (결재 대기)`; });
+        add('buy:' + a.title, 'buy', a, ['공구 마모가 교체 기준을 넘음', '같은 재질·조건에서 마모 속도가 빠름 (스테인리스강)', `인서트 확보 — ${codes.join(', ')}`], `공구 발주 초안 (${codes.join(', ')})`, async () => { const po = await buy.createPO(codes.map(code => ({ code })), '에이전트 제안 — ' + a.title, 'AI 에이전트'); return `${po.id} 발주 등록 (승인 대기)`; });
       }
       if (a.proc === 'mach' && /넘겨 가공/.test(a.title)) add('insp:' + a.title, 'insp', a, ['교체 기준을 넘긴 공구로 가공한 부품이 있음', '마모된 공구는 치수·버 불량 위험', '해당 부품 검사 강화'], '검사 셀에 검사 강화 지시 (해당 가공 부품 전수)', async () => '검사 셀에 강화 지시 전달 — 대상 부품 전수 측정');
       if (a.proc === 'press' && a.level === 'danger') {
         add('maint:' + a.title, 'maint', a, ['진동이 정상 기준(상위 1%)을 크게 넘음', '금형·크랭크·클러치 이상 후보', '다음 증속 전 설비 점검'], 'PR-01 설비 점검 지시', async () => '보전 담당에게 PR-01 점검 지시 — 금형·크랭크·클러치');
-        if (codes.length) add('buy:' + a.title, 'buy', a, ['설비 이상이 금형 손상으로 이어질 수 있음', '예비품이 없으면 정지 시간이 길어짐', `예비품 확보 — ${codes.join(', ')}`], `예비품 발주 초안 (${codes.join(', ')})`, async () => { const po = await buy.createPO(codes.map(code => ({ code })), '에이전트 제안 — ' + a.title, 'AI 에이전트'); return `${po.id} 발주 등록 (결재 대기)`; });
+        if (codes.length) add('buy:' + a.title, 'buy', a, ['설비 이상이 금형 손상으로 이어질 수 있음', '예비품이 없으면 정지 시간이 길어짐', `예비품 확보 — ${codes.join(', ')}`], `예비품 발주 초안 (${codes.join(', ')})`, async () => { const po = await buy.createPO(codes.map(code => ({ code })), '에이전트 제안 — ' + a.title, 'AI 에이전트'); return `${po.id} 발주 등록 (승인 대기)`; });
       }
       if (a.proc === 'heat' && /히터/.test(a.title)) add('maint:' + a.title, 'maint', a, ['같은 온도 유지에 드는 히터 출력이 늘어남', '히터 열화·단열재 손상 후보', '점검 + 히터 예비품'], '소입로 히터·단열재 점검 지시', async () => '보전 담당에게 소입로 2존 히터·단열재 점검 지시');
       if (a.proc === 'insp' && /변하지 않음/.test(a.title)) add('maint:' + a.title, 'maint', a, ['측정값이 모든 부품에서 같음', '센서 고착·배선 문제 후보', '센서 점검 · 해당 축 판정 보류'], '검사 셀 센서 점검 지시', async () => '검사 셀 센서 점검 지시 — 해당 축 판정 보류');
@@ -45,10 +45,10 @@
     const L = M.lineSummary && M.lineSummary();
     if (L && L.possible_per_day < L.target_per_day * 0.95 && M.lineApi) add('line:' + L.bottleneck + Math.round(L.target_per_day), 'line', { title: `지금 계획 가능 산출 ${f(L.possible_per_day, 0)} < 목표 ${f(L.target_per_day, 0)}`, level: 'warn', go: 'line' },
       [`병목 ${L.bottleneck} 공정`, '앞뒤 공정 처리량이 맞지 않아 재공이 줄어듦', '공정별 속도를 목표에 맞춤 (능력 한계 안)'], '라인 속도를 능력 한계 안에서 목표에 맞춤', async () => { const r = M.lineApi.fit('cap'); return `공정별 속도 조정 — 목표 ${f(r.target, 0)}개/일 기준`; });
-    // 스마트 발주 클레임 → 대응안 + 협력사 통보
+    // 전자 발주 클레임 → 대응안 + 협력사 통보
     (T.orders || []).forEach(o => o.deliveries.filter(d => d.claim && d.claim.status === 'open').forEach(d => {
       const bad = d.checks.filter(c => !c.ok).map(c => c.k);
-      add('claim:' + d.claim.id, 'claim', { title: `${d.claim.id} ${d.lot} 클레임`, level: 'warn', go: `dl:${o.id}|${d.lot}` }, ['계약 조항 미달 납품', bad.includes('heat_ppm') ? '해당 열처리 작업의 조건·히터 출력 확인 필요' : '미달 조항의 공정 데이터 확인 필요', '재검사 요청 또는 수용 판단'],
+      add('claim:' + d.claim.id, 'claim', { title: `${d.claim.id} ${d.lot} 클레임`, level: 'warn', go: `dl:${o.id}|${d.lot}` }, ['품질 협정 기준 미달 납품', bad.includes('heat_ppm') ? '해당 열처리 작업의 조건·히터 출력 확인 필요' : '미달 조항의 공정 데이터 확인 필요', '재검사 요청 또는 수용 판단'],
         `대응안: ${bad.includes('heat_ppm') ? '열처리 작업 프로파일 확인 → 이탈 없으면 재검사 요청, 이탈 있으면 수용' : '근거 확인 후 재검사 요청'}`, async () => '대응안을 품질 담당에게 전달');
       if (T.contractFor('MLNG', o.buyer, 'quality_kpi')) add('notify:' + d.claim.id, 'notify', { title: `${d.claim.id} 협력사 통보`, level: 'info', go: `dl:${o.id}|${d.lot}` }, ['클레임이 열림', `${T.co(o.buyer).name}와 품질 지표 공유 계약 유효`, '원인 조사 착수·예상 회신일 통보'],
         `${T.co(o.buyer).name}에 원인 조사 착수 통보`, async () => { await T.access(o.buyer, 'MLNG', 'quality_kpi', d.claim.id + ' 조사 착수 통보'); return `${T.co(o.buyer).name}에 통보 (계약 범위 안)`; });
@@ -79,7 +79,7 @@
     return ps.length;
   }
   T.agentScan = scan;
-  // 다른 화면(질의응답 · 사건실)에서 조치안을 만들어 넣는다 — 정책에 따라 승인 대기 또는 자동 실행
+  // 다른 화면(질의응답 · 품질 이슈)에서 조치안을 만들어 넣는다 — 정책에 따라 승인 대기 또는 자동 실행
   T.agentAdd = async (kind, act, why, exec, trig) => { const it = Object.assign({ id: `AG-${String(++seq).padStart(3, '0')}`, at: T.stamp(), key: kind + ':' + act + seq, kind, act, why, exec, trig: trig || { title: '질의응답 지시', go: 'ask' }, mode: pol[kind], status: pol[kind] === 'suggest' ? 'suggested' : 'pending' });
     Q.items.unshift(it); if (it.mode === 'auto' && !(await doubt(it))) await run(it); return it; };
   T.agentRun = async (id, by) => { const it = Q.items.find(x => x.id === id); if (!it) throw new Error('조치안 없음'); if (it.status === 'done') return it.result; it.approvedBy = by || M.D.user().name; await run(it); return it.result; };
@@ -100,16 +100,16 @@
       <div class="kpi click" data-aq="suggested"><div class="lab">제안</div><div class="val">${Q.items.filter(x => x.status === 'suggested').length}<small>건</small></div><div class="foot">사람이 판단</div></div>
       <div class="kpi"><div class="lab">마지막 점검</div><div class="val" style="font-size:15px">${esc(Q.lastScan ? Q.lastScan.at.slice(11, 16) : '—')}</div><div class="foot">${Q.lastScan ? `조치안 ${Q.lastScan.n}건 새로 찾음` : ''}</div></div>
     </div>
-    <div class="card"><h2>조치안 <span class="h2sub">감지 → 원인 후보 → 조치 — 정책에 따라 자동 실행하거나 승인을 기다립니다</span>
+    <div class="card"><h2>조치 계획 <span class="h2sub">감지 → 추정 원인 → 조치 — 정책에 따라 자동 실행하거나 승인을 기다립니다</span>
       <span class="more" style="display:flex;gap:6px;align-items:center"><label class="ck" style="font-size:12.5px"><input type="checkbox" id="ag-auto" ${Q.autoOn ? 'checked' : ''}> 실시간 반영 중 1분마다 자동 점검</label><button class="btn pri sm" id="ag-scan">지금 점검</button></span></h2>
       <div class="tools">${M.seg('aq', fq, [['open', '처리 대기·제안'], ['done', '실행 완료'], ['rejected', '반려'], ['all', '전체']])}</div>
       ${its.length ? `<div class="aglist">${its.map(it => `<div class="ag ${esc(it.status)}">
         <div class="agh"><span class="tag ${it.status === 'done' ? 'j-ok' : it.status === 'rejected' ? 't-off' : it.status === 'suggested' ? 'j-ok' : 'j-warn'}">${esc({ pending: '승인 대기', done: '실행됨', rejected: '반려', suggested: '제안', failed: '실패' }[it.status])}</span>
           <b>${esc(it.act)}</b><span class="chip c-ext">${esc(KINDS[it.kind].name)} · ${esc(MODE[it.mode])}</span><span class="muted" style="margin-left:auto;font-size:12px">${esc(it.id)} · ${esc(it.at.slice(5, 16))}</span></div>
-        ${it.doubt ? `<div class="doubt">${M.ic('shield')}<span><b>자기 의심</b> — ${esc(it.doubt)} <a href="#" data-go="models">모델 상태 →</a></span></div>` : ''}<div class="agw">${it.why.map((w, i) => `<span><i>${['감지', '원인 후보', '조치'][i]}</i>${esc(w)}</span>`).join('<b>→</b>')}</div>
+        ${it.doubt ? `<div class="doubt">${M.ic('shield')}<span><b>자기 의심</b> — ${esc(it.doubt)} <a href="#" data-go="models">모델 상태 →</a></span></div>` : ''}<div class="agw">${it.why.map((w, i) => `<span><i>${['감지', '추정 원인', '조치'][i]}</i>${esc(w)}</span>`).join('<b>→</b>')}</div>
         <div class="agf"><a href="#" data-go="${esc(it.trig.go || 'alerts')}">근거: ${esc(it.trig.title)}</a>
           ${it.status === 'pending' ? `<button class="btn pri sm" data-agok="${esc(it.id)}">승인 · 실행</button><button class="btn sm" data-agno="${esc(it.id)}">반려</button>` : ''}
-          <button class="btn sm" data-askq="${esc(`${it.trig.title} — 에이전트가 「${it.act}」를 제안했어. 근거와 다른 선택지를 알려줘`)}">Claude에게 묻기</button>
+          <button class="btn sm" data-askq="${esc(`${it.trig.title} — 에이전트가 「${it.act}」를 제안했어. 근거와 다른 선택지를 알려줘`)}">AI 문의</button>
           ${it.result ? `<span class="muted" style="font-size:12.5px">결과: ${esc(it.result)}</span>` : ''}</div></div>`).join('')}</div>` : '<div class="empty">해당하는 조치안이 없습니다</div>'}</div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
       <div class="card"><h2>실행 정책 <span class="h2sub">조치 종류마다 회사가 정합니다</span></h2>
@@ -122,7 +122,7 @@
     id: 'agent', group: '현황', order: 2,
     menu: [['agent', 'AI 에이전트', 'agent']],
     views: V,
-    alerts: () => { const p = Q.items.filter(x => x.status === 'pending'); return p.length ? [{ proc: 'agent', level: 'info', title: `에이전트 조치안 승인 대기 ${p.length}건`, body: p.slice(0, 3).map(x => x.act).join(' · '), by: 'AI 에이전트', at: p[0].at, go: 'agent' }] : []; },
+    alerts: () => { const p = Q.items.filter(x => x.status === 'pending'); return p.length ? [{ proc: 'agent', level: 'info', title: `AI 조치 계획 승인 대기 ${p.length}건`, body: p.slice(0, 3).map(x => x.act).join(' · '), by: 'AI 에이전트', at: p[0].at, go: 'agent' }] : []; },
     bind(root) {
       const on = (s, fn) => { const e = root.querySelector(s); if (e) e.onclick = fn; };
       on('#ag-scan', async () => { await scan(); M.render(); });
@@ -130,7 +130,7 @@
       root.querySelectorAll('[data-aq]').forEach(b => b.onclick = () => { fq = b.dataset.aq; M.render(); });
       root.querySelectorAll('[data-pol]').forEach(b => b.onclick = () => { const [k, m] = b.dataset.pol.split('|'); pol[k] = m; Q.items.filter(x => x.kind === k && ['pending', 'suggested'].includes(x.status)).forEach(x => { x.mode = m; x.status = m === 'suggest' ? 'suggested' : 'pending'; }); M.render(); });
       root.querySelectorAll('[data-agok]').forEach(b => b.onclick = async () => { const it = Q.items.find(x => x.id === b.dataset.agok); it.approvedBy = M.D.user().name; await run(it); M.render(); });
-      root.querySelectorAll('[data-agno]').forEach(b => b.onclick = async () => { const it = Q.items.find(x => x.id === b.dataset.agno); it.status = 'rejected'; await T.append('MLNG', 'agent', it.id, `에이전트 조치안 반려 — ${it.act}`, { id: it.id }); M.render(); });
+      root.querySelectorAll('[data-agno]').forEach(b => b.onclick = async () => { const it = Q.items.find(x => x.id === b.dataset.agno); it.status = 'rejected'; await T.append('MLNG', 'agent', it.id, `AI 조치 계획 반려 — ${it.act}`, { id: it.id }); M.render(); });
       root.querySelectorAll('[data-askq]').forEach(b => b.onclick = e => { e.stopPropagation(); if (M.askApi) M.askApi.ask(b.dataset.askq); });
     },
   });

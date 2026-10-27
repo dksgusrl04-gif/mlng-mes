@@ -32,7 +32,7 @@
   }
 
   M.heatApi = { heaterDrift: () => heaterDrift(), target: () => target() };
-  // ── 현장 알림
+  // ── 현장 알람
   function alerts() {
     const out = [], t = target(), rl = recent(), at = M.S.asof;
     rl.filter(l => l.ppm >= 2 * t).slice(-3).forEach(l => out.push({ key: 'heat.lot_ppm', data: { lots: [l.id] }, proc: 'heat', level: 'danger', title: `${l.id} 불량률 ${ppmTxt(l.ppm)} PPM — 관리 기준 2배 초과`,

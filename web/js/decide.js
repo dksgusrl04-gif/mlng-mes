@@ -1,10 +1,10 @@
 /* 3.0 판단 계층 — 모든 신호를 «돈» 과 «근거» 로 바꾼다
  * ───────────────────────────────────────────────────────────────
  * 1.0 은 공정 데이터를 보여 주고, 2.0 은 회사 사이를 서명으로 잇는다. 3.0 은 «무엇부터 할지» 를 정한다.
- *   money(알림)  → 실손(이미 버린 돈) · 위험(그대로 두면 날 수 있는 돈) · 묶임(출하 못 하는 돈) · 낭비(매일 새는 돈) + 계산 근거
+ *   money(알람)  → 실손(이미 버린 돈) · 위험(그대로 두면 날 수 있는 돈) · 묶임(출하 못 하는 돈) · 낭비(일 에너지 손실) + 계산 근거
  *   copq(일수)   → 날짜별 품질 손실 (불량 폐기 · 클레임 · 에너지 낭비) — Cost of Poor Quality
  *   lineOpp()    → 목표 대비 못 만드는 수량의 기회 손실
- *   compare()    → 두 묶음의 평균 비교 (원인 후보의 «근거 강도» 를 정하는 공통 계산)
+ *   compare()    → 두 묶음의 평균 비교 (추정 원인의 «근거 강도» 를 정하는 공통 계산)
  * 금액 계수는 config.js COST (모두 예시값 — 회사 원가표로 바꿔 쓴다). 가정이 들어간 값은 근거에 «가정» 이라고 적는다.
  */
 (function () {
@@ -39,7 +39,7 @@
       : p < 0.01 && lo > 1.2 ? 'strong' : p < 0.1 && ratio > 1 ? 'some' : ratio < 1 && p > 0.9 ? 'inverse' : 'weak';
     return { ma, mb, ratio, na: a.length, nb: b.length, strength, p, lo, hi };
   };
-  DX.STRENGTH = { strong: ['j-danger', '강함'], some: ['j-warn', '있음'], weak: ['t-off', '약함'], inverse: ['t-off', '반대 방향'], none: ['t-off', '판단 불가'] };
+  DX.STRENGTH = { strong: ['j-danger', '높음'], some: ['j-warn', '보통'], weak: ['t-off', '낮음'], inverse: ['t-off', '역상관'], none: ['t-off', '판단 불가'] };
   DX.RANK = { strong: 0, some: 1, weak: 2, inverse: 3, none: 4 };
 
   // 열처리 가동 시간 (하루 평균, 최근 7일)
@@ -54,17 +54,17 @@
   };
   // 공구: 교체 기준을 넘긴 가공 횟수
   DX.overRuns = (tid, days) => MC().runs.filter(r => (!tid || r.tool === tid) && r.vb_now != null && r.vb_now > VBL() && (!days || inDays(r.t, days)));
-  // 활성 스마트 발주 (우리가 수락 서명한 첫 발주)
+  // 활성 전자 발주 (우리가 수락 서명한 첫 발주)
   DX.activeSO = () => ((window.MLNGTrust || {}).orders || []).find(o => o.signs && o.signs.seller) || null;
   const claimCost = qty => C().CLAIM_FIXED + (qty || 0) * C().CLAIM_PER_PART;
   DX.claimCost = claimCost;
 
-  // ── 알림 하나 → 돈
+  // ── 알람 하나 → 돈
   DX.money = a => {
     if (!a || !M.S) return null;
     const c = C(), out = { loss: 0, risk: 0, tied: 0, waste: 0, basis: [] }, t = a.title || '', b = a.body || '';
     const lot = id => (M.S.lots || []).find(l => l.id === id);
-    // 알림의 구조화된 key·data 로 계산한다 (문구가 바뀌어도 금액이 사라지지 않게). key 가 없는 알림은 환산하지 않는다
+    // 알람의 구조화된 key·data 로 계산한다 (문구가 바뀌어도 금액이 사라지지 않게). key 가 없는 알람은 환산하지 않는다
     const k = a.key || '', d = a.data || {}, hl = id => H().lots.find(l => l.id === id);
     if (k === 'mach.tool_over') {
       const id = d.tool, over = DX.overRuns(id).length, parts = over * (MC().parts_per_run || 25);
@@ -82,7 +82,7 @@
       out.basis.push(`방치하면 고장 확률 ${Math.round(c.STOP_P * 100)}% (가정) × 정지 ${c.STOP_H}시간 × 시간당 ${f(perH, 0)}개 × 공헌이익 ${f(c.MARGIN, 0)}원`, `+ 고장 수리 ${DX.won(c.MAINT)} × ${Math.round(c.STOP_P * 100)}%`, `지금 점검 비용 ${DX.won(c.MAINT)} 과 비교해 판단 (진동 정상의 ${f(d.ratio, 1)}배)`);
     } else if (k === 'press.ppm_over' || k === 'press.ppm_trend') {
       const ls = P().lots.filter(l => inDays(l.date, M.CFG.RECENT_DAYS || 7)), bad = ls.reduce((s, l) => s + (l.bad || 0), 0);
-      out.loss = bad * c.SCRAP.press; out.basis.push(`최근 ${M.CFG.RECENT_DAYS || 7}일 프레스 불량 ${f(bad, 0)}개 × ${f(c.SCRAP.press, 0)}원 = 실손 ${DX.won(out.loss)}`);
+      out.loss = bad * c.SCRAP.press; out.basis.push(`최근 ${M.CFG.RECENT_DAYS || 7}일 프레스 불량 ${f(bad, 0)}개 × ${f(c.SCRAP.press, 0)}원 = 발생 손실 ${DX.won(out.loss)}`);
     } else if (k === 'heat.heater') {
       const w = DX.heaterWaste().find(x => x.key === d.zone) || DX.heaterWaste()[0];
       if (w) { out.waste = w.won; out.basis.push(`${w.label} 정격 ${PCF().HEAT_ZONE_KW[w.key]}kW × 출력 증가 ${f(w.diff, 1)}%p × 하루 가동 ${f(w.hrs, 1)}h = ${f(w.kwh, 0)} kWh/일`, `× 전기 ${f(c.KWH, 0)}원 = ${DX.won(w.ewon)} + 탄소 ${f(w.co2, 0)} kgCO2e × ${c.CO2_WON}원 = ${DX.won(w.cwon)}`, `하루 ${DX.won(w.won)} (1년 300일이면 ${DX.won(w.won * 300)})`); }
@@ -94,7 +94,7 @@
       const ls = (d.lots || []).map(hl).filter(Boolean), bad = ls.reduce((s, l) => s + l.bad, 0);
       const so = DX.activeSO(), cl = so && so.clauses.find(x => x.k === 'heat_ppm'), exp = cl ? ls.filter(l => l.ppm > cl.v) : [];
       out.loss = bad * c.SCRAP.heat; out.risk = exp.reduce((s, l) => s + claimCost(l.qty), 0);
-      out.basis.push(`불량 ${f(bad, 0)}개 × ${f(c.SCRAP.heat, 0)}원 = 실손 ${DX.won(out.loss)}`);
+      out.basis.push(`불량 ${f(bad, 0)}개 × ${f(c.SCRAP.heat, 0)}원 = 발생 손실 ${DX.won(out.loss)}`);
       if (exp.length) out.basis.push(`${exp.map(l => l.id).join(', ')} 는 계약 기준(${cl.v} PPM)을 넘음 → 출하하면 클레임 위험 ${DX.won(out.risk)}`);
     } else if (k === 'weld.pred') {
       out.risk = (d.expected || 0) * c.SCRAP.heat;
@@ -104,7 +104,7 @@
       out.basis.push(`가압 이상 타점 ${f(n, 0)}개 × 평소 불량률 ${f((s.base_rate || 0) * 100, 2)}% × ${f(c.SCRAP.heat, 0)}원`);
     } else if (k === 'insp.conflict') {
       const n = d.n || 0; out.tied = n * c.MACH_PART_PRICE;
-      out.basis.push(`판정 확정 전 출하 보류 ${f(n, 0)}개 × 단가 ${f(c.MACH_PART_PRICE, 0)}원 = 묶인 돈 ${DX.won(out.tied)}`);
+      out.basis.push(`판정 확정 전 출하 보류 ${f(n, 0)}개 × 단가 ${f(c.MACH_PART_PRICE, 0)}원 = 보류 재고 금액 ${DX.won(out.tied)}`);
     } else if (k === 'plan.short') {
       const gap = Math.round(d.gap || 0); out.risk = gap * c.PLAN_PRICE; out.basis.push(`부족 ${f(gap, 0)}개 × 결품 손실 ${f(c.PLAN_PRICE, 0)}원`);
     } else if (k === 'deal.claim') {
@@ -115,7 +115,7 @@
     out.kind = out.waste ? 'waste' : out.loss >= out.risk && out.loss >= out.tied ? 'loss' : out.tied > out.risk ? 'tied' : 'risk';
     return out;
   };
-  DX.KIND = { loss: ['실손', '이미 버린 돈'], risk: ['위험', '그대로 두면 날 수 있는 돈'], tied: ['묶임', '출하 못 하고 묶인 돈'], waste: ['낭비/일', '매일 새는 돈'] };
+  DX.KIND = { loss: ['발생 손실', '이미 발생한 폐기 · 클레임 비용'], risk: ['잠재 손실', '조치하지 않으면 발생할 수 있는 비용'], tied: ['보류 재고', '판정 대기로 출하하지 못한 재고 금액'], waste: ['에너지 손실/일', '설비 이상으로 매일 추가되는 전력 비용'] };
   DX.chip = m => m && m.won ? `<span class="won k-${m.kind}" title="${M.esc(m.basis.join('\n'))}">${won(m.won)}<small>원${m.kind === 'waste' ? '/일' : ''}</small></span>` : '';
 
   // ── 날짜별 품질 손실 (COPQ)

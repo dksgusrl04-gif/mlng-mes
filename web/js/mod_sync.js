@@ -50,7 +50,7 @@
     const r = calc(), me = r.tiers.find(t => t.co === 'MLNG');
     return `<div class="kstrip">
       <div class="kpi"><div class="lab">완성차 계획</div><div class="val">${f(r.veh, 0)}<small>대/일</small></div><div class="foot">기준 대비 ${st.pct > 0 ? '+' : ''}${st.pct}%</div></div>
-      <div class="kpi click" data-go="line"><div class="lab">우리 필요량</div><div class="val" style="color:${me.state === 'danger' ? 'var(--danger-ink)' : me.state === 'warn' ? 'var(--warn-ink)' : 'inherit'}">${f(me.need, 0)}<small>개/일</small></div><div class="foot">능력 한계 대비 ${pct(me.use, 0)}</div></div>
+      <div class="kpi click" data-go="line"><div class="lab">당사 소요량</div><div class="val" style="color:${me.state === 'danger' ? 'var(--danger-ink)' : me.state === 'warn' ? 'var(--warn-ink)' : 'inherit'}">${f(me.need, 0)}<small>개/일</small></div><div class="foot">능력 한계 대비 ${pct(me.use, 0)}</div></div>
       <div class="kpi"><div class="lab">공급망 병목</div><div class="val" style="font-size:16px">${esc(T.co(r.worst.co).name)}</div><div class="foot">사용률 ${pct(r.worst.use, 0)}</div></div>
       <div class="kpi"><div class="lab">계획 공유 계약</div><div class="val">${r.links.filter(l => l.c || l.assumed).length}<small>/ ${r.links.length}</small></div><div class="foot">계약 있는 구간만 자동 전파</div></div>
     </div>

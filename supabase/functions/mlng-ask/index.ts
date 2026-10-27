@@ -36,12 +36,12 @@ const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { sta
 const SYSTEM = `당신은 MLNG MES(중소 제조 모듈형 MES)의 공정 분석 담당이다.
 대상 공장은 자동차 시트용 강판 브래킷(시트 트랙 스토퍼 브래킷)을 프레스 성형 → 점용접 → 염욕 열처리 → MCT 가공 → 정밀가공 검사 순서로 만든다.
 구매(발주·3단계 전자결재·발주서)와 생산 계획·작업지시도 같은 MES 안에 있다.
-2.0 연결·신뢰 계층(trust_network 도구): 완성차 A · 1차 협력사 B · 우리(C) · 강판 공급사 D 가 서명된 데이터 공유 계약으로 연결되고, LOT 디지털 여권 · 스마트 발주(조건부 자동 검수·클레임) · 공정 능력 증명서 · AI 에이전트 조치가 모두 해시 사슬 신뢰 원장에 남는다.
+2.0 연결·신뢰 계층(trust_network 도구): 완성차 A · 1차 협력사 B · 우리(C) · 강판 공급사 D 가 서명된 데이터 공유 계약으로 연결되고, LOT 디지털 여권 · 전자 발주(조건부 자동 수입검사·클레임) · 공정 능력 증명서 · AI 에이전트 조치가 모두 해시 사슬 신뢰 원장에 남는다.
 
 지켜야 할 것
 - 숫자는 반드시 도구로 조회한 값만 쓴다. 조회하지 않은 값을 지어내지 않는다. 자료에 없으면 "자료에 없습니다" 라고 말한다.
 - 질문에 답하려면 어떤 도구가 필요한지 먼저 생각하고, 필요한 것만 조회한다. 여러 공정이 얽힌 질문은 각 공정을 조회한 뒤 연결해서 설명한다.
-- 원인을 말할 때는 "후보" 로 말하고, 근거가 된 알림·값을 함께 든다.
+- 원인을 말할 때는 "후보" 로 말하고, 근거가 된 알람·값을 함께 든다.
 - 조치가 필요하면 무엇을 먼저 할지 한 줄로 제안한다 (예: 어느 화면을 보라, 어떤 발주가 결재 대기다).
 - 3.0: 우선순위는 돈(money_overview·cases 의 금액)으로 판단하고, 사용자가 «해줘·올려줘·보류해» 처럼 지시하면 propose_action 으로 제안 카드를 만든다. 실행은 사용자가 승인해야 된다고 말한다.
 - «만약 ~하면» 질문은 what_if 로 계산한 숫자로 답하고, 가정이 들어간 값은 가정이라고 밝힌다.
@@ -50,26 +50,26 @@ const SYSTEM = `당신은 MLNG MES(중소 제조 모듈형 MES)의 공정 분석
 
 // 도구 — 이름·입력은 web/js/mod_ask.js 의 TOOLS 와 같아야 한다
 const TOOLS = [
-  { name: 'overview', description: '공장 전체 요약: 공정별 핵심 지표와 상태, 알림 개수, 데이터 기준 시각', input_schema: { type: 'object', properties: {} } },
-  { name: 'alerts', description: '현장 알림 목록 (긴급·주의 순). process 를 주면 그 공정만', input_schema: { type: 'object', properties: { process: { type: 'string', description: '프레스 · 용접 · 열처리 · MCT 가공 · 검사 · 계획 · 구매 중 하나 (생략하면 전체)' } } } },
-  { name: 'process_detail', description: '한 공정의 요약 지표, 알림, 최근 LOT(수량·불량)', input_schema: { type: 'object', properties: { process: { type: 'string', description: 'press · weld · heat · mach · insp · plan 또는 한글 공정명' } }, required: ['process'] } },
+  { name: 'overview', description: '공장 전체 요약: 공정별 핵심 지표와 상태, 알람 개수, 데이터 기준 시각', input_schema: { type: 'object', properties: {} } },
+  { name: 'alerts', description: '현장 알람 목록 (긴급·주의 순). process 를 주면 그 공정만', input_schema: { type: 'object', properties: { process: { type: 'string', description: '프레스 · 용접 · 열처리 · MCT 가공 · 검사 · 계획 · 구매 중 하나 (생략하면 전체)' } } } },
+  { name: 'process_detail', description: '한 공정의 요약 지표, 알람, 최근 LOT(수량·불량)', input_schema: { type: 'object', properties: { process: { type: 'string', description: 'press · weld · heat · mach · insp · plan 또는 한글 공정명' } }, required: ['process'] } },
   { name: 'lot_trace', description: 'LOT 하나의 정보와 앞 공정(소재·원인 추적)·뒤 공정(영향 범위) LOT', input_schema: { type: 'object', properties: { lot_id: { type: 'string', description: '예: HT-102410' } }, required: ['lot_id'] } },
   { name: 'line_status', description: '라인 운영: 목표 대비 하루 가능 산출, 병목 공정, 설비 능력 한계, 공정 사이 재공 증감', input_schema: { type: 'object', properties: {} } },
   { name: 'mach_tools', description: 'MCT 최근 공구 10개의 재질·가공 조건·최종 마모(VB)·마모 속도·가공 횟수', input_schema: { type: 'object', properties: {} } },
   { name: 'plan_status', description: '생산 계획 품목별 마감 재고, 최근 7일 평균 수주·생산', input_schema: { type: 'object', properties: {} } },
   { name: 'purchase_orders', description: '발주 목록(품목·수량·결재 단계·상태)과 최근 활동 기록. status: pending(결재 대기) · approved(결재 완료·미입고) · received(입고 완료)', input_schema: { type: 'object', properties: { status: { type: 'string', enum: ['pending', 'approved', 'received'] } } } },
-  { name: 'buy_recommendations', description: '알림·사용량에서 계산한 발주 추천 품목(수량·사유)과 공구 주문에 등록된 전체 품목 목록', input_schema: { type: 'object', properties: {} } },
-  { name: 'money_overview', description: '3.0 돈 환산: 30일 품질 손실(COPQ)과 매출 대비 비율, 공정별 손실, 매일 새는 돈(히터 낭비 전력), 라인 기회 손실, 금액이 큰 알림 순위와 계산 근거', input_schema: { type: 'object', properties: {} } },
-  { name: 'cases', description: '3.0 사건실: 알림을 묶은 사건 목록(단계·금액·영향 LOT·다음 조치). case_id 를 주면 영향 LOT·원인 후보(근거 강도)·조치 목록·처음 징후', input_schema: { type: 'object', properties: { case_id: { type: 'string', description: '예: CS-HEAT-220706' } } } },
-  { name: 'ship_gate', description: '3.0 출하 게이트: 출하 대기 LOT 마다 고객 계약 조항 미리 판정(만족·근접·미달), 보류 권고 사유, 다음 LOT 기준 초과 확률', input_schema: { type: 'object', properties: {} } },
+  { name: 'buy_recommendations', description: '알람·사용량에서 계산한 발주 추천 품목(수량·사유)과 공구 주문에 등록된 전체 품목 목록', input_schema: { type: 'object', properties: {} } },
+  { name: 'money_overview', description: '3.0 돈 환산: 30일 품질 손실(COPQ)과 매출 대비 비율, 공정별 손실, 일 에너지 손실(히터 낭비 전력), 라인 기회 손실, 금액이 큰 알람 순위와 계산 근거', input_schema: { type: 'object', properties: {} } },
+  { name: 'cases', description: '3.0 품질 이슈: 알람을 묶은 이슈 목록(단계·금액·영향 LOT·다음 조치). case_id 를 주면 영향 LOT·추정 원인(근거 강도)·조치 목록·처음 징후', input_schema: { type: 'object', properties: { case_id: { type: 'string', description: '예: CS-HEAT-220706' } } } },
+  { name: 'ship_gate', description: '3.0 출하 승인: 출하 대기 LOT 마다 고객 품질 협정 기준 미리 판정(만족·근접·미달), 보류 권고 사유, 다음 LOT 기준 초과 확률', input_schema: { type: 'object', properties: {} } },
   { name: 'what_if', description: '3.0 What-if: 손잡이를 바꿨을 때 하루 산출·병목·판단 이익·불량·인서트 비용·탄소·계약 충족을 지금과 비교. 생략한 손잡이는 지금 값', input_schema: { type: 'object', properties: { target: { type: 'number', description: '목표 산출 개/일' }, press: { type: 'number', description: '프레스 속도 % (70~130)' }, weld: { type: 'number', description: '점용접기 대수 1~3' }, heat: { type: 'number', description: '열처리 가동 % (80~130)' }, vb: { type: 'number', description: '공구 교체 기준 VB mm (0.25~0.7)' }, heater: { type: 'boolean', description: '소입로 히터 정비 여부' }, dev: { type: 'number', description: '열처리 설정값 이탈 작업 비율 % (0~40)' } } } },
-  { name: 'shift_brief', description: '3.0 교대 인수인계: 이번 교대 생산·새 알림·열린 사건·다음 교대가 꼭 할 일', input_schema: { type: 'object', properties: {} } },
+  { name: 'shift_brief', description: '3.0 교대 인수인계: 이번 교대 생산·새 알람·미결 이슈·다음 교대가 꼭 할 일', input_schema: { type: 'object', properties: {} } },
   { name: 'model_status', description: '4.0 모델 상태: 모델별 신뢰도(검증 구간 적중률 · 입력 분포 변화 PSI), 열처리 조건별 불량률 배수와 90% 구간, 변화점(언제부터 달라졌나), 자기 의심으로 승인 대기로 내린 에이전트 조치', input_schema: { type: 'object', properties: {} } },
   { name: 'tool_life', description: '4.0 공구 잔여 수명: VB 0.5 까지 남은 가공 횟수 80% 구간(P10·P50·P90), 다음 4회 안 도달 확률, 계층 베이즈 사전 출처', input_schema: { type: 'object', properties: { tool: { type: 'string', description: '예: T16 (생략하면 지금 공구)' } } } },
-  { name: 'claim_probability', description: '4.0 LOT 클레임 확률: 출하 대기 LOT(또는 lot 하나)의 실제·조건 기대·사후 불량률, 계약 기준 초과 확률, 기대 손실 vs 보류 비용', input_schema: { type: 'object', properties: { lot: { type: 'string' } } } },
+  { name: 'claim_probability', description: '4.0 LOT 클레임 발생 확률: 출하 대기 LOT(또는 lot 하나)의 실제·조건 기대·사후 불량률, 계약 기준 초과 확률, 예상 손실 vs 보류 비용', input_schema: { type: 'object', properties: { lot: { type: 'string' } } } },
   { name: 'decision_proof', description: '4.0 판단 증명: 최근 판단의 모델 버전 · 데이터 해시 · 코드 빌드 해시 · 원장 번호 · 재현 결과', input_schema: { type: 'object', properties: {} } },
   { name: 'propose_action', description: '조치를 «제안 카드» 로 화면에 올린다. 사용자가 승인 버튼을 눌러야 실행된다(직접 실행 불가). kind: case_action(case_id, action_id) · maint(target 설비·구역, reason — 에이전트 점검 조치안) · hold_lot(lot, reason) · release_lot(lot) · ship_lot(lot) · purchase(items=등록 품목 코드 배열, reason) · whatif_apply(levers)', input_schema: { type: 'object', properties: { kind: { type: 'string', enum: ['case_action', 'maint', 'hold_lot', 'release_lot', 'ship_lot', 'purchase', 'whatif_apply'] }, case_id: { type: 'string' }, action_id: { type: 'string' }, target: { type: 'string' }, lot: { type: 'string' }, items: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' }, levers: { type: 'object' } }, required: ['kind'] } },
-  { name: 'trust_network', description: '2.0 연결·신뢰 계층: 회사 간 데이터 공유 계약(상태·접근 기록), 스마트 발주(자동 검수 합격·클레임), LOT 디지털 여권(단계·탄소), 공정 능력 증명서, AI 에이전트 승인 대기 조치, 신뢰 원장 검증 결과. part 로 일부만 조회', input_schema: { type: 'object', properties: { part: { type: 'string', enum: ['all', 'contracts', 'orders', 'passports', 'credentials', 'agent', 'ledger'] } } } },
+  { name: 'trust_network', description: '2.0 연결·신뢰 계층: 회사 간 데이터 공유 계약(상태·접근 기록), 전자 발주(자동 수입검사 합격·클레임), LOT 디지털 여권(단계·탄소), 공정 능력 증명서, AI 에이전트 승인 대기 조치, 신뢰 원장 검증 결과. part 로 일부만 조회', input_schema: { type: 'object', properties: { part: { type: 'string', enum: ['all', 'contracts', 'orders', 'passports', 'credentials', 'agent', 'ledger'] } } } },
 ];
 
 const hits = new Map<string, number[]>();

@@ -98,7 +98,7 @@
         <p class="note">주축 전류가 마모와 가장 강하게 같이 움직입니다. 측정하지 않은 가공의 마모는 이 신호와 가공 조건으로 추정합니다 (공구 단위 검증 오차 ±${f(D().est_mae, 2)} mm).</p></div>
       <div class="card"><h2>데이터 점검</h2><dl class="stat"><dt>센서 값 비정상 가공</dt><dd>${D().n_bad}회</dd><dt>VB 측정 가공</dt><dd>${D().runs.filter(r => r.vb != null).length} / ${D().runs.length}회</dd>
         <dt>추정으로 채운 가공</dt><dd>${D().runs.filter(r => r.vb == null && r.vb_now != null).length}회</dd></dl>
-        <p class="note">비정상 값(무한대·과대·0)이 나온 가공은 마모 추정에서 빼고 알림으로 알립니다.</p></div>
+        <p class="note">비정상 값(무한대·과대·0)이 나온 가공은 마모 추정에서 빼고 알람으로 알립니다.</p></div>
     </div>`;
   };
 

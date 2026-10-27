@@ -1,13 +1,13 @@
-/* 3.0 ⑤ — 공장 되감기 (그때 MES 는 무엇을 알았나)
+/* 3.0 ⑤ — 과거 시점 조회 (그때 MES 는 무엇을 알았나)
  * ───────────────────────────────────────────────────────────────
- * 날짜를 고르면 모든 데이터를 «그날 밤까지» 로 잘라 공정 요약 · 알림을 그 시점 기준으로 다시 계산한다.
- *   → 「그날 왜 불량이 났나」 를 그날의 화면으로 설명하고, 사건의 «처음 징후» 가 며칠 전에 보였는지(조기 경보 시간)를 잰다.
+ * 날짜를 고르면 모든 데이터를 «그날 밤까지» 로 잘라 공정 요약 · 알람을 그 시점 기준으로 다시 계산한다.
+ *   → 「그날 왜 불량이 났나」 를 그날의 화면으로 설명하고, 이슈의 «처음 징후» 가 며칠 전에 보였는지(조기 경보 시간)를 잰다.
  * 재생을 누르면 하루씩 넘어가며 공장이 어떻게 변했는지 보여 준다.
  */
 (function () {
   'use strict';
   const M = window.MLNG, DX = M.dx, { esc, f } = M;
-  const SKIP = new Set(['deal', 'agent', 'net', 'gate', 'case']);   // 지금 상태로만 계산되는 2.0·3.0 알림은 되감지 않는다
+  const SKIP = new Set(['deal', 'agent', 'net', 'gate', 'case']);   // 지금 상태로만 계산되는 2.0·3.0 알람은 되감지 않는다
   const d10 = s => String(s || '').slice(0, 10);
   let days = null, idx = null, timer = null;
   const cache = new Map();
@@ -53,7 +53,7 @@
     ((S.purchase || {}).audit || []).filter(a => d10(a.at) === day).forEach(a => ev.push({ t: a.at, proc: 'buy', text: `${a.ref} ${a.action} (${a.by})`, go: 'po:' + a.ref }));
     return ev.sort((a, b) => String(a.t).localeCompare(String(b.t)));
   }
-  // 사건의 처음 징후: 마지막 날부터 거슬러 올라가며 같은 종류 알림이 이어진 첫날
+  // 이슈의 처음 징후: 마지막 날부터 거슬러 올라가며 같은 종류 알람이 이어진 첫날
   M.replayApi = {
     at, cut,
     firstSeen(match) {
@@ -75,31 +75,31 @@
     const prodHeat = (M.S.heat.lots || []).filter(l => d10(l.end) === day).reduce((s, l) => s + l.qty, 0);
     const steps = [['press', '프레스'], ['weld', '점용접'], ['heat', '열처리'], ['mach', 'MCT'], ['insp', '검사']];
     return `<div class="kstrip nside">
-      <div class="kpi"><div class="lab">그날 열처리 완료</div><div class="val">${f(prodHeat, 0)}<small>개</small></div><div class="foot">${esc(day)}</div></div>
-      <div class="kpi"><div class="lab">그날 품질 손실</div><div class="val">${q ? DX.wonShort(q.total) : '0'}<small>원</small></div><div class="foot">불량 폐기 · 클레임 · 낭비</div></div>
-      <div class="kpi"><div class="lab">그때 알림</div><div class="val" style="color:${r.al.some(a => a.level === 'danger') ? 'var(--danger-ink)' : 'inherit'}">${r.al.filter(a => a.level !== 'info').length}<small>건</small></div><div class="foot">새로 ${nw.length} · 사라짐 ${gone.length}</div></div>
-      <div class="kpi"><div class="lab">그날 일어난 일</div><div class="val">${ev.length}<small>건</small></div><div class="foot">이상 ${ev.filter(e => e.hot).length}건</div></div>
+      <div class="kpi"><div class="lab">당일 열처리 완료</div><div class="val">${f(prodHeat, 0)}<small>개</small></div><div class="foot">${esc(day)}</div></div>
+      <div class="kpi"><div class="lab">당일 품질 비용</div><div class="val">${q ? DX.wonShort(q.total) : '0'}<small>원</small></div><div class="foot">불량 폐기 · 클레임 · 낭비</div></div>
+      <div class="kpi"><div class="lab">당시 알람</div><div class="val" style="color:${r.al.some(a => a.level === 'danger') ? 'var(--danger-ink)' : 'inherit'}">${r.al.filter(a => a.level !== 'info').length}<small>건</small></div><div class="foot">새로 ${nw.length} · 사라짐 ${gone.length}</div></div>
+      <div class="kpi"><div class="lab">당일 이벤트</div><div class="val">${ev.length}<small>건</small></div><div class="foot">이상 ${ev.filter(e => e.hot).length}건</div></div>
     </div>
-    <div class="card"><h2>공장 되감기 <span class="h2sub">데이터를 그날 밤까지로 잘라 «그때 MES 가 무엇을 알았는지» 다시 계산합니다</span></h2>
+    <div class="card"><h2>과거 시점 조회 <span class="h2sub">데이터를 그날 밤까지로 잘라 «그때 MES 가 무엇을 알았는지» 다시 계산합니다</span></h2>
       <div class="rpbar"><button class="btn sm" data-rp="-1" ${idx ? '' : 'disabled'}>◀</button><input type="range" id="rp-day" min="0" max="${ds.length - 1}" value="${idx}"><button class="btn sm" data-rp="1" ${idx < ds.length - 1 ? '' : 'disabled'}>▶</button>
         <b id="rp-lab">${esc(day)}</b><button class="btn ${timer ? '' : 'pri'} sm" id="rp-play">${timer ? '⏸ 멈춤' : '▶ 재생'}</button><button class="btn sm" id="rp-now">오늘로</button></div>
       <div class="route compact" style="margin-top:12px">${steps.map(([p, t], i) => { const s = r.sums[p]; return `${i ? '<div class="arrow" aria-hidden="true"></div>' : ''}<div class="step"><div class="nm"><span class="dot ${s ? (['warn', 'danger'].includes(s.st) ? s.st : 'ok') : 'off'}"></span>${esc(t)}</div>${s ? `<div class="kv ${esc(s.st)}">${esc(s.kpi)}</div><div class="sb" style="font-size:11px">${esc(s.sub || '')}</div>` : '<div class="sb">데이터 없음</div>'}</div>`; }).join('')}</div></div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
-      <div class="card"><h2>그때 라인 · 재공 <span class="h2sub">그날까지의 실적으로 다시 계산</span></h2>${r.line ? `${M.dl([['하루 가능 산출', f(r.line.possible_per_day, 0) + '개'], ['목표', f(r.line.target_per_day, 0) + '개'], ['병목', esc(r.line.bottleneck)], ['설비 능력 한계', `${f(r.line.capacity_limit_per_day, 0)}개 (${esc(r.line.capacity_bottleneck)})`]], 'kvl')}
+      <div class="card"><h2>당시 라인 · 재공 <span class="h2sub">그날까지의 실적으로 다시 계산</span></h2>${r.line ? `${M.dl([['하루 가능 산출', f(r.line.possible_per_day, 0) + '개'], ['목표', f(r.line.target_per_day, 0) + '개'], ['병목', esc(r.line.bottleneck)], ['설비 능력 한계', `${f(r.line.capacity_limit_per_day, 0)}개 (${esc(r.line.capacity_bottleneck)})`]], 'kvl')}
         <h3 class="dh">공정 사이 재공 (하루 증감)</h3>${M.table([['구간', 'between'], ['증감', g => `<b style="color:${g.gap < 0 ? 'var(--danger-ink)' : g.gap > 0 ? 'var(--warn-ink)' : 'inherit'}">${g.gap > 0 ? '+' : ''}${f(g.gap, 0)}</b>`, 'n']], r.line.wip_gaps_per_day, { wrap: false })}` : '<div class="empty">라인 계산 불가</div>'}</div>
-      <div class="card"><h2>그때 계약 · 납품 <span class="h2sub">그날까지 만든 LOT 기준</span></h2>${M.dl([['스마트 발주 납품', `${r.deliv.n} LOT · ${f(r.deliv.qty, 0)}개`], ['클레임', r.deliv.claim + '건'], ['데이터 공유 계약', `${((window.MLNGTrust || {}).contracts || []).filter(c => window.MLNGTrust.contractState(c) === 'active').length}건 유효 (데모 계약은 지금 기준)`]], 'kvl')}
+      <div class="card"><h2>당시 납품 · 검사 <span class="h2sub">그날까지 만든 LOT 기준</span></h2>${M.dl([['전자 발주 납품', `${r.deliv.n} LOT · ${f(r.deliv.qty, 0)}개`], ['클레임', r.deliv.claim + '건'], ['데이터 공유 계약', `${((window.MLNGTrust || {}).contracts || []).filter(c => window.MLNGTrust.contractState(c) === 'active').length}건 유효 (데모 계약은 지금 기준)`]], 'kvl')}
         <p class="note">되감은 날짜에 이미 만들어진 열처리 LOT 의 납품 · 클레임만 셉니다.</p></div></div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
-      <div class="card"><h2>그때 알림 <span class="h2sub">그날까지의 데이터로 다시 계산</span></h2>
-        ${r.al.length ? `<div class="alist">${r.al.map(a => `<div class="al ${esc(a.level)}"><div class="lv"></div><div style="min-width:0"><div class="tt">${!pt.has(key(a)) && prev ? '<span class="chip c-ext">새로</span> ' : ''}${esc(a.title)}</div><div class="bd">${esc(a.body || '')}</div><div class="mt">${M.procTag(a.proc)}<span>${esc(a.at || '')}</span></div></div></div>`).join('')}</div>` : '<div class="empty">그때는 알림이 없었습니다</div>'}
-        ${gone.length ? `<p class="note">전날 있다가 사라진 알림: ${gone.map(a => esc(a.title)).join(' · ')}</p>` : ''}</div>
-      <div class="card"><h2>그날 일어난 일</h2>
+      <div class="card"><h2>당시 알람 <span class="h2sub">그날까지의 데이터로 다시 계산</span></h2>
+        ${r.al.length ? `<div class="alist">${r.al.map(a => `<div class="al ${esc(a.level)}"><div class="lv"></div><div style="min-width:0"><div class="tt">${!pt.has(key(a)) && prev ? '<span class="chip c-ext">새로</span> ' : ''}${esc(a.title)}</div><div class="bd">${esc(a.body || '')}</div><div class="mt">${M.procTag(a.proc)}<span>${esc(a.at || '')}</span></div></div></div>`).join('')}</div>` : '<div class="empty">그때는 알람이 없었습니다</div>'}
+        ${gone.length ? `<p class="note">전날 있다가 사라진 알람: ${gone.map(a => esc(a.title)).join(' · ')}</p>` : ''}</div>
+      <div class="card"><h2>당일 이벤트</h2>
         ${ev.length ? `<div class="rptl">${ev.map(e => `<div class="${e.hot ? 'hot' : ''} ${e.go ? 'click' : ''}" ${e.go ? `data-row="${esc(e.go)}"` : ''}><span>${esc(String(e.t).slice(11, 16))}</span>${M.procTag(e.proc)}<div>${esc(e.text)}</div></div>`).join('')}</div>` : '<div class="empty">기록된 작업이 없습니다</div>'}</div></div>`;
   };
 
   M.mod({
     id: 'replay', group: '판단 (3.0)', order: 6,
-    menu: [['replay', '공장 되감기', 'replay']],
+    menu: [['replay', '과거 시점 조회', 'replay']],
     views: V,
     drawers: { 'replay:': d => { const i = allDays().indexOf(d); if (i >= 0) idx = i; M.closeDrawer(); M.go('replay'); } },
     bind(root) {

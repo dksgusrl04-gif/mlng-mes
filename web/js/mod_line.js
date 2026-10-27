@@ -83,7 +83,7 @@
       if (short > m.need[p] * 0.01) {
         const sp = m.need[p] / m.b[p].rate * 100, over = cap && m.need[p] > cap;
         out.push({ lv: over ? 'danger' : 'warn', p, t: `${name(p)} ${f(short, 0)}개/일 부족 → 속도 ${f(sp, 0)}% 필요`,
-          s: over ? `관측 최대 능력 ${f(cap, 0)}개/일을 넘습니다 — 가동 시간 연장(교대 추가)이나 목표 조정이 필요합니다${hot(p).length ? ' · 이 설비에 긴급 알림이 있어 증속 전 점검 권장' : ''}` : `능력 사용률 ${pct(m.need[p] / cap, 0)}${hot(p).length ? ' · 이 설비에 긴급 알림이 있어 증속 전 점검 권장' : ''}`, fix: { [p]: sp } });
+          s: over ? `관측 최대 능력 ${f(cap, 0)}개/일을 넘습니다 — 가동 시간 연장(교대 추가)이나 목표 조정이 필요합니다${hot(p).length ? ' · 이 설비에 긴급 알람이 있어 증속 전 점검 권장' : ''}` : `능력 사용률 ${pct(m.need[p] / cap, 0)}${hot(p).length ? ' · 이 설비에 긴급 알람이 있어 증속 전 점검 권장' : ''}`, fix: { [p]: sp } });
       }
     });
     // 2) 너무 많이 만드는 공정 (재공만 쌓임)
@@ -123,14 +123,14 @@
     const inspLimit = Math.min(m.plan.mach * m.y('mach'), m.plan.insp);
     return `
     <div class="kstrip nside">
-      <div class="kpi click" data-row="k:line:target"><div class="lab">목표 산출 (열처리 양품)</div><div class="val"><input class="in tgt" type="number" min="0" step="100" data-ltgt="1" value="${Math.round(m.target)}"><small>개/일</small></div>
+      <div class="kpi click" data-row="k:line:target"><div class="lab">목표 생산량 (열처리 양품)</div><div class="val"><input class="in tgt" type="number" min="0" step="100" data-ltgt="1" value="${Math.round(m.target)}"><small>개/일</small></div>
         <div class="foot">기본값 = 최근 열처리 속도 × 수율</div></div>
       <div class="kpi click" data-row="k:line:lim"><div class="lab">지금 계획으로 가능한 산출</div><div class="val" style="color:${m.lim.t < m.target * 0.995 ? 'var(--danger-ink)' : 'var(--ok)'}">${f(m.lim.t, 0)}<small>개/일</small></div>
         <div class="foot">목표 대비 ${pct(m.lim.t / m.target, 0)} · 제약 ${esc(name(m.lim.p))}</div></div>
       <div class="kpi click" data-row="k:line:cap"><div class="lab">설비 능력 한계 (관측 최대 기준)</div><div class="val">${f(m.capT.t, 0)}<small>개/일</small></div><div class="foot">병목 ${esc(name(m.capT.p))} — 이 이상은 가동 시간 연장 필요</div></div>
       <div class="kpi click" data-row="k:line:rty"><div class="lab">누적 수율 (주 흐름)</div><div class="val">${pct(m.rty, 2)}</div><div class="foot">검사 셀 양품 ${f(m.insp_good, 0)}개/일 · 검사 수율 ${pct(m.y('insp'), 1)}</div></div>
     </div>
-    <div class="card" style="margin-top:16px"><h2>공정 흐름 조정 <span class="h2sub">속도를 움직이거나 계획 수량을 입력하면 앞뒤 공정 수급이 바로 다시 계산됩니다</span>
+    <div class="card" style="margin-top:16px"><h2>공정 간 수급 조정 <span class="h2sub">속도를 움직이거나 계획 수량을 입력하면 앞뒤 공정 수급이 바로 다시 계산됩니다</span>
       <div style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" data-lauto="target">목표에 맞춤</button><button class="btn sm" data-lauto="cap">능력 한계에 맞춤</button><button class="btn sm" data-lauto="reset">현재로</button></div></h2>
       <div class="lflow">${STEPS.map((s, i) => (i ? gap(STEPS[i - 1].proc) : '') + node(s)).join('')}</div>
       <p class="note">현재 속도 = 최근 ${M.CFG.RECENT_DAYS || 7}일 작업일 평균 처리량(100%), 관측 최대 = 데이터에서 가장 많이 처리한 날. 점용접은 프레스 물량의 ${pct(m.sh.weld, 1)}, MCT 가공·검사는 열처리 물량의 ${pct(m.sh.side, 2)}가 거치는 일부 경로(가공 사양 부품)입니다.
@@ -144,7 +144,7 @@
             ${al.filter(a => a.proc === s.proc && a.level !== 'info').slice(0, 2).map(a => `<div class="adja ${a.level}">${esc(a.title)}</div>`).join('')}</div>` : '';
           const mine = al.filter(a => a.proc === sel.proc && a.level !== 'info');
           return `${row('앞 공정', up)}${row('뒤 공정', dn)}
-            <div class="adj"><span class="muted">이 공정 알림</span>${mine.length ? mine.slice(0, 3).map(a => `<div class="adja ${a.level}">${esc(a.title)}</div>`).join('') : ' <span class="muted">없음</span>'}</div>
+            <div class="adj"><span class="muted">이 공정 알람</span>${mine.length ? mine.slice(0, 3).map(a => `<div class="adja ${a.level}">${esc(a.title)}</div>`).join('') : ' <span class="muted">없음</span>'}</div>
             ${sel.proc === 'insp' ? `<p class="note">검사 셀이 받을 수 있는 양 ${f(inspLimit, 0)}개/일 · 하루 ${f(m.plan.insp, 0)}개 계획 시 사이클 ${f(86400 / Math.max(1, m.plan.insp), 0)}초 필요 (현재 74초)</p>` : ''}`; })()}
       </div>
     </div>`;

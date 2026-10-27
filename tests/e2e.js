@@ -39,8 +39,8 @@ const ok = (c, m) => { if (c) pass++; else fails.push(m); console.log(`${c ? '�
   ok(await ev(() => { const c = MLNG.caseApi.list().find(x => x.tpl === 'heat'); return c.causes.some(x => x.cmp && x.cmp.p != null); }), '원인 후보에 순열 검정 p');
   await go('gate'); await W(); ok(await ev(() => MLNG.gate.candidates().some(l => MLNG.gate.predict(l.id).prob)), '출하 게이트 LOT 클레임 확률');
   await go('whatif'); await W(); await p.click('#wi-opt'); await W(2500); ok(await ev(() => /최적 조합/.test(document.querySelector('#view').innerText)), 'What-if 최적 찾기');
-  await go('replay'); await W(); await p.click('[data-rp="-1"]'); await W(500); ok(await ev(() => /그때 라인/.test(document.querySelector('#view').innerText)), '공장 되감기');
-  await go('shift'); await W(); await p.click('#sh-out'); await W(400); ok(await ev(() => /넘김 서명 완료/.test(document.querySelector('#view').innerText)), '교대 넘김 서명');
+  await go('replay'); await W(); await p.click('[data-rp="-1"]'); await W(500); ok(await ev(() => /당시 라인/.test(document.querySelector('#view').innerText)), '공장 되감기');
+  await go('shift'); await W(); await p.click('#sh-out'); await W(400); ok(await ev(() => /인계 서명 완료/.test(document.querySelector('#view').innerText)), '교대 넘김 서명');
   await go('overview'); await W(); await p.keyboard.press('Control+k'); await W(150); await p.keyboard.type('HT-147004'); await W(150); await p.keyboard.press('Enter'); await W(300);
   ok(await ev(() => MLNG.cur === 'trace'), '찾기 · 이동 (Ctrl K)');
   await ev(() => MLNG.askApi.ask('열처리 2존 점검 지시하고 히터 발주 올려줘')); await W(700); ok(await ev(() => document.querySelectorAll('#chatbox [data-aok]').length >= 2), '말로 지시 → 승인 카드 2장');
@@ -65,7 +65,7 @@ const ok = (c, m) => { if (c) pass++; else fails.push(m); console.log(`${c ? '�
   await p.click('.mtx th.sth[data-fsel="qual"]'); await W(); ok(await ev(() => [...document.querySelectorAll('.itab tbody tr td:nth-child(2)')].every(x => x.textContent === '품질')), '단계 머리를 누르면 문제 목록이 그 단계로 좁혀짐');
   await p.click('.mtx th.sth[data-fsel="qual"]'); await W();
   ok(await ev(() => MLNG.flow.book().orders.every(o => o.lots.every(l => MLNG.S.heat.lots.some(h => h.id === l.id)))), '주문은 실제 열처리 LOT 에 묶임');
-  await go('orders'); await W(); await p.click('#view tr.click'); await W(300); ok(await ev(() => /주문 OR-/.test(document.querySelector('#dttl').textContent)), '주문 상세 서랍');
+  await go('orders'); await W(); await p.click('#view tr.click'); await W(300); ok(await ev(() => /수주 OR-/.test(document.querySelector('#dttl').textContent)), '주문 상세 서랍');
   await ev(() => MLNG.closeDrawer());
   ok(await ev(() => { MLNG.go('heat_lots'); return document.querySelectorAll('#tabs .tabs button').length === 4 && document.querySelectorAll('#tabs .subtabs button').length === 4; }), '공정 실적: 공정 탭 + 세부 탭');
 

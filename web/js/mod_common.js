@@ -1,4 +1,4 @@
-/* 공통 화면 — 공장 현황 · 통합 알림 · 작업지시·LOT 이력 · 기준 정보 · 데이터 상태
+/* 공통 화면 — 공장 현황 · 이상 알람 · 작업지시·LOT 이력 · 기준 정보 · 데이터 상태
  * 공정 모듈이 늘어나도 이 화면들은 그대로다 (모듈의 summary·alerts·LOT 만 읽는다).
  */
 (function () {
@@ -62,7 +62,7 @@
     return `<div class="tools">${M.seg('af', af, [['all', '전체']].concat(procs.map(p => [p, M.PROC[p] || p])))}<span class="tsum">${al.length}건</span></div>
       <div class="card">${al.length ? `<div class="alist">${al.map(a => `<div class="al ${esc(a.level)} ${a.go ? 'click' : ''}" ${a.go ? `data-row="${esc(a.go)}"` : ''}><div class="lv"></div><div style="min-width:0">
         <div class="tt">${esc(a.title)}</div>${a.body ? `<div class="bd">${esc(a.body)}</div>` : ''}
-        <div class="mt">${M.procTag(a.proc)}<span>${esc(a.by || '')}</span><span>${esc(a.at || '')}</span></div></div></div>`).join('')}</div>` : '<div class="empty">알림이 없습니다</div>'}</div>`;
+        <div class="mt">${M.procTag(a.proc)}<span>${esc(a.by || '')}</span><span>${esc(a.at || '')}</span></div></div></div>`).join('')}</div>` : '<div class="empty">알람이 없습니다</div>'}</div>`;
   };
 
   // ── LOT 이력: 작업지시 · 공정 LOT · 소재 LOT 어느 것으로 찾아도 앞뒤 공정을 보여 준다
@@ -157,7 +157,7 @@
 
   M.mod({
     id: 'common', group: '현황', order: 0,
-    menu: [['alerts', '전체 알림', 'bell'], ['trace', 'LOT 추적', 'trace']],
+    menu: [['alerts', '전체 알람', 'bell'], ['trace', 'LOT 추적', 'trace']],
     views: V, alerts: dataAlerts,
     drawers: { 'trace:': id => { tq = id; M.go('trace'); }, 'k:ov:': kd },
     bind(root) {

@@ -27,13 +27,13 @@
     const k = i.kind, lot = String(i.lot || '').toUpperCase(), why = i.reason || '질의응답 지시';
     const mk = (label, run) => ({ id: 'A' + (++actSeq), label, run });
     if (k === 'case_action') { const c = M.caseApi && M.caseApi.get(i.case_id), a = c && c.actions.find(x => x.id === i.action_id) || (c && M.caseApi.next(c));
-      if (!a) return { error: '사건 또는 조치를 찾지 못했습니다 (cases 도구로 id 확인)' }; return mk(`${c.id} · ${a.label}`, () => M.caseApi.run(c.id, a.id)); }
+      if (!a) return { error: '이슈 또는 조치를 찾지 못했습니다 (cases 도구로 id 확인)' }; return mk(`${c.id} · ${a.label}`, () => M.caseApi.run(c.id, a.id)); }
     if (k === 'hold_lot') { if (!lot) return { error: 'lot 필요' }; return mk(`${lot} 출하 보류`, async () => { await M.gate.hold(lot, why); return `${lot} 출하 보류 — 원장 기록`; }); }
     if (k === 'release_lot') return mk(`${lot} 보류 해제`, async () => { await M.gate.release(lot); return `${lot} 보류 해제`; });
-    if (k === 'ship_lot') return mk(`${lot} 출하 → 고객 자동 검수`, async () => { const d = await M.gate.ship(lot); return d.result === 'accepted' ? `${lot} 자동 검수 합격` : `${lot} 클레임 생성`; });
+    if (k === 'ship_lot') return mk(`${lot} 출하 → 고객 자동 수입검사`, async () => { const d = await M.gate.ship(lot); return d.result === 'accepted' ? `${lot} 자동 수입검사 합격` : `${lot} 클레임 생성`; });
     if (k === 'purchase') { const codes = (i.items || []).map(String).filter(c => M.buyApi && M.buyApi.catalog().some(x => x.code === c)); if (!codes.length) return { error: '등록 품목 코드가 필요합니다 (buy_recommendations 도구의 registered_items)' };
-      return mk(`발주 초안 — ${codes.join(', ')}`, async () => { const po = await M.buyApi.createPO(codes.map(code => ({ code })), why, '질의응답'); return `${po.id} 발주 등록 (결재 대기)`; }); }
-    if (k === 'maint') { const tg = String(i.target || '설비').trim(); return mk(`에이전트 조치안 — ${tg} 점검 지시`, async () => { const T = window.MLNGTrust;
+      return mk(`발주 초안 — ${codes.join(', ')}`, async () => { const po = await M.buyApi.createPO(codes.map(code => ({ code })), why, '질의응답'); return `${po.id} 발주 등록 (승인 대기)`; }); }
+    if (k === 'maint') { const tg = String(i.target || '설비').trim(); return mk(`AI 조치 계획 — ${tg} 점검 지시`, async () => { const T = window.MLNGTrust;
       const it = await T.agentAdd('maint', `${tg} 점검 지시`, ['질의응답 지시', i.reason || '현장 판단', '보전 담당에게 점검 지시'], async () => `보전 담당에게 ${tg} 점검 지시`, { title: `질의응답 — ${tg} 점검`, go: 'agent' });
       return it.status === 'done' ? it.result : await T.agentRun(it.id); }); }
     if (k === 'whatif_apply') return mk('What-if 화면에 조건 넣기', async () => { M.whatifApi.preset(i.levers || {}); M.go('whatif'); return 'What-if 에 조건을 넣었습니다'; });
@@ -73,13 +73,13 @@
         waste_per_day_won: Math.round(DX.heaterWaste().reduce((t, x) => t + x.won, 0)), line_opportunity_per_day_won: opp ? Math.round(opp.won) : null,
         top_alerts_by_money: M.alerts().map(a => ({ a, m: DX.money(a) })).filter(x => x.m && x.m.won).sort((x, y) => y.m.won - x.m.won).slice(0, 8).map(x => ({ title: x.a.title, kind: DX.KIND[x.m.kind][0], won: Math.round(x.m.won), basis: x.m.basis })),
         note: '계수는 config.js COST 예시값. 위험은 가정 포함' }; },
-    cases: i => { const C = M.caseApi; if (!C || !(window.MLNGTrust || {}).ready) return { error: '사건실 준비 전' };
+    cases: i => { const C = M.caseApi; if (!C || !(window.MLNGTrust || {}).ready) return { error: '품질 이슈 준비 전' };
       const one = c => ({ id: c.id, name: c.name, stage: C.STAGES[c.st.stage], level: c.level, money_won: Math.round(c.money.won), money_basis: c.money.basis, opened: c.opened,
         affected_lots: c.lots.map(l => `${l.id}(${M.PROC[l.proc] || l.proc} ${l.qty}개 · ${l.ship.t} · ${l.why})`), cause_candidates: c.causes.map(x => `${x.t} [근거 ${M.dx.STRENGTH[x.strength][1]}] ${x.d}`),
         actions: c.actions.map(a => ({ id: a.id, stage: a.stage, label: a.label, done: c.st.done[a.id] ? c.st.done[a.id].result : null })), alerts: c.alerts.map(a => a.title), first_sign: c.st.first || null });
-      if (i && i.case_id) { const c = C.get(i.case_id); return c ? one(c) : { error: `사건 ${i.case_id} 없음` }; }
+      if (i && i.case_id) { const c = C.get(i.case_id); return c ? one(c) : { error: `이슈 ${i.case_id} 없음` }; }
       return { cases: C.list().map(c => ({ id: c.id, name: c.name, stage: C.STAGES[c.st.stage], level: c.level, money_won: Math.round(c.money.won), lots: c.lots.length, inside_lots: c.lots.filter(l => l.ship.k === 'inside').length, next_action: (C.next(c) || {}).label || null })) }; },
-    ship_gate: () => { const G = M.gate; if (!G || !(window.MLNGTrust || {}).ready) return { error: '출하 게이트 준비 전' };
+    ship_gate: () => { const G = M.gate; if (!G || !(window.MLNGTrust || {}).ready) return { error: '출하 승인 준비 전' };
       return { rules: G.rules, forecast: G.forecast(), lots: G.candidates().map(l => G.predict(l.id)).map(r => ({ lot: r.lot, qty: r.qty, status: r.status, recommendation: r.held ? 'held' : r.rec, why: r.why, checks: r.checks.map(c => `${c.label} ${c.actual} (${c.th}) ${c.ok ? (c.near ? '근접' : '만족') : '미달'}`) })) }; },
     what_if: i => { if (!M.whatifApi) return { error: 'What-if 없음' }; const p = {}; ['target', 'press', 'weld', 'heat', 'vb', 'dev'].forEach(k => { if (i && i[k] != null && !isNaN(+i[k])) p[k] = +i[k]; }); if (i && i.heater != null) p.heater = !!i.heater;
       const pick = r => ({ output_per_day: Math.round(r.out), bottleneck: M.PROC[r.lim.p] || r.lim.p, profit_per_day_won: Math.round(r.profit), contribution: Math.round(r.contrib), scrap: Math.round(r.scrap), insert_cost: Math.round(r.toolCost), wear_risk: Math.round(r.wearRisk), equipment_overtime: Math.round(r.weldCost + r.ot + r.maint), heater_waste: Math.round(r.energy), press_ppm: Math.round(r.ppmP), heat_ppm: Math.round(r.ppmH), claim_expected: Math.round(r.claimExp), carbon_g_per_part: r.pcfG != null ? Math.round(r.pcfG) : null, contract: r.checks.map(c => `${c.t} ${c.v} (${c.th}) ${c.ok ? '충족' : '위반'}`) });
@@ -137,7 +137,7 @@
     const lotM = q.toUpperCase().match(/\b([A-Z]{2}-[0-9A-Z-]{3,})\b/);
     const T = window.MLNGTrust || {}, DX = M.dx, ready = T.ready;
     // 지시 (조치 제안 카드 — 승인해야 실행)
-    if (ready && lotM && /보류/.test(q) && !/해제/.test(q)) { const a = proposal({ kind: 'hold_lot', lot: lotM[1], reason: '질의응답 지시' }); return { text: `${lotM[1]} 출하 보류를 제안합니다. 아래 버튼을 눌러야 실행됩니다.`, acts: [a], links: [['gate', '출하 게이트']] }; }
+    if (ready && lotM && /보류/.test(q) && !/해제/.test(q)) { const a = proposal({ kind: 'hold_lot', lot: lotM[1], reason: '질의응답 지시' }); return { text: `${lotM[1]} 출하 보류를 제안합니다. 아래 버튼을 눌러야 실행됩니다.`, acts: [a], links: [['gate', '출하 승인']] }; }
     if (ready && lotM && /해제/.test(q)) { const a = proposal({ kind: 'release_lot', lot: lotM[1] }); return { text: `${lotM[1]} 보류 해제를 제안합니다.`, acts: [a] }; }
     // 복합 지시: 「열처리 2존 점검 지시하고 히터 발주 올려줘」 → 점검 조치안 + 해당 품목 발주 카드 두 장
     const wantMaint = ready && /점검/.test(q) && /(지시|해|시켜)/.test(q), wantBuy = ready && /(발주|주문)/.test(q) && /(해|올려|넣어|진행)/.test(q) && M.buyApi;
@@ -147,30 +147,30 @@
       const acts = [], tg = wantMaint ? (q.split(/점검/)[0].replace(/^(지금|바로|그럼)\s*/, '').trim() || '설비') : '';
       if (wantMaint) acts.push(proposal({ kind: 'maint', target: tg, reason: '질의응답 지시' }));
       if (wantBuy) { const codes = named.length ? named : M.buyApi.recs().map(r => r.it.code); if (codes.length) acts.push(proposal({ kind: 'purchase', items: codes, reason: '질의응답 지시' })); }
-      return { text: `조치 ${acts.length}건을 만들었습니다. 승인 버튼을 눌러야 실행됩니다.${wantMaint ? `\n· ${tg} 점검 — 에이전트 조치안으로 등록 후 실행 (원장 기록)` : ''}${wantBuy ? `\n· 발주 초안 — ${(named.length ? named : M.buyApi.recs().map(r => r.it.code)).map(c => (M.buyApi.catalog().find(x => x.code === c) || {}).name || c).join(', ')} (결재는 사람이)` : ''}`, acts, links: [['agent', 'AI 에이전트'], ['buy_orders', '발주 · 결재']] };
+      return { text: `조치 ${acts.length}건을 만들었습니다. 승인 버튼을 눌러야 실행됩니다.${wantMaint ? `\n· ${tg} 점검 — AI 조치 계획으로 등록 후 실행 (원장 기록)` : ''}${wantBuy ? `\n· 발주 초안 — ${(named.length ? named : M.buyApi.recs().map(r => r.it.code)).map(c => (M.buyApi.catalog().find(x => x.code === c) || {}).name || c).join(', ')} (결재는 사람이)` : ''}`, acts, links: [['agent', 'AI 에이전트'], ['buy_orders', '발주 · 결재']] };
     }
     if (ready && /(발주|주문)\s*(해|올려|넣어|진행)/.test(q) && M.buyApi) { const rs = M.buyApi.recs(); if (!rs.length) return { text: '지금 발주 추천 품목이 없습니다', links: [['buy_home', '공구 주문']] };
       const a = proposal({ kind: 'purchase', items: rs.map(r => r.it.code), reason: '질의응답 지시 — 추천 품목' }); return { text: `추천 품목 ${rs.length}종 발주 초안을 제안합니다 — ${rs.map(r => `${r.it.name} ${r.qty}${r.it.unit}`).join(', ')}`, acts: [a], links: [['buy_home', '공구 주문']] }; }
-    if (ready && /(실행|처리|진행)\s*(해|시켜)/.test(q) && M.caseApi) { const c = M.caseApi.open()[0], nx = c && M.caseApi.next(c); if (!nx) return { text: '실행할 사건 조치가 없습니다' };
-      return { text: `가장 급한 사건 ${c.id} (${c.name}) 의 다음 조치를 제안합니다.`, acts: [proposal({ kind: 'case_action', case_id: c.id, action_id: nx.id })], links: [['case:' + c.id, '사건 열기']] }; }
+    if (ready && /(실행|처리|진행)\s*(해|시켜)/.test(q) && M.caseApi) { const c = M.caseApi.open()[0], nx = c && M.caseApi.next(c); if (!nx) return { text: '실행할 이슈 조치가 없습니다' };
+      return { text: `가장 급한 이슈 ${c.id} (${c.name}) 의 다음 조치를 제안합니다.`, acts: [proposal({ kind: 'case_action', case_id: c.id, action_id: nx.id })], links: [['case:' + c.id, '이슈 열기']] }; }
     // 4.0 확률 · 신뢰 · 증명
     if (ready && M.ml && /(신뢰도|모델|믿을)/.test(q) && !/원장/.test(q)) { const r = TOOLS.model_status();
       return { text: `모델 신뢰도\n${r.models.map(m => `· ${m.name}: ${m.level} ${Math.round(m.trust * 100)}`).join('\n')}${r.doubted_agent_actions.length ? `\n자기 의심으로 승인 대기로 내린 조치 ${r.doubted_agent_actions.length}건` : ''}`, links: [['models', '모델 상태']] }; }
     if (ready && M.ml && /(수명|잔여|몇 번 더|언제 바꿔)/.test(q)) { const tm = q.toUpperCase().match(/\bT\d{2}\b/), r = TOOLS.tool_life({ tool: tm && tm[0] });
       return r.error ? { text: r.error } : r.runs_left_p10_p50_p90[2] === 0 ? { text: `${r.tool} (${r.material}) — 이미 VB 0.5 에 도달했습니다 (가공 ${r.minutes_now}분 시점 측정). 다음 가공 전 인서트 교체`, links: [['mach:' + r.tool, '공구 상세']] } : { text: `${r.tool} (${r.material}) — VB 0.5 까지 잔여 ${r.runs_left_p10_p50_p90[0]}~${r.runs_left_p10_p50_p90[2]}회 (중앙 ${r.runs_left_p10_p50_p90[1]}회, 80% 구간)\n다음 4회 안에 도달할 확률 ${Math.round(r.p_reach_within_4_runs * 100)}% · 이 공구 측정 ${r.measured_points}개 (자기 데이터 비중 ${Math.round(r.own_data_weight * 100)}%, 사전: ${r.prior_from})`, links: [['models', '모델 상태']] }; }
     if (ready && M.ml && /(확률|클레임 날)/.test(q)) { const r = TOOLS.claim_probability({ lot: lotM && lotM[1] });
-      return r.error ? { text: r.error } : { text: `계약 기준 ${r.threshold_ppm} PPM 초과 확률\n${r.lots.filter(x => !x.error).map(x => `· ${x.lot}: 실제 ${x.actual_ppm} · 조건 기대 ${x.prior_ppm} → 사후 ${x.posterior_ppm} PPM — **${Math.round(x.p_exceed * 100)}%** (기대 손실 ${M.dx.won(x.expected_loss)} vs 보류 ${M.dx.won(x.hold_cost)})`).join('\n')}`, links: [['gate', '출하 게이트']] }; }
+      return r.error ? { text: r.error } : { text: `계약 기준 ${r.threshold_ppm} PPM 초과 확률\n${r.lots.filter(x => !x.error).map(x => `· ${x.lot}: 실제 ${x.actual_ppm} · 조건 기대 ${x.prior_ppm} → 사후 ${x.posterior_ppm} PPM — **${Math.round(x.p_exceed * 100)}%** (예상 손실 ${M.dx.won(x.expected_loss)} vs 보류 ${M.dx.won(x.hold_cost)})`).join('\n')}`, links: [['gate', '출하 승인']] }; }
     if (ready && M.prove && /(증명|재현|어떤 모델)/.test(q)) { const r = TOOLS.decision_proof();
       return { text: `코드 빌드 ${String(r.build).slice(0, 12)} · 판단 ${r.decisions.length}건\n${r.decisions.slice(0, 5).map(d => `· ${d.title} — 모델 ${d.model} · 데이터 ${d.data} · ${d.replay_same == null ? '기록만' : d.replay_same ? '재현 ✓' : '재현 ✕'}`).join('\n') || '· 아직 판단 없음'}`, links: [['prove', '판단 증명']] }; }
     // 3.0 판단
     if (ready && DX && /(얼마|손실|돈|비용|원가|낭비)/.test(q)) { const r = TOOLS.money_overview();
-      return { text: `30일 품질 손실 ${DX.won(r.copq_30d_won)} (매출 대비 ${M.pct(r.copq_rate, 2)}) · 매일 새는 돈 ${DX.won(r.waste_per_day_won)}${r.line_opportunity_per_day_won ? ` · 기회 손실 하루 ${DX.won(r.line_opportunity_per_day_won)}` : ''}\n금액 큰 순서:\n${r.top_alerts_by_money.slice(0, 4).map((x, i) => `${i + 1}. ${x.title} — ${x.kind} ${DX.won(x.won)}`).join('\n')}`, links: [['cost', '돈으로 보는 공장']] }; }
-    if (ready && /사건/.test(q) && M.caseApi) { const cs = M.caseApi.open();
-      return { text: cs.length ? `열린 사건 ${cs.length}건\n${cs.map((c, i) => `${i + 1}. ${c.name} (${M.caseApi.STAGES[c.st.stage]}) — ${DX.won(c.money.won)} · 다음: ${(M.caseApi.next(c) || {}).label || '—'}`).join('\n')}` : '열린 사건이 없습니다', links: [['cases', '사건실']] }; }
+      return { text: `30일 품질 손실 ${DX.won(r.copq_30d_won)} (매출 대비 ${M.pct(r.copq_rate, 2)}) · 일 에너지 손실 ${DX.won(r.waste_per_day_won)}${r.line_opportunity_per_day_won ? ` · 기회 손실 하루 ${DX.won(r.line_opportunity_per_day_won)}` : ''}\n금액 큰 순서:\n${r.top_alerts_by_money.slice(0, 4).map((x, i) => `${i + 1}. ${x.title} — ${x.kind} ${DX.won(x.won)}`).join('\n')}`, links: [['cost', '품질 비용(COPQ)']] }; }
+    if (ready && /이슈/.test(q) && M.caseApi) { const cs = M.caseApi.open();
+      return { text: cs.length ? `미결 이슈 ${cs.length}건\n${cs.map((c, i) => `${i + 1}. ${c.name} (${M.caseApi.STAGES[c.st.stage]}) — ${DX.won(c.money.won)} · 다음: ${(M.caseApi.next(c) || {}).label || '—'}`).join('\n')}` : '미결 이슈가 없습니다', links: [['cases', '품질 이슈']] }; }
     if (ready && /출하/.test(q) && M.gate && !/아침 출하/.test(q)) { const rs = M.gate.candidates().map(l => M.gate.predict(l.id)), fc = M.gate.forecast();
-      return { text: `출하 대기 ${rs.length} LOT — 출하 가능 ${rs.filter(r => r.rec === 'ship' && !r.held).length} · 보류 권고 ${rs.filter(r => r.rec === 'hold' && !r.held).length} · 보류 중 ${rs.filter(r => r.held).length}\n${rs.filter(r => r.rec === 'hold').slice(0, 4).map(r => `· ${r.lot}: ${r.why.join(' · ')}`).join('\n')}${fc ? `\n다음 LOT 이 열처리 PPM 기준(${fc.th})을 넘을 확률 ${M.pct(fc.p, 0)} (최근 ${fc.n} LOT 중 ${fc.over})` : ''}`, links: [['gate', '출하 게이트']] }; }
+      return { text: `출하 대기 ${rs.length} LOT — 출하 가능 ${rs.filter(r => r.rec === 'ship' && !r.held).length} · 보류 권고 ${rs.filter(r => r.rec === 'hold' && !r.held).length} · 보류 중 ${rs.filter(r => r.held).length}\n${rs.filter(r => r.rec === 'hold').slice(0, 4).map(r => `· ${r.lot}: ${r.why.join(' · ')}`).join('\n')}${fc ? `\n다음 LOT 이 열처리 PPM 기준(${fc.th})을 넘을 확률 ${M.pct(fc.p, 0)} (최근 ${fc.n} LOT 중 ${fc.over})` : ''}`, links: [['gate', '출하 승인']] }; }
     if (ready && /(인수인계|교대)/.test(q) && M.shiftApi) { const b = M.shiftApi.brief();
-      return { text: `${b.shift} — 새 알림 ${b.new_alerts.length}건 · 열린 사건 ${b.open_cases.length}건\n다음 교대가 꼭 할 일:\n${b.next_shift_must_do.map(t => '· ' + t).join('\n') || '· 없음'}`, links: [['shift', '교대 인수인계']] }; }
+      return { text: `${b.shift} — 새 알람 ${b.new_alerts.length}건 · 미결 이슈 ${b.open_cases.length}건\n다음 교대 필수 조치:\n${b.next_shift_must_do.map(t => '· ' + t).join('\n') || '· 없음'}`, links: [['shift', '교대 인수인계']] }; }
     const wm = { press: q.match(/프레스[^\d]{0,12}(\d{2,3})\s*%/), weld: q.match(/용접기?[^\d]{0,8}(\d)\s*대/), heat: q.match(/열처리[^\d]{0,10}(\d{2,3})\s*%/), vb: q.match(/VB[^\d]{0,6}(0?\.\d+)/i), dev: q.match(/이탈[^\d]{0,8}(\d{1,2})\s*%/) };
     if (M.whatifApi && (Object.values(wm).some(Boolean) || /what.?if|만약|하면 어떻게/i.test(q))) { const p = {}; Object.entries(wm).forEach(([k, m]) => { if (m) p[k] = +m[1]; }); if (/히터/.test(q)) p.heater = true;
       const r = TOOLS.what_if(p), a = r.now, b = r.scenario, d = (x, y) => `${y - x >= 0 ? '+' : ''}${f(y - x, 0)}`;
@@ -186,7 +186,7 @@
       if (has('계약')) { const cs = T.contracts || [], by = k => cs.filter(c => T.contractState(c) === k);
         return { text: `데이터 공유 계약 ${cs.length}건 — 유효 ${by('active').length} · 서명 대기 ${by('proposed').length}${by('proposed').length ? ' (' + by('proposed').map(c => c.id).join(', ') + ')' : ''} · 만료·철회 ${by('expired').length + by('revoked').length}`, links: [['net_contracts', '데이터 공유 계약']] }; }
       if (has('클레임', '검수', '발주')) { const os = T.orders || [], ds = [].concat(...os.map(o => o.deliveries)), cl = ds.filter(d => d.claim);
-        return { text: `스마트 발주 ${os.length}건 · 납품 ${ds.length}건 중 자동 합격 ${ds.filter(d => d.result === 'accepted').length}건, 클레임 ${cl.length}건${cl.length ? '\n' + cl.slice(0, 3).map(d => `· ${d.claim.id} ${d.lot} (${d.claim.status === 'open' ? '처리 중' : '종결'})`).join('\n') : ''}`, links: [['deal_home', '스마트 발주']] }; }
+        return { text: `전자 발주 ${os.length}건 · 납품 ${ds.length}건 중 자동 합격 ${ds.filter(d => d.result === 'accepted').length}건, 클레임 ${cl.length}건${cl.length ? '\n' + cl.slice(0, 3).map(d => `· ${d.claim.id} ${d.lot} (${d.claim.status === 'open' ? '처리 중' : '종결'})`).join('\n') : ''}`, links: [['deal_home', '전자 발주']] }; }
       if (has('에이전트')) { const it = ((T.agent || {}).items || []).filter(x => x.status === 'pending' || x.status === 'suggested');
         return { text: it.length ? `승인 대기 조치 ${it.length}건\n${it.slice(0, 5).map(x => `· ${x.act}`).join('\n')}` : '승인 대기 중인 에이전트 조치가 없습니다', links: [['agent', 'AI 에이전트']] }; }
       if (has('여권', '탄소')) { const ps = Object.values(T.passports || {});
@@ -200,7 +200,7 @@
       const B = M.buyApi; if (!B) return { text: '구매 모듈이 없습니다' };
       const os = B.orders(), pend = os.filter(o => o.status === 'pending'), notIn = os.filter(o => o.status === 'approved'), rs = B.recs();
       if (has('누가', '최근')) { const a = B.audit()[0]; return { text: a ? `가장 최근 활동: ${a.at} ${a.ref} ${a.action} (${a.by})` : '활동 기록이 없습니다', links: [['buy_orders', '발주 · 결재']] }; }
-      return { text: `결재 대기 ${pend.length}건${pend.length ? ' — ' + pend.map(o => `${o.id}(다음: ${B.nextStep(o)})`).join(', ') : ''}\n결재 완료·미입고 ${notIn.length}건${notIn.length ? ' — ' + notIn.map(o => o.id).join(', ') : ''}\n발주 추천 ${rs.length}건${rs.length ? ' — ' + rs.map(r => `${r.it.name} ${r.qty}${r.it.unit}`).join(', ') : ''}`,
+      return { text: `승인 대기 ${pend.length}건${pend.length ? ' — ' + pend.map(o => `${o.id}(다음: ${B.nextStep(o)})`).join(', ') : ''}\n결재 완료·미입고 ${notIn.length}건${notIn.length ? ' — ' + notIn.map(o => o.id).join(', ') : ''}\n발주 추천 ${rs.length}건${rs.length ? ' — ' + rs.map(r => `${r.it.name} ${r.qty}${r.it.unit}`).join(', ') : ''}`,
         links: [['buy_orders', '발주 · 결재'], ['buy_home', '발주 요청']] };
     }
     if (has('병목', '라인', '속도', '목표', '재공')) {
@@ -211,17 +211,17 @@
     const hit = procMap.find(([, ws]) => ws.some(w => q.includes(w)));
     if (hit) {
       const r = TOOLS.process_detail({ process: hit[0] });
-      return { text: `${r.process}${r.summary ? ` — ${r.summary.kpi}${r.summary.detail ? ' · ' + r.summary.detail : ''}` : ''}\n${r.alerts.length ? r.alerts.slice(0, 4).map(a => `· ${a.level === 'danger' ? '[긴급] ' : ''}${a.title}`).join('\n') : '· 알림 없음'}`,
+      return { text: `${r.process}${r.summary ? ` — ${r.summary.kpi}${r.summary.detail ? ' · ' + r.summary.detail : ''}` : ''}\n${r.alerts.length ? r.alerts.slice(0, 4).map(a => `· ${a.level === 'danger' ? '[긴급] ' : ''}${a.title}`).join('\n') : '· 알람 없음'}`,
         links: [[{ mach: 'mach_home', press: 'press_home', weld: 'weld_home', heat: 'heat_home', insp: 'insp_home', plan: 'plan_home' }[hit[0]], `${r.process} 화면`]] };
     }
-    if (has('급', '먼저', '알림', '문제', '위험', '점검', '조치')) {
+    if (has('급', '먼저', '알람', '문제', '위험', '점검', '조치')) {
       const a = alertRows(null, 5); M.alerts().slice(0, 3).forEach(x => x.go && links.push([x.go, x.title.slice(0, 18) + '…']));
-      return { text: a.length ? `먼저 볼 것 ${a.length}건\n${a.map((x, i) => `${i + 1}. [${x.process}] ${x.title}`).join('\n')}` : '지금 조치가 필요한 알림이 없습니다', links: links.concat([['alerts', '통합 알림']]) };
+      return { text: a.length ? `먼저 볼 것 ${a.length}건\n${a.map((x, i) => `${i + 1}. [${x.process}] ${x.title}`).join('\n')}` : '지금 조치가 필요한 알람이 없습니다', links: links.concat([['alerts', '이상 알람']]) };
     }
     if (has('현황', '요약', '오늘', '상태', '어때')) {
       return { text: sums().map(s => `· ${s.proc}: ${s.kpi}${s.detail ? ' — ' + s.detail : ''}`).join('\n') || '요약할 자료가 없습니다', links: [['overview', '공장 현황']] };
     }
-    return { text: '이 질문은 규칙 기반으로는 답하기 어렵습니다. 아래처럼 물어보세요.\n· 지금 가장 먼저 조치할 것은?\n· 병목 공정은 어디야?\n· MCT 공구 상태 어때?\n· 결재 대기 발주 있어?\n· 클레임 걸린 납품 있어?\n· 오늘 손실은 얼마야? · 열린 사건 알려줘\n· 프레스 속도 110%면? · HT-… 보류해 줘\n· HT-… LOT 이력 알려줘' };
+    return { text: '이 질문은 규칙 기반으로는 답하기 어렵습니다. 아래처럼 물어보세요.\n· 지금 가장 먼저 조치할 것은?\n· 병목 공정은 어디야?\n· MCT 공구 상태 어때?\n· 승인 대기 발주 있어?\n· 클레임 걸린 납품 있어?\n· 오늘 손실은 얼마야? · 미결 이슈 알려줘\n· 프레스 속도 110%면? · HT-… 보류해 줘\n· HT-… LOT 이력 알려줘' };
   }
 
   async function send(q) {
@@ -238,7 +238,7 @@
   }
 
   const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-  const SUG = ['지금 가장 먼저 조치할 것은?', '병목 공정은 어디고 하루 몇 개까지 가능해?', 'MCT 공구 상태 어때?', '결재 대기 발주 있어?', '열처리 불량 원인 후보는?', '공장 현황 요약해 줘', '오늘 손실은 얼마야?', '열린 사건 알려줘', '지금 출하해도 돼?', '프레스 속도 110%면 어떻게 돼?', '교대 인수인계 정리해 줘', '발주 올려줘', '모델 믿을 만해?', 'T16 잔여 수명은?', '출하 대기 LOT 클레임 확률은?'];
+  const SUG = ['지금 가장 먼저 조치할 것은?', '병목 공정은 어디고 하루 몇 개까지 가능해?', 'MCT 공구 상태 어때?', '승인 대기 발주 있어?', '열처리 불량 추정 원인은?', '공장 현황 요약해 줘', '오늘 손실은 얼마야?', '미결 이슈 알려줘', '지금 출하해도 돼?', '프레스 속도 110%면 어떻게 돼?', '교대 인수인계 정리해 줘', '발주 올려줘', '모델 믿을 만해?', 'T16 잔여 수명은?', '출하 대기 LOT 클레임 발생 확률은?'];
   const V = {};
   V.ask = () => {
     const live = !!M.D.askUrl();
@@ -252,7 +252,7 @@
         : '<div class="empty">위 예시를 누르거나 아래에 질문을 적어 보세요</div>'}${busy ? '<div class="msg b"><div class="bub muted">자료를 찾는 중…</div></div>' : ''}</div>
       <div class="askin"><textarea class="in" id="askq" rows="2" placeholder="예: 프레스 진동 이상이 열처리 불량과 관계 있어? (Ctrl+Enter 로 보내기)">${esc(draft)}</textarea>
         <button class="btn pri" id="askgo" ${busy ? 'disabled' : ''}>질문</button></div>
-      <p class="note">${live ? 'Claude 가 답하기 전에 필요한 자료(알림·공정 상세·LOT 이력·라인 상태·발주 등)를 이 화면의 데이터에서 직접 조회합니다. API 키는 서버 함수에만 있습니다.'
+      <p class="note">${live ? 'Claude 가 답하기 전에 필요한 자료(알람·공정 상세·LOT 이력·라인 상태·발주 등)를 이 화면의 데이터에서 직접 조회합니다. API 키는 서버 함수에만 있습니다.'
         : '중계 함수(supabase/functions/mlng-ask)를 배포하면 Claude 가 자유 질문에 답합니다. 지금은 자주 묻는 질문을 규칙으로 답합니다.'}</p></div>`;
   };
 

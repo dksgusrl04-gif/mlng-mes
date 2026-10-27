@@ -40,13 +40,13 @@
       <div class="kpi click" data-row="k:pl:order"><div class="lab">수주 · 최근 ${rec.length}작업일</div><div class="val">${f(rec.reduce((t, d) => t + d.order, 0), 0)}<small>개</small></div><div class="foot">하루 평균 ${f(s.avg, 0)}개</div></div>
       <div class="kpi click" data-row="k:pl:prod"><div class="lab">생산 · 최근 ${rec.length}작업일</div><div class="val">${f(rec.reduce((t, d) => t + d.prod, 0), 0)}<small>개</small></div><div class="foot">하루 ${f(s.std, 0)}개 · ${f(s.std / s.lot, 0)}회 × ${s.lot}</div></div>
       <div class="kpi click" data-row="k:pl:inv"><div class="lab">마감 재고</div><div class="val" style="color:${s.short ? 'var(--warn-ink)' : 'inherit'}">${f(s.last.inv_close, 0)}<small>개</small></div><div class="foot">재고 일수 ${f(s.cover, 1)}일</div></div>
-      <div class="kpi click" data-row="k:pl:need"><div class="lab">내일 필요 생산</div><div class="val">${f(s.need, 0)}<small>개</small></div><div class="foot">예상 수주 ${f(s.avg, 0)} + 안전재고 ${pct(PCF().SAFETY_DAYS, 0)} − 재고</div></div>
+      <div class="kpi click" data-row="k:pl:need"><div class="lab">익일 필요 생산량</div><div class="val">${f(s.need, 0)}<small>개</small></div><div class="foot">예상 수주 ${f(s.avg, 0)} + 안전재고 ${pct(PCF().SAFETY_DAYS, 0)} − 재고</div></div>
     </div>
     <div class="grid g21" style="margin-top:16px">
       <div class="card"><h2>수주 · 생산 · 재고 <span class="h2sub">${esc(pit)} · 최근 45작업일</span></h2>
         ${M.lineChart([{ v: ds.map(d => d.order), cls: 's3' }, { v: ds.map(d => d.prod), cls: 's2' }, { v: ds.map(d => d.inv_close), cls: 's1' }], null, { h: 230, d: 0, xlab: xl })}
         ${M.legend([['l-s3', '수주'], ['l-s2', '생산'], ['l-s1', '마감 재고']])}</div>
-      <div class="card"><h2>내일 생산 제안 <span class="h2sub">품목별</span></h2>
+      <div class="card"><h2>익일 생산 계획안 <span class="h2sub">품목별</span></h2>
         ${all.map(x => { const has = drafts().some(w => w.item_code === x.it);
           return `<div class="sug"><div class="sh"><b>${esc(x.it)}</b> ${esc(itemName(x.it))} ${x.short ? '<span class="tag j-warn">부족 위험</span>' : '<span class="tag j-ok">충분</span>'}</div>
           <dl class="stat"><dt>예상 수주</dt><dd>${f(x.avg, 0)}</dd><dt>마감 재고</dt><dd>${f(x.last.inv_close, 0)}</dd><dt>필요 생산</dt><dd>${f(x.need, 0)} (${x.runs}회 × ${x.lot})</dd></dl>

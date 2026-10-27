@@ -2,7 +2,7 @@
  * ───────────────────────────────────────────────────────────────
  * 모델마다 «검증 성적(구간이 실제를 얼마나 맞히나)» 과 «입력 분포 변화» 로 신뢰도를 계산해 보여 주고,
  * 신뢰가 떨어진 모델에 기대는 에이전트 조치는 자동 실행 권한을 스스로 내려놓는다.
- * 여기서 공구 잔여 수명(첫날 예측 → 좁아지는 구간), LOT 클레임 확률 모델, 히터 변화점, 수요 예측, 라인 산출 분포를 함께 본다.
+ * 여기서 공구 잔여 수명(첫날 예측 → 좁아지는 구간), LOT 클레임 발생 확률 모델, 히터 변화점, 수요 예측, 라인 산출 분포를 함께 본다.
  */
 (function () {
   'use strict';
@@ -24,7 +24,7 @@
       <div class="mgrid">${all.map(x => `<div class="mcard ${x.k === sel ? 'on' : ''}" data-msel="${esc(x.k)}"><h4>${esc(x.name)} ${chip(x)}</h4><div class="mt mono">${esc(x.v)}</div><div class="mt" style="margin-top:4px">${esc(summary(x))}</div></div>`).join('')}</div></div>
     <div class="card" style="margin-top:16px">${detail(sel)}</div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
-      <div class="card"><h2>자기 의심 정책 <span class="h2sub">조치 종류 → 근거 모델 → 실제 실행 방식</span></h2>
+      <div class="card"><h2>AI 신뢰도 기준 (자기 의심 정책) <span class="h2sub">조치 종류 → 근거 모델 → 실제 실행 방식</span></h2>
         ${M.table([['조치', k => esc(KN[k] || k)], ['근거 모델', k => { const t = ML.trustOf(ML.KIND_MODEL[k]); return `${esc(t.name || '')} ${t.level ? chip(t) : ''}`; }], ['실행', k => ML.trustOf(ML.KIND_MODEL[k]).level === 'ok' ? '<span class="tag j-ok">정책대로</span>' : '<span class="tag j-warn">승인 대기로 내림</span>']], Object.keys(ML.KIND_MODEL), { wrap: false })}
         <p class="note">신뢰도 = 검증 구간 적중률이 목표(90% · 80%)에 얼마나 가까운지 − 입력 분포 변화 벌점. 센서 고착처럼 근거 자체가 무너지면 바로 «신뢰 불가».</p></div>
       <div class="card"><h2>입력 분포 변화 (PSI) <span class="h2sub">학습 구간 앞 60% vs 최근 25%</span></h2>
@@ -41,13 +41,13 @@
   function detail(k) {
     const ML = M.ml;
     if (k === 'heat') { const m = ML.heat(), so = M.dx.activeSO(), cl = so && so.clauses.find(c => c.k === 'heat_ppm'), cand = M.gate ? M.gate.candidates().slice(0, 8) : [];
-      return `<h2>열처리 LOT 불량 · 클레임 확률 <span class="h2sub">${esc(m.v)} · 포아송 회귀(노출 = 수량) + 과산포 → 사후 감마</span></h2>
+      return `<h2>열처리 LOT 불량 · 클레임 발생 확률 <span class="h2sub">${esc(m.v)} · 포아송 회귀(노출 = 수량) + 과산포 → 사후 감마</span></h2>
         <div class="grid g2" style="align-items:start"><div><h3 class="dh" style="margin-top:0">조건별 불량률 배수 (90% 구간)</h3>
           ${M.table([['조건', 'name'], ['배수', e => `<b>${f(e.rr, 2)}</b>`, 'n'], ['90% 구간', e => `${f(e.lo, 2)} ~ ${f(e.hi, 2)}`, 'n'], ['판단', e => e.lo > 1 ? '<span class="tag j-danger">불량 ↑ 뚜렷</span>' : e.hi < 1 ? '<span class="tag j-ok">불량 ↓ 뚜렷</span>' : '<span class="tag t-off">불확실</span>']], m.effects, { wrap: false })}
           <p class="note">검증: 앞 70% LOT 로 학습 → 뒤 ${m.ntest}개 LOT 의 실제 불량이 예측 90% 상한 안에 든 비율 ${pct(m.cover, 0)}. 구간이 1 을 걸치면 «데이터로는 효과를 단정할 수 없음» 이라고 그대로 말합니다.</p></div>
-          <div><h3 class="dh" style="margin-top:0">출하 대기 LOT 의 클레임 확률 ${cl ? `(기준 ${cl.v} PPM)` : ''}</h3>
+          <div><h3 class="dh" style="margin-top:0">출하 대기 LOT 의 클레임 발생 확률 ${cl ? `(기준 ${cl.v} PPM)` : ''}</h3>
           ${cl ? M.table([['LOT', l => `<b>${esc(l.id)}</b>`], ['실제', l => f(l.ppm, 0) + ' PPM', 'n'], ['조건 기대', l => f(ML.claimP(l.id, cl.v).ppmPrior, 0), 'n'], ['사후', l => f(ML.claimP(l.id, cl.v).ppmPost, 0), 'n'], ['확률', l => { const p = ML.claimP(l.id, cl.v).p; return `<div class="pbar"><i style="--w:${(p * 100).toFixed(1)}%"></i><b>${pct(p, 0)}</b></div>`; }]], cand, { wrap: false, click: l => 'gate:' + l.id }) : '<div class="empty">활성 계약 없음</div>'}
-          <p class="note">같은 실제 PPM 이라도 조건(이탈 · 히터 · 장입량)이 나쁘면 «참 불량률» 이 기준을 넘을 확률이 높게 나옵니다. 출하 게이트는 이 확률 × 클레임 비용과 보류 비용을 비교합니다.</p></div></div>`; }
+          <p class="note">같은 실제 PPM 이라도 조건(이탈 · 히터 · 장입량)이 나쁘면 «참 불량률» 이 기준을 넘을 확률이 높게 나옵니다. 출하 승인은 이 확률 × 클레임 비용과 보류 비용을 비교합니다.</p></div></div>`; }
     if (k === 'tool') { const m = ML.tool(), ts = (M.S.mach || { tools: [] }).tools.filter(t => t.rate), cur = tool || (m.ev.length ? m.ev[m.ev.length - 1].id : (ts[ts.length - 1] || {}).id), cs = cur ? ML.coldStart(cur) : [], last = ts[ts.length - 1], rl = last ? ML.rul(last.id) : null;
       const mx = Math.max(...cs.map(r => r.t90 || 0), ...cs.map(r => r.cross || 0), 1) * 1.05, pos = v => Math.max(0, Math.min(100, v / mx * 100)).toFixed(1);
       return `<h2>공구 잔여 수명 <span class="h2sub">${esc(m.v)} · VB = a·t^b · 재질별 계층 베이즈 사전 + 공구 관측 · 몬테카를로 600회</span></h2>
@@ -68,7 +68,7 @@
     if (k === 'heater') { const m = ML.heater();
       return `<h2>히터 출력 변화점 <span class="h2sub">${esc(m.v)} · 평균 변화점(순열 p) + CUSUM</span></h2>
         ${M.table([['존', 'label'], ['변화 시작', z => z.cpLot ? `<a href="#" data-go="replay:${esc(String(z.cpLot.end).slice(0, 10))}">${esc(String(z.cpLot.end).slice(0, 10))} →</a>` : '—'], ['전 → 후', z => z.cp ? `${f(z.cp.before, 1)} → <b>${f(z.cp.after, 1)}</b>%` : '—', 'n'], ['우연일 확률 p', z => z.cp ? `<span style="color:${z.cp.p < 0.05 ? 'var(--danger-ink)' : 'inherit'}">${f(z.cp.p, 3)}</span>` : '—', 'n'], ['CUSUM 경보', z => z.cuLot ? esc(String(z.cuLot.end).slice(0, 10)) : '—']], m.zones, { wrap: false })}
-        <p class="note">규칙 알림은 «처음 20작업 대비 최근 20작업» 이 5%p 넘을 때 울립니다. 변화점은 «언제부터 달라졌나» 를 찍어 되감기로 바로 그날을 볼 수 있게 합니다. 사건실의 「처음 징후」 가 이 날짜와 규칙 알림 날짜의 차이(조기 경보 시간)를 보여 줍니다.</p>`; }
+        <p class="note">규칙 알람은 «처음 20작업 대비 최근 20작업» 이 5%p 넘을 때 울립니다. 변화점은 «언제부터 달라졌나» 를 찍어 시점 조회로 바로 그날을 볼 수 있게 합니다. 품질 이슈의 「처음 징후」 가 이 날짜와 규칙 알람 날짜의 차이(조기 경보 시간)를 보여 줍니다.</p>`; }
     if (k === 'demand') { const m = ML.demand(), mc = ML.lineMC();
       return `<h2>수요 예측 · 안전재고 <span class="h2sub">${esc(m.v)} · Holt 이중 지수평활 · 95% 서비스 수준</span></h2>
         ${M.table([['품목', i => `<b>${esc(i.code)}</b> ${esc(i.name)}`], ['내일 예측', i => f(i.next, 0), 'n'], ['예측 오차 σ', i => f(i.sigma, 0), 'n'], ['안전재고 (95%)', i => f(i.ss, 0), 'n'], ['지금 규칙 (0.5일)', i => f(i.oldSS, 0), 'n'], ['마감 재고', i => f(i.inv, 0), 'n'], ['결품 확률', i => i.pShort == null ? '—' : `<b style="color:${i.pShort > 0.3 ? 'var(--danger-ink)' : 'inherit'}">${pct(i.pShort, 0)}</b>`, 'n']], m.items, { wrap: false })}

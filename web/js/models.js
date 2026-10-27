@@ -1,7 +1,7 @@
 /* 4.0 모델 계층 — 공장 데이터로 학습한 모델과 «자기 신뢰도»
  * ───────────────────────────────────────────────────────────────
  * 모든 모델은 (1) 예측 (2) 구간 (3) 지금 얼마나 믿을 수 있는지(신뢰도) 를 함께 돌려준다. 버전은 VERSION 에 고정.
- *   heat   열처리 LOT 불량 수 = 수량 × exp(β·[조건 이탈, 히터 출력, 장입량])  — 포아송 회귀 + 과산포 → LOT 별 클레임 확률
+ *   heat   열처리 LOT 불량 수 = 수량 × exp(β·[조건 이탈, 히터 출력, 장입량])  — 포아송 회귀 + 과산포 → LOT 별 클레임 발생 확률
  *   tool   공구 마모 VB = a·t^b (가공 시간)  — 재질별 계층 베이즈 사전 + 공구별 관측 → 잔여 수명 구간 (몬테카를로)
  *   vb     센서로 추정한 VB 의 오차  — 분할 컨포멀로 «±q mm 안에 90%» 보장, 최근 오차로 드리프트 감시
  *   insp   정밀가공 검사 판정  — 센서 고착이면 신뢰 불가
@@ -22,7 +22,7 @@
   ML.LEVEL = { ok: ['j-ok', '신뢰'], warn: ['j-warn', '주의'], bad: ['j-danger', '신뢰 불가'] };
   const memo = (k, fn) => M.memo('ml.' + k, '', fn);
 
-  // ── 열처리 불량 모델 (LOT 별 클레임 확률)
+  // ── 열처리 불량 모델 (LOT 별 클레임 발생 확률)
   const zone = () => { const w = M.dx && M.dx.heaterWaste()[0]; return w ? w.key : 'op2'; };
   ML.heat = () => memo('heat', () => {
     const ls = H().lots.filter(l => l.qty > 0), z = zone(), hv = ls.map(l => (l.heater || {})[z]).filter(v => v != null), hm = ST.mean(hv), hs = ST.sd(hv) || 1, qm = ST.mean(ls.map(l => l.qty)), qs = ST.sd(ls.map(l => l.qty)) || 1;
@@ -93,7 +93,7 @@
     return { v: ML.VERSION.vb, q, cover, recCover, recent, ncal: cal.length, ntest: test.length, trust, level: lvl(trust) };
   });
 
-  // ── 검사 판정 신뢰 (센서 고착 · 이중 기록)
+  // ── 검사 판정 불일치 (센서 고착 · 이중 기록)
   ML.insp = () => memo('insp', () => { const c = (M.S.insp || {}).checks || {}, stuck = (c.stuck || []).length, conf = c.conflict || 0;
     const trust = Math.max(0, 1 - stuck * 0.35 - Math.min(0.3, conf / 300)); return { v: ML.VERSION.insp, stuck: c.stuck || [], conf, trust, level: lvl(trust) }; });
 
@@ -104,7 +104,7 @@
       return { key: h.key, label: h.label, cp, cpLot: cp ? at(cp.i) : null, cuLot: at(cu.at), cuStart: at(cu.start), shift: cp ? cp.after - cp.before : 0 }; });
     return { v: ML.VERSION.heater, zones: zs, trust: 1, level: 'ok' }; });
 
-  // ── 사건 유형별 «통계적으로 변하기 시작한 때» (변화점) — 규칙 알림보다 며칠 먼저였나를 재는 기준
+  // ── 이슈 유형별 «통계적으로 변하기 시작한 때» (변화점) — 규칙 알람보다 며칠 먼저였나를 재는 기준
   ML.changeFor = tpl => memo('chg.' + tpl, () => {
     const day = s => String(s || '').slice(0, 10);
     if (tpl === 'heat') { const z = ML.heater().zones.filter(x => x.cp && x.cp.p < 0.1 && x.shift > 0).sort((a, b) => b.shift - a.shift)[0];
@@ -135,7 +135,7 @@
 
   // ── 모델별 종합 신뢰도 (입력 변화가 크면 깎는다)
   ML.all = () => { const ps = ML.psi().rows, pen = m => ps.filter(x => x.model === m).reduce((s, x) => s + (x.level === 'bad' ? 0.15 : x.level === 'warn' ? 0.05 : 0), 0);
-    const list = [['heat', '열처리 LOT 불량 · 클레임 확률', ML.heat()], ['tool', '공구 잔여 수명', ML.tool()], ['vb', 'VB 센서 추정', ML.vb()], ['insp', '정밀가공 검사 판정', ML.insp()], ['heater', '히터 출력 변화점', ML.heater()], ['demand', '수요 예측 · 안전재고', ML.demand()]];
+    const list = [['heat', '열처리 LOT 불량 · 클레임 발생 확률', ML.heat()], ['tool', '공구 잔여 수명', ML.tool()], ['vb', 'VB 센서 추정', ML.vb()], ['insp', '정밀가공 검사 판정', ML.insp()], ['heater', '히터 출력 변화점', ML.heater()], ['demand', '수요 예측 · 안전재고', ML.demand()]];
     return list.map(([k, name, m]) => { const t = Math.max(0, (m.trust ?? 1) - pen(k)); return { k, name, m, trust: t, level: lvl(t), v: m.v }; }); };
   ML.trustOf = k => { const x = ML.all().find(y => y.k === k); return x ? x : { trust: 1, level: 'ok' }; };
   // 에이전트 조치 종류 ↔ 근거 모델

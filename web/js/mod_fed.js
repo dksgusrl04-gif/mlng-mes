@@ -62,8 +62,8 @@
     const better = res.per.filter(p => Math.min(p.fed, p.per) < p.local).map(p => p.name), worse = res.per.filter(p => Math.min(p.fed, p.per) >= p.local).map(p => p.name);
     return `<div class="kstrip">
       <div class="kpi"><div class="lab">참여 공장 평균 오차</div><div class="val" style="color:var(--ok)">${pct(Math.min(avgF, avgP), 0)}</div><div class="foot">혼자 학습 평균 ${pct(avgL, 0)} → 함께 ${pct(avgF, 0)} · 함께+보정 ${pct(avgP, 0)}</div></div>
-      <div class="kpi"><div class="lab">우리 공장 예측 오차</div><div class="val">${pct(Math.min(me.fed, me.per), 0)}</div><div class="foot">혼자 학습하면 ${pct(me.local, 0)}</div></div>
-      <div class="kpi"><div class="lab">나간 원본 데이터</div><div class="val" style="color:var(--ok)">0<small>행</small></div><div class="foot">공장당 숫자 20개(요약 통계)만 전송</div></div>
+      <div class="kpi"><div class="lab">당사 예측 오차</div><div class="val">${pct(Math.min(me.fed, me.per), 0)}</div><div class="foot">혼자 학습하면 ${pct(me.local, 0)}</div></div>
+      <div class="kpi"><div class="lab">외부 반출 원본</div><div class="val" style="color:var(--ok)">0<small>행</small></div><div class="foot">공장당 숫자 20개(요약 통계)만 전송</div></div>
       <div class="kpi click" data-go="net_ledger"><div class="lab">학습 라운드</div><div class="val">${round}<small>회</small></div><div class="foot">원장에 기록</div></div>
     </div>
     <div class="card"><h2>공장별 결과 <span class="h2sub">공구를 하나씩 빼고 그 공구의 마모 속도를 맞혀 본 평균 오차 (낮을수록 좋음)</span><button class="btn pri sm" id="fd-run" style="margin-left:auto">학습 라운드 실행</button></h2>
@@ -72,12 +72,12 @@
       <p class="note">${better.length ? `${esc(better.join(', '))}는 함께 학습했을 때 오차가 줄었습니다 — 자기 데이터에 없는 재질·조건을 다른 공장의 요약 통계에서 배웠기 때문입니다.` : ''}
         ${worse.length ? ` ${esc(worse.join(', '))}는 자기 조건 데이터만으로도 충분히 맞혀 이득이 없었습니다 — 그래서 공통 모델을 그대로 쓸지, 자기 데이터로 보정해 쓸지를 공장마다 고릅니다.` : ''} 공구 수가 공장당 3~4개인 작은 표본이라 숫자보다 방향으로 읽어야 합니다.</p></div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
-      <div class="card"><h2>우리 공장이 보내는 것 <span class="h2sub">원본 공구 기록 대신 이 숫자들만</span></h2>
+      <div class="card"><h2>당사 제공 데이터 <span class="h2sub">원본 공구 기록 대신 이 숫자들만</span></h2>
         <table class="tb mono" style="font-size:12px"><tbody>${me.st.A.map((r, i) => `<tr>${r.map(v => `<td class="n">${f(v, 3)}</td>`).join('')}<td class="n" style="border-left:2px solid var(--line)">${f(me.st.b[i], 3)}</td></tr>`).join('')}</tbody></table>
         <p class="note">왼쪽 4×4 = XᵀX, 오른쪽 = Xᵀy. 공구 번호·날짜·측정값 원본은 포함되지 않습니다. 운영에서는 여러 공장의 값을 더한 결과만 보이게 하는 보안 합산을 씁니다.</p></div>
-      <div class="card"><h2>함께 만든 모델 <span class="h2sub">log(마모 속도 µm/분)</span></h2>
+      <div class="card"><h2>공동 학습 모델 <span class="h2sub">log(마모 속도 µm/분)</span></h2>
         ${M.dl([['기본값', f(w[0], 3)], ['스테인리스강이면', `${w[1] >= 0 ? '+' : ''}${f(w[1], 3)} (약 ${f(Math.exp(w[1]), 1)}배 빠름)`], ['절삭깊이 1mm당', `${w[2] >= 0 ? '+' : ''}${f(w[2], 3)}`], ['이송 1mm/rev당', `${w[3] >= 0 ? '+' : ''}${f(w[3], 3)}`], ['학습 공구', `${res.n}개 (4개 공장 합)`]])}
-        <h3 class="dh">우리 공구 예측</h3>${M.table([['공구', 'id'], ['실제', e => f(e.real, 1), 'n'], ['혼자', e => f(e.local, 1), 'n'], ['함께', e => f(e.fed, 1), 'n'], ['함께+보정', e => f(e.per, 1), 'n']], me.errs, { wrap: false })}
+        <h3 class="dh">당사 공구 수명 예측</h3>${M.table([['공구', 'id'], ['실제', e => f(e.real, 1), 'n'], ['혼자', e => f(e.local, 1), 'n'], ['함께', e => f(e.fed, 1), 'n'], ['함께+보정', e => f(e.per, 1), 'n']], me.errs, { wrap: false })}
         <p class="note">NASA 밀링 공구 15개를 가상의 4개 공장으로 나눈 시뮬레이션입니다.</p></div></div>`;
   };
 

@@ -59,7 +59,7 @@
   // ── 초기 계약 (데모 공급망)
   T.onInit(async () => {
     if (C.length) return;
-    await newContract({ provider: 'MLNG', consumer: 'T1-B', scopes: ['lot_passport', 'quality_kpi', 'pcf'], purpose: '납품 LOT 품질 확인 · 자동 검수', start: day(-60), end: day(305), retention_days: 365 }, true, true);
+    await newContract({ provider: 'MLNG', consumer: 'T1-B', scopes: ['lot_passport', 'quality_kpi', 'pcf'], purpose: '납품 LOT 품질 확인 · 자동 수입검사', start: day(-60), end: day(305), retention_days: 365 }, true, true);
     await newContract({ provider: 'T1-B', consumer: 'MLNG', scopes: ['forecast'], purpose: '시트 생산 계획 공유 → 브래킷 생산 동기화', start: day(-30), end: day(150), retention_days: 30 }, true, true);
     await newContract({ provider: 'MAT-D', consumer: 'MLNG', scopes: ['mill_cert'], purpose: '입고 코일 성적서 확인', start: day(-90), end: day(275), retention_days: 730 }, true, true);
     await newContract({ provider: 'MLNG', consumer: 'T1-B', scopes: ['capacity'], purpose: '공급망 동기 계획 (가능 산출 공유)', start: day(-10), end: day(80), retention_days: 14 }, true, true);
@@ -166,7 +166,7 @@
       ${M.table([['#', 'seq', 'n'], ['시각', e => `<span class="muted">${esc(e.at)}</span>`], ['회사', e => coTag(e.company)], ['종류', e => esc(KIND[e.kind] || e.kind)], ['내용', e => `${lv && lv.broken.some(b => b.seq === e.seq) ? '<b style="color:var(--danger-ink)">⚠ </b>' : ''}${esc(e.title)}`],
         ['해시', e => `<span class="mono">${esc(T.short(e.hash))}</span>`], ['앞 해시', e => `<span class="mono muted">${esc(T.short(e.prev))}</span>`]], L.slice(0, 200), { wrap: false, hl: e => lv && lv.broken.some(b => b.seq === e.seq) })}</div>`;
   };
-  const KIND = { contract: '계약', access: '데이터 제공', 'access-denied': '접근 거부', passport: 'LOT 여권', credential: '능력 증명서', deal: '스마트 발주', inspect: '자동 검수', claim: '클레임', agent: '에이전트', sync: '공급망 동기화', fed: '공동 학습', test: '시험' };
+  const KIND = { contract: '계약', access: '데이터 제공', 'access-denied': '접근 거부', passport: 'LOT 여권', credential: '능력 증명서', deal: '전자 발주', inspect: '자동 수입검사', claim: '클레임', agent: '에이전트', sync: '공급망 동기화', fed: '공동 학습', test: '시험' };
   T.KIND = KIND;
 
   // ── 보안 구조
@@ -175,7 +175,7 @@
     return `<div class="card"><h2>회사별 서명키 <span class="h2sub">비밀키는 각 회사 안에만 있고, 공개키 지문으로 서명을 확인합니다</span></h2>
       ${M.table([['회사', c => coTag(c.id)], ['역할', 'role'], ['공급망 위치', c => ['완성차', '1차', '2차 (우리)', '소재'][c.tier]], ['서명 방식', () => T.cryptoOk ? 'ECDSA P-256 · SHA-256' : '데모 서명 (보안 연결 필요)'], ['공개키 지문', c => `<span class="mono">${esc((T.keys[c.id] || {}).fp || '')}</span>`]], T.COMPANIES, { wrap: false })}</div>
     <div class="grid g2" style="margin-top:16px;align-items:start">
-      <div class="card"><h2>지키는 것</h2><ul class="plain">
+      <div class="card"><h2>보안 원칙</h2><ul class="plain">
         <li><b>데이터는 각 회사에</b> — 중앙에 모으지 않고, 계약된 범위만 요청할 때 내보냅니다</li>
         <li><b>계약 = 접근 권한</b> — 기간 · 목적 · 재공유 금지 · 보관 기간이 조항으로 붙고, 만료·철회 즉시 닫힙니다</li>
         <li><b>모든 기록에 회사 서명</b> — LOT 여권 · 능력 증명서 · 검수 결과를 받은 쪽이 직접 진위를 확인합니다</li>

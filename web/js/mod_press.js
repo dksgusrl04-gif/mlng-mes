@@ -27,7 +27,7 @@
     return sd ? Math.min(tol - mu, mu + tol) / (3 * sd) : null;
   }
 
-  // ── 현장 알림
+  // ── 현장 알람
   function alerts() {
     const out = [], L = P().lots, t = PC().TARGET_PPM, rl = recent();
     const over = rl.filter(l => l.ppm >= t);
@@ -124,7 +124,7 @@
       <div class="kpi click" data-row="k:pr:vib"><div class="lab">이상 구간</div><div class="val" style="color:${ev ? 'var(--danger-ink)' : 'var(--ok)'}">${vb.events.length}<small>건</small></div><div class="foot">${ev ? `최대 진동 기준의 ${f(ev.ratio, 1)}배` : '없음'}</div></div>
     </div>
     <div class="grid g2" style="margin-top:16px">
-      <div class="card"><h2>정상 운전 <span class="h2sub">PR-01 · ${esc(vb.normal.t0.slice(0, 16))} · 10초 평균 RMS</span></h2>
+      <div class="card"><h2>정상 운전 기준 <span class="h2sub">PR-01 · ${esc(vb.normal.t0.slice(0, 16))} · 10초 평균 RMS</span></h2>
         ${M.lineChart([{ v: vb.normal.v0, cls: 's1' }, { v: vb.normal.v1, cls: 's2' }], null, { h: 210, d: 2, xlab: nxl, refs: [{ y: b.v0.p99, label: '진동 1 기준' }] })}
         ${M.legend([['l-s1', '진동 1'], ['l-s2', '진동 2'], ['l-lim', '기준 (상위 1%)']])}</div>
       <div class="card"><h2>이상 구간 <span class="h2sub">${ev ? esc(ev.start.slice(0, 16)) : ''} · 1초 RMS</span></h2>

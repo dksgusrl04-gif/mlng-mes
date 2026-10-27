@@ -1,9 +1,9 @@
 /* 구매 모듈 — 공구 주문 · 3단계 전자결재 · 공구 발주서 (MCT MES 공구 주문과 같은 설계)
  * ───────────────────────────────────────────────────────────────
- * 공구 주문: 등록 품목(js/catalog.js) 전체를 표에 올려 두고, 공정 알림·사용량에서 «추천» 을 표시한다.
+ * 공구 주문: 등록 품목(js/catalog.js) 전체를 표에 올려 두고, 공정 알람·사용량에서 «추천» 을 표시한다.
  *            추천이 없는 품목도 체크해서 함께 발주할 수 있다. 여러 개를 골라 수량을 정하면 발주 1건으로 등록
  *   추천 — MCT 인서트: 최근 7일 공구 교체 횟수 × 날 수 × N주 − 재고 − 발주 중
- *          그 외: 품목의 `on` 화면을 가리키는 알림이 뜨면 (프레스 진동 → 블랭킹 펀치, 점용접 가압 이상 → 전극 팁 …)
+ *          그 외: 품목의 `on` 화면을 가리키는 알람이 뜨면 (프레스 진동 → 블랭킹 펀치, 점용접 가압 이상 → 전극 팁 …)
  * 결재: 담당 → 검토 → 승인. 서명·결재 물림·출력·입고가 모두 활동 기록(mlng_audit)에 남는다
  * 발주서: 결재가 끝난 건만 출력. 기본은 결재란을 뺀 발송본, 「결재란 포함」 을 켜면 도장이 찍힌 사내 보관본
  */
@@ -45,7 +45,7 @@
   const total = o => (o.lines || []).reduce((s, l) => s + (Number(l.qty) || 0), 0);
   const signedN = o => STEPS().filter(s => o.signs && o.signs[s]).length;
   const nextStep = o => STEPS().find(s => !(o.signs && o.signs[s]));
-  const stTag = o => o.status === 'received' ? '<span class="tag j-ok">입고 완료</span>' : o.status === 'approved' ? '<span class="chip c-ext">결재 완료 · 미입고</span>' : '<span class="tag j-warn">결재 대기</span>';
+  const stTag = o => o.status === 'received' ? '<span class="tag j-ok">입고 완료</span>' : o.status === 'approved' ? '<span class="chip c-ext">결재 완료 · 미입고</span>' : '<span class="tag j-warn">승인 대기</span>';
   const signDots = o => `<span class="sdots">${STEPS().map(s => `<i class="${o.signs && o.signs[s] ? 'on' : ''}" title="${esc(s)}${o.signs && o.signs[s] ? ' · ' + esc(o.signs[s].by) : ''}"></i>`).join('')}</span>`;
   const onOrder = code => P().orders.filter(o => o.status !== 'received').reduce((s, o) => s + (o.lines || []).filter(l => l.code === code).reduce((t, l) => t + (Number(l.qty) || 0), 0), 0);
   const log = async (ref, action) => { const rec = { at: stamp(), kind: 'po', ref, action, by: M.D.user().name }; P().audit.unshift(rec); await M.D.addAudit(rec); };
@@ -163,7 +163,7 @@
         <tbody>${o.lines.map((l, i) => `<tr><td class="c">${i + 1}</td><td class="c nw">${esc(l.code)}</td><td>${esc(l.name)}${l.spec ? `<div class="sp">${esc(l.spec)}</div>` : ''}</td>
           <td class="c nw"><span class="tag">${esc(l.cls || '-')}</span></td><td class="c nw">${esc(M.PROC[l.proc] || l.proc || '')}</td><td class="n">${f(l.qty, 0)} ${esc(l.unit || '')}</td><td class="c">${esc(l.vendor || '')}</td><td>${esc(l.reason || '')}</td></tr>`).join('')}
         <tr class="tot"><td class="c" colspan="5">합 계</td><td class="n">${f(n, 0)}</td><td colspan="2"></td></tr></tbody></table>
-      <div class="note"><b>발주 기준</b> — 추천 품목은 공정 알림(설비 진단·조건 이탈·센서 이상)과 사용량(MCT 공구 교체 횟수 × 날 수)에서 계산한 수량이며, 추천이 없는 품목은 등록 품목에서 현장이 직접 고른 것입니다.<br>
+      <div class="note"><b>발주 기준</b> — 추천 품목은 공정 알람(설비 진단·조건 이탈·센서 이상)과 사용량(MCT 공구 교체 횟수 × 날 수)에서 계산한 수량이며, 추천이 없는 품목은 등록 품목에서 현장이 직접 고른 것입니다.<br>
         ${o.note ? `비고: ${esc(o.note)}<br>` : ''}결재 ${esc(STEPS().join(' → '))} · ${o.status === 'received' ? `입고 ${esc(o.received_at || '')}` : '미입고'} · 발행 ${esc(M.D.user().name)}</div></section>`;
   }
   function printDocs(list, title) {
@@ -226,7 +226,7 @@
 
   function alerts() {
     const os = P().orders, pend = os.filter(o => o.status === 'pending'), out = [];
-    if (pend.length) out.push({ proc: 'buy', level: 'info', title: `결재 대기 발주 ${pend.length}건 — ${pend.map(o => `${o.id} ${nextStep(o)}`).join(' · ')}`,
+    if (pend.length) out.push({ proc: 'buy', level: 'info', title: `승인 대기 발주 ${pend.length}건 — ${pend.map(o => `${o.id} ${nextStep(o)}`).join(' · ')}`,
       body: pend.map(o => `${o.lines.map(l => l.name).join(', ')}`).join(' · '), by: '구매', at: pend[0].created_at, go: 'buy_orders' });
     const late = os.filter(o => o.status === 'approved' && (M.now() - M.toDate(o.created_at)) / 86400000 > 7);
     if (late.length) out.push({ proc: 'buy', level: 'warn', title: `발주 후 7일 넘은 미입고 ${late.length}건`, body: late.map(o => o.id).join(' · '), by: '구매', at: late[0].created_at, go: 'buy_orders' });
@@ -239,9 +239,9 @@
     const pend = os.filter(o => o.status === 'pending'), notIn = os.filter(o => o.status === 'approved');
     const cnt = k => CAT().filter(it => it.proc === k).length;
     return `<div class="kstrip">
-      <div class="kpi click" data-cf="rec"><div class="lab">발주 추천</div><div class="val" style="color:${Object.values(r).some(x => x.level === 'danger') ? 'var(--danger-ink)' : rc ? 'var(--warn-ink)' : 'inherit'}">${rc}<small>종</small></div><div class="foot">공정 알림 · 사용량 기준</div></div>
-      <div class="kpi click" data-of="pending"><div class="lab">결재 대기</div><div class="val" style="color:${pend.length ? 'var(--warn-ink)' : 'inherit'}">${pend.length}<small>건</small></div><div class="foot">${esc(STEPS().join(' → '))}</div></div>
-      <div class="kpi click" data-of="approved"><div class="lab">결재 완료 · 미입고</div><div class="val">${notIn.length}<small>건</small></div><div class="foot">발주서 출력 · 입고 대기</div></div>
+      <div class="kpi click" data-cf="rec"><div class="lab">발주 필요 품목</div><div class="val" style="color:${Object.values(r).some(x => x.level === 'danger') ? 'var(--danger-ink)' : rc ? 'var(--warn-ink)' : 'inherit'}">${rc}<small>종</small></div><div class="foot">공정 알람 · 사용량 기준</div></div>
+      <div class="kpi click" data-of="pending"><div class="lab">승인 대기</div><div class="val" style="color:${pend.length ? 'var(--warn-ink)' : 'inherit'}">${pend.length}<small>건</small></div><div class="foot">${esc(STEPS().join(' → '))}</div></div>
+      <div class="kpi click" data-of="approved"><div class="lab">승인 완료 · 미입고</div><div class="val">${notIn.length}<small>건</small></div><div class="foot">발주서 출력 · 입고 대기</div></div>
       <div class="kpi click" data-cf="all"><div class="lab">등록 품목</div><div class="val">${CAT().length}<small>종</small></div><div class="foot">${PROCS.map(([k, t]) => `${t} ${cnt(k)}`).join(' · ')}</div></div>
     </div>
     <div class="card" style="margin-top:16px">
@@ -267,7 +267,7 @@
   };
   V.buy_orders = () => {
     const os = P().orders.filter(o => of === 'all' || o.status === of).slice().sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
-    return `<div class="card"><div class="tools">${M.seg('of', of, [['all', '전체'], ['pending', '결재 대기'], ['approved', '결재 완료 · 미입고'], ['received', '입고 완료']])}<span class="tsum">${os.length}건 · 행을 누르면 결재·발주서</span></div>
+    return `<div class="card"><div class="tools">${M.seg('of', of, [['all', '전체'], ['pending', '승인 대기'], ['approved', '결재 완료 · 미입고'], ['received', '입고 완료']])}<span class="tsum">${os.length}건 · 행을 누르면 결재·발주서</span></div>
       ${M.table([['발주 번호', o => `<b>${esc(o.id)}</b>`], ['품목', o => esc(o.lines.map(l => `${l.name} ×${l.qty}`).join(', '))], ['수량', o => f(total(o), 0), 'n'],
         ['결재', o => `${signDots(o)} <span class="muted">${signedN(o)}/${STEPS().length}</span>`], ['상태', stTag], ['요청', o => `${esc(o.by)} <span class="muted">${esc(o.created_at)}</span>`]], os,
         { click: o => 'po:' + o.id, hl: o => o.status === 'pending', empty: '발주가 없습니다' })}</div>
@@ -276,7 +276,7 @@
   };
 
   M.PROC.buy = '구매';
-  // 알림 하나에 맞는 품목 (홈 「지금 조치할 것」의 발주 단추)
+  // 알람 하나에 맞는 품목 (홈 「지금 조치할 것」의 발주 단추)
   const itemsFor = a => CAT().filter(it => (it.on && (a.go === it.on || String(a.go || '').startsWith(it.on + ':'))) || (it.mach === 'insert' && a.proc === 'mach' && /^mach(:|_tools)/.test(String(a.go || '')))).map(it => it.code);
   const preselect = codes => { codes.forEach(c => sel.add(c)); cf = 'sel'; msg = ''; M.closeDrawer(); M.go('buy_home'); };
   // 다른 모듈(에이전트)이 발주를 바로 만든다 — 결재는 똑같이 사람이 한다

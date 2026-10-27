@@ -1,12 +1,12 @@
 /* MLNG MES 공용 화면 틀
  * ───────────────────────────────────────────────────────────────
- * 공정 모듈은 MLNG.mod({...}) 로 자기를 등록만 한다. 메뉴·알림·검사 기록·테마·상세 서랍은 여기서 같이 쓴다.
+ * 공정 모듈은 MLNG.mod({...}) 로 자기를 등록만 한다. 메뉴·알람·검사 기록·테마·상세 서랍은 여기서 같이 쓴다.
  *
  *   MLNG.mod({
  *     id: 'heat', proc: 'heat', group: '열처리', order: 30,
  *     menu: [['heat_home', '열처리 현황', 'flame'], ...],
  *     views: { heat_home: () => html, ... },
- *     alerts: S => [{ level, title, body, proc, at, go }],   // 현장 알림
+ *     alerts: S => [{ level, title, body, proc, at, go }],   // 현장 알람
  *     summary: S => ({ kpi, note, st }),                     // 공장 현황의 공정 카드
  *     drawers: { 'heat:': id => ... },                       // data-row="heat:HT-1" → 상세 서랍
  *   })
@@ -32,7 +32,7 @@
   const { esc, f } = M;
 
   // ── 공정 표시
-  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획', buy: '구매', net: '연결', deal: '스마트 발주', agent: '에이전트', gate: '출하 판정', case: '품질 문제', flow: '주문' };
+  M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획', buy: '구매', net: '연결', deal: '고객 발주', agent: '에이전트', gate: '출하 승인', case: '품질 이슈', flow: '수주' };
   M.procTag = p => `<span class="proc p-${esc(p)}">${esc(M.PROC[p] || p)}</span>`;
   M.tag = (t, cls) => `<span class="tag ${cls || 't-' + esc(t)}">${esc(t)}</span>`;
   M.dot = (st, t) => `<span class="dot ${st}"></span>${esc(t)}`;
@@ -72,7 +72,7 @@
   M.mod = m => { M.mods.push(m); M.mods.sort((a, b) => (a.order || 0) - (b.order || 0)); };
   M.views = () => Object.assign({}, ...M.mods.map(m => m.views || {}));
   // LOT 이력: mlng_trace 를 따라 위(조상)·아래(자손)로
-  // 데이터(S)가 같으면 결과도 같다 → S 별로 기억 (되감기의 잘린 S 는 따로)
+  // 데이터(S)가 같으면 결과도 같다 → S 별로 기억 (시점 조회의 잘린 S 는 따로)
   const LIN = new WeakMap();
   M.lineage = id => { let m = LIN.get(M.S); if (!m) LIN.set(M.S, m = new Map()); if (m.has(id)) return m.get(id); const r = lineage0(id); m.set(id, r); return r; };
   // 데이터 버전에 묶인 계산 캐시 — 같은 S · 같은 원장 길이면 다시 계산하지 않는다
@@ -88,16 +88,16 @@
   };
   M.inspections = () => D.LIVE ? (M.S.inspections || []) : D.demoInspections();
 
-  // 알림 = 저장된 알림(mlng_alerts) + 각 모듈이 데이터에서 찾은 현장 알림
+  // 알람 = 저장된 알람(mlng_alerts) + 각 모듈이 데이터에서 찾은 현장 알람
   let alertCache = null;   // 한 번 그리는 동안 여러 곳에서 부르므로 같은 작업 안에서는 한 번만 계산
-  let computing = false;   // 알림 계산 중에 다른 모듈이 다시 알림을 부르면(사건·출하 게이트) 빈 목록 — 무한 반복 방지
+  let computing = false;   // 알람 계산 중에 다른 모듈이 다시 알람을 부르면(이슈·출하 승인) 빈 목록 — 무한 반복 방지
   M.alerts = () => {
     if (alertCache) return alertCache.slice();
     if (computing) return [];
     computing = true; try { alertCache = computeAlerts(); } finally { computing = false; } queueMicrotask(() => { alertCache = null; });
     return alertCache.slice();
   };
-  // 3.0 공장 되감기: 데이터를 그 시점까지로 자른 S 로 알림을 다시 계산 (화면의 M.S 는 잠시 바꿨다가 되돌린다)
+  // 3.0 과거 시점 조회: 데이터를 그 시점까지로 자른 S 로 알람을 다시 계산 (화면의 M.S 는 잠시 바꿨다가 되돌린다)
   M.withS = (S2, fn) => { const keep = M.S; M.S = S2; try { return fn(); } finally { M.S = keep; } };
   M.alertsFor = S2 => M.withS(S2, () => computeAlerts());
   const computeAlerts = () => {
@@ -158,22 +158,22 @@
   // ── 메뉴: 주문 → 자재 → 생산 → 품질 → 출하 흐름대로 7개. 화면은 메뉴 안의 탭, 세부는 작은 탭.
   //   모듈이 만든 화면 중 여기 없는 것은 «더보기» 아래로 자동으로 들어간다 (아무 화면도 잃지 않는다).
   M.NAV = [
-    { id: 'home', t: '대시보드', i: 'home', tabs: [['overview', '한눈에 보기'], ['alerts', '전체 알림'], ['shift', '교대 인수인계']] },
-    { id: 'order', t: '주문', i: 'deal', tabs: [['orders', '주문 현황'], ['deal_home', '고객 계약 · 납품']] },
-    { id: 'mat', t: '자재 · 구매', i: 'cart', tabs: [['buy_home', '공구 · 자재 주문'], ['buy_orders', '발주 결재']] },
-    { id: 'plan', t: '생산 계획', i: 'range', tabs: [['plan_home', '생산 계획'], ['plan_wo', '작업지시'], ['line', '라인 균형'], ['whatif', '계획 시뮬레이션'], ['sync', '공급망 계획']] },
+    { id: 'home', t: '대시보드', i: 'home', tabs: [['overview', '종합 현황'], ['alerts', '알람 이력'], ['shift', '교대 인수인계']] },
+    { id: 'order', t: '수주', i: 'deal', tabs: [['orders', '수주 현황'], ['deal_home', '고객 발주 · 납품']] },
+    { id: 'mat', t: '자재 · 구매', i: 'cart', tabs: [['buy_home', '구매 요청'], ['buy_orders', '발주 승인']] },
+    { id: 'plan', t: '생산 계획', i: 'range', tabs: [['plan_home', '생산 계획'], ['plan_wo', '작업지시'], ['line', '라인 밸런스'], ['whatif', '계획 시뮬레이션'], ['sync', '수급 계획']] },
     { id: 'proc', t: '공정 실적', i: 'gauge', tabs: [
       ['press_home', '프레스', [['press_home', '현황'], ['press_lots', '작업 실적'], ['press_recipe', '공정 조건'], ['press_equip', '설비']]],
       ['weld_home', '점용접', [['weld_home', '현황'], ['weld_days', '작업 실적'], ['weld_window', '공정 조건'], ['weld_queue', '검사 우선순위']]],
       ['heat_home', '열처리', [['heat_home', '현황'], ['heat_lots', '작업 실적'], ['heat_recipe', '공정 조건'], ['heat_equip', '설비']]],
       ['mach_home', 'MCT 가공', [['mach_home', '현황'], ['mach_tools', '공구 수명'], ['mach_cond', '가공 조건']]]] },
-    { id: 'qual', t: '품질', i: 'check', tabs: [['cases', '품질 문제'], ['insp_home', '검사', [['insp_home', '현황'], ['insp_parts', '부품 이력'], ['insp_signal', '가공 신호']]], ['trace', 'LOT 추적'], ['pass_home', '품질 증명서']] },
-    { id: 'ship', t: '출하', i: 'gate', tabs: [['gate', '출하 판정']] },
+    { id: 'qual', t: '품질', i: 'check', tabs: [['cases', '품질 이슈'], ['insp_home', '검사', [['insp_home', '현황'], ['insp_parts', '부품 이력'], ['insp_signal', '가공 신호']]], ['trace', 'LOT 추적'], ['pass_home', '품질 성적서']] },
+    { id: 'ship', t: '출하', i: 'gate', tabs: [['gate', '출하 승인']] },
   ];
   M.NAV_MORE = [
-    ['분석', [['cost', '손실 비용'], ['replay', '과거 시점 보기'], ['models', 'AI 모델 상태'], ['prove', '판단 기록']]],
+    ['분석', [['cost', '품질 비용(COPQ)'], ['replay', '과거 시점 조회'], ['models', 'AI 모델 상태'], ['prove', 'AI 판정 이력']]],
     ['AI', [['ask', 'AI 질의응답'], ['agent', 'AI 자동 조치'], ['fed', '공동 학습']]],
-    ['데이터 신뢰', [['net_contracts', '데이터 공유 계약'], ['net_ledger', '신뢰 원장'], ['net_security', '보안 구조'], ['pass_cred', '공정 능력 증명'], ['pass_pcf', '탄소 발자국']]],
+    ['데이터 신뢰', [['net_contracts', '데이터 공유 계약'], ['net_ledger', '신뢰 원장'], ['net_security', '보안 구조'], ['pass_cred', '공정 능력 성적서'], ['pass_pcf', '탄소 배출량(PCF)']]],
     ['시스템', [['masters', '기준 정보'], ['data', '데이터 상태']]],
   ];
   const keysOf = tab => tab[2] ? tab[2].map(x => x[0]) : [tab[0]];
