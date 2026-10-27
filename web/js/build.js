@@ -1,11 +1,12 @@
 /* 자동 생성 — tools/stamp_version.py. 손으로 고치지 않는다 */
 window.MLNG_BUILD = {
- "hash": "91fffbdfab2a39a63e86310c7900dd385ee98fec4715246c837d4dac474b905f",
+ "hash": "465dc4a09f868a0f9b5cdf4f1553dba5092522e2977ddd7d39d344d79eb9065f",
  "files": {
-  "js/config.js": "2e2e263fccc9c161",
-  "js/data.js": "2500a1d2d8d1e8ae",
-  "js/core.js": "2c790a66ec68519a",
-  "js/mod_common.js": "0737f341d8a133de",
+  "js/config.js": "698bb9c26341eb6b",
+  "js/data.js": "5019365efa45e597",
+  "js/core.js": "67998297eaa05d4c",
+  "js/xlsx.js": "d0769185ddecb37b",
+  "js/mod_common.js": "69c2fc97d82d1160",
   "js/mod_line.js": "c80254288d11c84d",
   "js/mod_press.js": "6e820f8a7f9879dd",
   "js/mod_weld.js": "38f161aa6a866e92",
@@ -28,7 +29,7 @@ window.MLNG_BUILD = {
   "js/stats.js": "8c311be41efc7466",
   "js/models.js": "7766b19547ca37d0",
   "js/prove.js": "74e70e185ff78b05",
-  "js/mod_gate.js": "bcb9088a86768f5f",
+  "js/mod_gate.js": "46f5dcbf732b08ae",
   "js/mod_case.js": "1a134c91a551999b",
   "js/mod_cost.js": "f2cebb1716c11f96",
   "js/mod_whatif.js": "91aeac3c05d62908",
@@ -37,9 +38,12 @@ window.MLNG_BUILD = {
   "js/mod_palette.js": "700dd8e2c75fa3d7",
   "js/mod_models.js": "6b872b3338c87bec",
   "js/mod_prove.js": "a5848eddd39ac22e",
-  "js/mod_assume.js": "e680e251e4db99d3",
-  "js/mod_flow.js": "06aca6dd0bcc1549",
+  "js/mod_oee.js": "f023a59fc2250cb0",
+  "js/mod_pop.js": "79a6e7531e3002d5",
+  "js/mod_report.js": "c0de706237aa073b",
+  "js/mod_assume.js": "4100619fabecf235",
+  "js/mod_flow.js": "1cbeea51efa35310",
   "js/boot.js": "ff48c44de6b1a781",
-  "css/style.css": "0a46a475e3beda5c"
+  "css/style.css": "242a29dd8f2fcc37"
  }
 };

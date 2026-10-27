@@ -120,7 +120,7 @@
     views: V,
     drawers: { 'gate:': openLot },
     alerts: () => { if (!T.ready || !DX.activeSO()) return []; const rs = G.candidates().map(l => G.predict(l.id, { noCase: true })).filter(r => r.rec === 'hold' && !r.held);
-      return rs.length ? [{ proc: 'gate', level: 'warn', title: `출하 보류 권고 ${rs.length} LOT — ${rs.slice(0, 3).map(r => r.lot).join(', ')}`, body: rs[0].why.join(' · '), by: '출하 승인', at: rs[0].end, go: 'gate' }] : []; },
+      return rs.length ? [{ proc: 'gate', key: 'gate.hold', level: 'warn', title: `출하 보류 권고 ${rs.length} LOT — ${rs.slice(0, 3).map(r => r.lot).join(', ')}`, body: rs[0].why.join(' · '), by: '출하 승인', at: rs[0].end, go: 'gate' }] : []; },
     bind(root) {
       const act = async (fn, okMsg) => { try { msg = ''; await fn(); if (okMsg) msg = okMsg; } catch (e) { msg = e.message; } M.closeDrawer(); M.render(); };
       root.querySelectorAll('[data-gsel]').forEach(b => b.onclick = () => { sel = b.dataset.gsel; M.render(); });

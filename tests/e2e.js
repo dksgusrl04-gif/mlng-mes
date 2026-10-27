@@ -57,7 +57,7 @@ const ok = (c, m) => { if (c) pass++; else fails.push(m); console.log(`${c ? '�
   await go('prove'); await W(); await p.click('#pv-all').catch(() => {}); await W(300); ok(await ev(() => /같은 결과/.test(document.querySelector('#view').innerText)), '판단 증명 화면 재현');
 
   // 5.0 정돈: 메뉴 7개 · 주문 → 출하 대시보드
-  ok(await ev(() => document.querySelectorAll('#nav .nmain button').length === 7), '왼쪽 메뉴 7개 (나머지는 더보기)');
+  ok(await ev(() => document.querySelectorAll('#nav .nmain button').length === 9), '왼쪽 메뉴 9개 (나머지는 더보기)');
   ok(await ev(() => Object.keys(MLNG.views()).every(k => MLNG.where(k))), '모든 화면이 메뉴 · 탭 · 더보기 어딘가에 있음');
   await go('overview'); await W(); ok(await ev(() => document.querySelectorAll('.mtx th.sth').length === 5 && document.querySelectorAll('.mtx tbody tr').length > 0), '대시보드 주문 현황판 — 주문 × 5단계');
   ok(await ev(() => [...document.querySelectorAll('.mtx tbody tr')].every(r => r.querySelectorAll('.mc').length === 5)), '현황판 모든 행에 5단계 칸 (열 맞춤)');
@@ -67,7 +67,7 @@ const ok = (c, m) => { if (c) pass++; else fails.push(m); console.log(`${c ? '�
   ok(await ev(() => MLNG.flow.book().orders.every(o => o.lots.every(l => MLNG.S.heat.lots.some(h => h.id === l.id)))), '주문은 실제 열처리 LOT 에 묶임');
   await go('orders'); await W(); await p.click('#view tr.click'); await W(300); ok(await ev(() => /수주 OR-/.test(document.querySelector('#dttl').textContent)), '주문 상세 서랍');
   await ev(() => MLNG.closeDrawer());
-  ok(await ev(() => { MLNG.go('heat_lots'); return document.querySelectorAll('#tabs .tabs button').length === 5 && document.querySelectorAll('#tabs .subtabs button').length === 4; }), '공정 실적: 전체 공정 + 공정 탭 + 세부 탭');
+  ok(await ev(() => { MLNG.go('heat_lots'); return document.querySelectorAll('#tabs .tabs button').length === 6 && document.querySelectorAll('#tabs .subtabs button').length === 4; }), '공정 실적: 전체 공정 · 일보 + 공정 탭 + 세부 탭');
 
   // 5.3 가정값 관리 · 전체 공정
   ok(await ev(() => !document.querySelector('#nav .nsub').textContent.includes('기타')), '더보기에 중복 «기타» 없음');
@@ -80,6 +80,24 @@ const ok = (c, m) => { if (c) pass++; else fails.push(m); console.log(`${c ? '�
   await p.click('#as-reset'); await W(500); ok(await ev(() => MLNG.CFG.COST.CLAIM_FIXED === 500000), '기본값으로 되돌리기');
   await go('procmap'); await W(); ok(await ev(() => document.querySelectorAll('.pmap .pnode').length === 7 && document.querySelectorAll('.lftab tbody tr').length > 0), '전체 공정 흐름 7단계 + LOT 흐름');
   ok(await ev(() => { const t = [...document.querySelectorAll('.pmap .pnode')].map(n => n.getBoundingClientRect()); return t.every(r => Math.abs(r.top - t[0].top) < 1 && Math.abs(r.height - t[0].height) < 1); }), '공정 카드 위·높이 맞춤');
+
+  // 5.5 현업 기본: 데모 날짜 · 물량 · 알람 등급 · OEE · POP · 엑셀 · 일보 · 안돈
+  ok(await ev(() => { const a = new Date(MLNG.S.asof.replace(' ', 'T')), n = new Date(); return (n - a) / 864e5 < 1.01 && (n - a) >= -60000; }), '데모 날짜가 오늘(또는 어제) 기준');
+  ok(await ev(() => { const d7 = p => MLNG.S.lots.filter(l => l.proc === p && new Date(String(l.end_at || l.start_at).replace(' ', 'T')) >= MLNG.sinceDay(14)).reduce((s, l) => s + l.qty, 0); return d7('press') >= d7('heat') * 0.9; }), '프레스 생산 ≥ 열처리 투입 (물량 역전 없음)');
+  ok(await ev(() => { const a = MLNG.alerts(), A = a.filter(x => x.grade === 'A').length; return a.every(x => 'ABC'.includes(x.grade)) && A / a.length <= 0.25; }), '알람 A/B/C 등급 · A 비율 25% 이하');
+  ok(await ev(() => { const r = MLNG.oeeApi.period(7); return r.oee > 0.2 && r.oee < 1 && r.A <= 1 && r.P <= 1 && r.Q <= 1; }), 'OEE = 가동률 × 성능 × 양품률 (0~1)');
+  await go('downtime'); await W(); const u0 = await ev(() => MLNG.oeeApi.unclassified().length); await p.selectOption('.dtsel >> nth=0', 'MAT'); await W(300);
+  ok(await p.evaluate(u0 => MLNG.oeeApi.unclassified().length === u0 - 1, u0), '미분류 비가동 사유 입력 → OEE 반영');
+  await go('pop'); await W(); await p.click('[data-peq="SB-01"]'); await W(); await p.click('.pjob'); await W(); await p.click('[data-pact="start"]'); await W();
+  for (const k of ['5', '0', '0', '0']) await p.click(`[data-pkey="${k}"]`); await p.click('[data-ptgt="bad"]'); await p.click('[data-pkey="3"]'); await W();
+  ok(await ev(() => document.querySelector('[data-pact="done"]').disabled), 'POP 불량 사유 없이는 완료 불가');
+  await p.click('.pcodes button'); await p.click('[data-pact="stop"]'); await W(); await p.click('[data-pstop="MAT"]'); await W(); await p.click('[data-pact="resume"]'); await W(); await p.click('[data-pact="done"]'); await W(600);
+  ok(await ev(() => MLNG.S.lots.some(l => l.pop && l.good === 5000 && l.bad === 3) && MLNGTrust.ledger.some(e => e.kind === 'pop')), 'POP 실적 등록 → LOT · 원장');
+  ok(await ev(() => MLNG.oeeApi.days().some(r => r.ev.some(e => e.src === '작업자 입력' && e.code === 'MAT'))), 'POP 비가동 → OEE 비가동');
+  await go('daily'); await W(); ok(await ev(() => document.querySelectorAll('#rpt .rt').length >= 4 && /결/.test(document.querySelector('.rsign').innerText)), '생산 일보 (결재란 · 5개 표)');
+  ok(await ev(() => MLNG_XLSX.build([{ name: 't', rows: [['a', 1]] }]).size > 500 && document.querySelectorAll('.xbtn').length >= 0), '엑셀(.xlsx) 생성');
+  await go('oee'); await W(); ok(await ev(() => document.querySelectorAll('#view .card .xbtn').length >= 1), '표 카드마다 엑셀 단추');
+  await ev(() => MLNG.andon.open()); await W(); ok(await ev(() => document.querySelectorAll('#andon .an-r').length === 5), '현장 모니터(안돈) 설비 5줄'); await ev(() => MLNG.andon.close());
 
   // 끝: 모든 동작 뒤에도 원장이 온전한가
   await go('net_ledger'); await W(); await p.click('#lg-verify'); await W(1000); ok(/모두 사슬과 서명이 맞습니다/.test(await note()), '모든 시나리오 뒤 원장 검증');

@@ -78,6 +78,21 @@ window.MLNG_CONFIG = {
     HOLD_FIXED: 150000,       // 출하 보류 1건 비용 — 재검사 · 일정 조정 (원)
     HOLD_PER_PART: 4,         // 출하 보류 개당 비용 — 보관 · 선별 (원/개)
   },
+  // 알람 등급 — A 즉시 조치(라인 정지 · 고객 출하 영향) · B 당일 조치(품질 · 설비 이상) · C 관찰(추세 · 데이터 점검)
+  //   ISA-18.2 권장 분포(상 5% · 중 15% · 하 80%)를 참고해 A 를 최소로 둔다. 여기 없는 알람은 원래 수준(긴급 A · 주의 B · 정보 C)
+  ALARM_GRADE: {
+    'press.vib': 'A', 'mach.tool_over': 'A', 'gate.hold': 'A',
+    'deal.claim': 'B', 'heat.ppm_over': 'B', 'heat.dev': 'B', 'insp.conflict': 'B', 'weld.pred': 'B', 'plan.short': 'B', 'press.ppm_trend': 'B',
+    'heat.heater': 'C', 'insp.stuck': 'C', 'mach.late': 'C', 'weld.pressure': 'C', 'press.ppm_over': 'C', 'mach.sensor': 'C',
+  },
+  // 신호등 기준 — 지표가 목표의 몇 % 이상이면 초록 · 노랑 (그 아래 빨강)
+  SIGNAL: { OEE_GREEN: 0.85, OEE_YELLOW: 0.65, PLAN_GREEN: 0.95, PLAN_YELLOW: 0.85 },
+  // OEE — 설비별 계획 가동 시간(분/가동일)과 이론 능력(가정값). 가정값 관리에서 바꾼다
+  OEE: {
+    PLANNED: { 'PR-01': 460, 'SP-01': 460, 'SB-01': 1320, 'MC-01': 460, 'IN-01': 1320 },   // 1교대 8h−휴식 20분 · 2교대 24h−휴식 2h
+    IDEAL: {},                // 이론 생산 속도 (개/분) — 비우면 데이터의 상위 10% 가동일 속도 (설비 제원값을 알면 넣는다)
+    TARGET: 0.85,
+  },
   // 3.0 교대 — 주간 시작 시각 (12시간 2교대)
   SHIFT: { DAY_START: 8, HOURS: 12 },
   // 2.0 공급망 동기 계획 — 다른 회사 능력은 데이터 계약으로 받는 값 (데모는 예시값)

@@ -35,6 +35,8 @@
   M.PROC = { press: '프레스', weld: '용접', heat: '열처리', mach: 'MCT 가공', insp: '검사', data: '데이터', mct: 'MCT', plan: '계획', buy: '구매', net: '연결', deal: '고객 발주', agent: '에이전트', gate: '출하 승인', case: '품질 이슈', flow: '수주' };
   M.procTag = p => `<span class="proc p-${esc(p)}">${esc(M.PROC[p] || p)}</span>`;
   M.tag = (t, cls) => `<span class="tag ${cls || 't-' + esc(t)}">${esc(t)}</span>`;
+  M.GRADE = { A: ['A', '즉시 조치', 'danger'], B: ['B', '당일 조치', 'warn'], C: ['C', '관찰', 'info'] };
+  M.gradeTag = (g, full) => { const x = M.GRADE[g] || M.GRADE.C; return `<span class="grd g-${x[0]}" title="${x[0]}등급 — ${x[1]}"><b>${x[0]}</b>${full ? `<em>${x[1]}</em>` : ''}</span>`; };
   M.dot = (st, t) => `<span class="dot ${st}"></span>${esc(t)}`;
 
   const IC = {
@@ -104,7 +106,10 @@
     const rank = { danger: 0, warn: 1, info: 2 };
     const stored = (M.S.alerts || []).map(a => Object.assign({ proc: a.proc || 'data' }, a));
     const found = [].concat(...M.mods.map(m => { try { return m.alerts ? m.alerts(M.S) : []; } catch (e) { console.warn(e); return []; } }));
-    return stored.concat(found).sort((a, b) => (rank[a.level] ?? 3) - (rank[b.level] ?? 3) || String(b.at || '').localeCompare(String(a.at || '')));
+    // 등급 A/B/C 를 붙이고, 화면 신호등(level)은 등급을 따른다 — A 빨강 · B 노랑 · C 회색(관찰)
+    const GR = CFG.ALARM_GRADE || {}, LV = { A: 'danger', B: 'warn', C: 'info' };
+    const all = stored.concat(found).map(a => { const g = GR[a.key] || (a.level === 'danger' ? 'A' : a.level === 'warn' ? 'B' : 'C'); return Object.assign(a, { grade: g, level: LV[g], level0: a.level0 || a.level }); });
+    return all.sort((a, b) => (rank[a.level] ?? 3) - (rank[b.level] ?? 3) || String(b.at || '').localeCompare(String(a.at || '')));
   };
 
   // ── 표
@@ -162,12 +167,15 @@
     { id: 'order', t: '수주', i: 'deal', tabs: [['orders', '수주 현황'], ['deal_home', '고객 발주 · 납품']] },
     { id: 'mat', t: '자재 · 구매', i: 'cart', tabs: [['buy_home', '구매 요청'], ['buy_orders', '발주 승인']] },
     { id: 'plan', t: '생산 계획', i: 'range', tabs: [['line', '라인 밸런스'], ['plan_home', '생산 계획'], ['plan_wo', '작업지시'], ['whatif', '계획 시뮬레이션'], ['sync', '수급 계획']] },
-    { id: 'proc', t: '공정 실적', i: 'gauge', tabs: [
+    { id: 'pop', t: '실적 입력 (POP)', i: 'sign', tabs: [['pop', '실적 입력']] },
+    { id: 'proc', t: '공정 실적', i: 'trace', tabs: [
       ['procmap', '전체 공정'],
+      ['daily', '생산 일보'],
       ['press_home', '프레스', [['press_home', '현황'], ['press_lots', '작업 실적'], ['press_recipe', '공정 조건'], ['press_equip', '설비']]],
       ['weld_home', '점용접', [['weld_home', '현황'], ['weld_days', '작업 실적'], ['weld_window', '공정 조건'], ['weld_queue', '검사 우선순위']]],
       ['heat_home', '열처리', [['heat_home', '현황'], ['heat_lots', '작업 실적'], ['heat_recipe', '공정 조건'], ['heat_equip', '설비']]],
       ['mach_home', 'MCT 가공', [['mach_home', '현황'], ['mach_tools', '공구 수명'], ['mach_cond', '가공 조건']]]] },
+    { id: 'equip', t: '설비 · OEE', i: 'gauge', tabs: [['oee', 'OEE 현황'], ['downtime', '비가동 관리']] },
     { id: 'qual', t: '품질', i: 'check', tabs: [['cases', '품질 이슈'], ['insp_home', '검사', [['insp_home', '현황'], ['insp_parts', '부품 이력'], ['insp_signal', '가공 신호']]], ['trace', 'LOT 추적'], ['pass_home', '품질 성적서']] },
     { id: 'ship', t: '출하', i: 'gate', tabs: [['gate', '출하 승인']] },
   ];
@@ -251,7 +259,14 @@
     root.querySelectorAll('h2 > .h2sub, h3 > .h2sub').forEach(s => { const t = s.textContent.trim(); if (!t) { s.remove(); return; }
       if (t.length <= 14) return;   // 짧은 부제(번호·개수)는 그대로
       const i = document.createElement('span'); i.className = 'hint'; i.tabIndex = 0; i.setAttribute('data-tip', t); i.setAttribute('aria-label', t); i.textContent = 'i'; s.replaceWith(i); });
-    root.querySelectorAll('.kstrip').forEach(k => k.classList.add('kbar'));   // 모든 화면의 요약 줄을 같은 상자 · 같은 칸 폭으로
+    root.querySelectorAll('.kstrip').forEach(k => k.classList.add('kbar'));
+    // 표가 있는 카드마다 「엑셀」 단추 (현업 요구 1순위 — 화면에 보이는 표 그대로 .xlsx)
+    if (window.MLNG_XLSX) root.querySelectorAll('.card').forEach(card => {
+      const t = card.querySelector('table.tb'), h = card.querySelector(':scope > h2'); if (!t || !h || h.querySelector('.xbtn') || t.querySelectorAll('tbody tr').length < 2) return;
+      const b = document.createElement('button'); b.className = 'xbtn'; b.type = 'button'; b.title = '이 표를 엑셀로 내려받기'; b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>엑셀';
+      if (!h.querySelector(':scope > .more')) b.style.marginLeft = 'auto';
+      b.onclick = e => { e.stopPropagation(); const title = (h.firstChild && h.firstChild.textContent || '표').trim() || '표', X = window.MLNG_XLSX; X.download(`${title}_${(M.S.asof || '').slice(0, 10)}.xlsx`, [X.fromTable(t, title)]); };
+      h.appendChild(b); });   // 모든 화면의 요약 줄을 같은 상자 · 같은 칸 폭으로
     root.querySelectorAll('.kstrip .kpi .foot').forEach(x => { if (!x.title) x.title = x.textContent.trim(); });
     // 설명문(.note)은 화면에서 걷어 카드 제목의 ⓘ 안으로 — 결과 메시지(.note.msg)만 화면에 남긴다
     root.querySelectorAll('p.note:not(.msg):not([style*="color"])').forEach(n => {
@@ -325,7 +340,7 @@
   function updBar() {
     const S = M.S || {}, t = lastPull ? lastPull.toTimeString().slice(0, 8) : '';
     $('#upd').innerHTML = D.LIVE ? (liveOn ? `<span class="dot ok pulse"></span>실시간 · 갱신 ${esc(t || String(S.built || '').slice(11, 19))}` : `<span class="dot warn"></span>멈춤 · ${esc(t || String(S.built || '').slice(11, 19))} 기준`)
-      : `<span class="dot ok"></span>${esc(S.asof || '')} 기준`;
+      : `<span class="demo-chip" title="${esc(`공개 데이터셋(${S.demo_from ? String(S.demo_from).slice(0, 10) : '원본'})을 ${S.demo_shift || 0}일 옮겨 오늘 기준으로 보여 주는 시연용 데이터입니다. 실제 설비 연결 시 자동으로 실시간 데이터로 바뀝니다.`)}">데모 데이터</span><span class="dot ok"></span>${esc(S.asof || '')} 기준`;
     const b = $('#livebtn'); if (!b) return;
     b.disabled = !D.CONNECTED; b.hidden = !D.CONNECTED;
     b.classList.toggle('on', D.CONNECTED && liveOn);

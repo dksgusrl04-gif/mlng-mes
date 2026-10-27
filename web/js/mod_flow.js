@@ -199,7 +199,7 @@
     <div class="card dsec"><h2>이상 발생 · 조치 현황 <span class="h2sub">미결 ${iss.length}건</span><a class="more" href="#" data-go="alerts">알람 이력 →</a></h2>
       ${iss.length ? `<div class="tbx"><table class="tb itab"><colgroup><col class="c-lv"><col class="c-sg"><col><col class="c-won"><col class="c-go"></colgroup>
         <thead><tr><th>등급</th><th>구분</th><th>이상 내용</th><th class="n">예상 손실${M.asmTag ? M.asmTag('loss') : ''}</th><th></th></tr></thead>
-        <tbody>${iss.slice(0, 8).map(x => `<tr class="click ${x.lv}" ${x.go ? `data-row="${esc(x.go)}"` : ''}><td><span class="lvt ${x.lv}">${x.lv === 'danger' ? '긴급' : '경고'}</span></td><td>${SN[x.st]}</td>
+        <tbody>${iss.slice(0, 8).map(x => `<tr class="click ${x.lv}" ${x.go ? `data-row="${esc(x.go)}"` : ''}><td>${M.gradeTag(x.lv === 'danger' ? 'A' : x.lv === 'warn' ? 'B' : 'C', true)}</td><td>${SN[x.st]}</td>
           <td><div class="it1">${esc(x.t)}</div><div class="it2">${esc(x.s)}</div></td><td class="n">${x.won > 0 && DX ? DX.wonShort(x.won) + '원' : '<span class="muted">—</span>'}</td><td class="n"><span class="golink">${esc(x.btn || '보기')} ›</span></td></tr>`).join('')}</tbody></table></div>`
         : `<div class="empty">${sel ? SN[sel] + ' 단계에 ' : ''}미결 이상이 없습니다</div>`}</div>`;
   };

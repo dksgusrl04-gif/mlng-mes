@@ -55,14 +55,20 @@
       { h: '불량 많은 작업', html: M.table(lcols, o.lots.filter(l => l.bad).sort((a, b) => b.bad - a.bad).slice(0, 10), { wrap: false, click: l => 'trace:' + l.id }) }]);
   }
 
-  let af = 'all';
+  let af = 'all', ag = 'AB';
   V.alerts = () => {
-    const all = M.alerts(), procs = [...new Set(all.map(a => a.proc))];
-    const al = all.filter(a => af === 'all' || a.proc === af);
-    return `<div class="tools">${M.seg('af', af, [['all', '전체']].concat(procs.map(p => [p, M.PROC[p] || p])))}<span class="tsum">${al.length}건</span></div>
-      <div class="card">${al.length ? `<div class="alist">${al.map(a => `<div class="al ${esc(a.level)} ${a.go ? 'click' : ''}" ${a.go ? `data-row="${esc(a.go)}"` : ''}><div class="lv"></div><div style="min-width:0">
-        <div class="tt">${esc(a.title)}</div>${a.body ? `<div class="bd">${esc(a.body)}</div>` : ''}
-        <div class="mt">${M.procTag(a.proc)}<span>${esc(a.by || '')}</span><span>${esc(a.at || '')}</span></div></div></div>`).join('')}</div>` : '<div class="empty">알람이 없습니다</div>'}</div>`;
+    const all = M.alerts(), procs = [...new Set(all.map(a => a.proc))], cnt = g => all.filter(a => a.grade === g).length;
+    const al = all.filter(a => (af === 'all' || a.proc === af) && ag.includes(a.grade));
+    return `<div class="kstrip">
+      <div class="kpi click" data-ag="A"><div class="lab">A 즉시 조치</div><div class="val" style="color:var(--danger-ink)">${cnt('A')}<small>건</small></div><div class="foot">라인 정지 · 고객 출하 영향</div></div>
+      <div class="kpi click" data-ag="B"><div class="lab">B 당일 조치</div><div class="val" style="color:var(--warn-ink)">${cnt('B')}<small>건</small></div><div class="foot">품질 · 설비 이상</div></div>
+      <div class="kpi click" data-ag="C"><div class="lab">C 관찰</div><div class="val">${cnt('C')}<small>건</small></div><div class="foot">추세 · 데이터 점검 · 승인 대기</div></div>
+      <div class="kpi"><div class="lab">A 비율</div><div class="val">${all.length ? Math.round(cnt('A') / all.length * 100) : 0}<small>%</small></div><div class="foot">권장 5% 내외 (ISA-18.2)</div></div></div>
+    <div class="card"><div class="tools">${M.seg('ag', ag, [['AB', 'A·B 조치 필요'], ['ABC', '전체'], ['A', 'A'], ['B', 'B'], ['C', 'C']])}${M.seg('af', af, [['all', '전체 공정']].concat(procs.map(p => [p, M.PROC[p] || p])))}<span class="tsum">${al.length}건</span></div>
+      <div class="tbx"><table class="tb altab"><colgroup><col class="c-g"><col class="c-p"><col><col class="c-t"></colgroup>
+        <thead><tr><th>등급</th><th>공정</th><th>알람</th><th>발생</th></tr></thead>
+        <tbody>${al.map(a => `<tr class="${a.go ? 'click' : ''}" ${a.go ? `data-row="${esc(a.go)}"` : ''}><td>${M.gradeTag(a.grade, true)}</td><td>${M.procTag(a.proc)}</td>
+          <td><div class="it1">${esc(a.title)}</div>${a.body ? `<div class="it2">${esc(a.body)}</div>` : ''}</td><td class="muted sm1">${esc(String(a.at || '').slice(5, 16))}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">해당 알람이 없습니다</td></tr>'}</tbody></table></div></div>`;
   };
 
   // ── LOT 이력: 작업지시 · 공정 LOT · 소재 LOT 어느 것으로 찾아도 앞뒤 공정을 보여 준다
@@ -146,7 +152,7 @@
     ];
     return `<div class="card"><h2>데이터 원천</h2>${M.table([['원천', r => `<b>${esc(r.src)}</b>`], ['최근', 'upd'], ['양', 'amt'], ['상태', r => r.s]], rows, { wrap: false })}</div>
       <div class="card" style="margin-top:16px"><h2>연결</h2>${M.table([['항목', 'k'], ['값', 'v']], [
-        { k: '연결', v: M.D.LIVE ? '실시간 (Supabase)' : '데모 스냅샷' }, { k: 'Supabase', v: M.D.dbState() }, { k: 'Claude 질의', v: M.D.askUrl() ? '연결 — Edge Function mlng-ask' : '규칙 기반 (중계 함수 미연결)' }, { k: '데이터 기준 시각', v: S.asof || '—' },
+        { k: '연결', v: M.D.LIVE ? '실시간 (Supabase)' : '데모 스냅샷' }, { k: 'Supabase', v: M.D.dbState() }, { k: 'Claude 질의', v: M.D.askUrl() ? '연결 — Edge Function mlng-ask' : '규칙 기반 (중계 함수 미연결)' }, { k: '데이터 기준 시각', v: S.asof || '—' }, ...(S.demo_shift ? [{ k: '데모 시연 보정', v: `원본 기준 ${String(S.demo_from).slice(0, 16)} → ${S.demo_shift}일 이동(오늘 기준) · LOT·작업지시 번호의 날짜도 함께 이동 · 프레스 취수 12 → 24 (프레스 일 생산 < 열처리 투입 역전 보정)` }] : []),
         { k: '공정 모듈', v: M.mods.filter(m => m.proc && !['data'].includes(m.proc)).map(m => m.group).join(' · ') },
         { k: '샘플 데이터 출처 (열처리)', v: H.source || '—' }, ...(S.press ? [{ k: '샘플 데이터 출처 (프레스)', v: S.press.source }] : []),
         ...(S.insp ? [{ k: '샘플 데이터 출처 (검사)', v: S.insp.source }] : []), ...(S.weld ? [{ k: '샘플 데이터 출처 (점용접)', v: S.weld.source }] : []),
@@ -164,6 +170,7 @@
             root.querySelectorAll('[data-buy]').forEach(b => b.onclick = e => { e.stopPropagation(); if (M.buyApi) M.buyApi.preselect(b.dataset.buy.split(',')); });
       root.querySelectorAll('[data-askq]').forEach(b => b.onclick = e => { e.stopPropagation(); if (M.askApi) M.askApi.ask(b.dataset.askq); });
       root.querySelectorAll('[data-af]').forEach(b => b.onclick = () => { af = b.dataset.af; M.render(); });
+      root.querySelectorAll('[data-ag]').forEach(b => b.onclick = () => { ag = b.dataset.ag; M.render(); });
       root.querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { mt = b.dataset.mt; M.render(); });
       root.querySelectorAll('[data-trace]').forEach(a => a.onclick = e => { e.preventDefault(); tq = a.dataset.trace; M.closeDrawer(); M.go('trace'); });
       const q = root.querySelector('#tq'), g = root.querySelector('#tgo');

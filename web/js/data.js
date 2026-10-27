@@ -26,11 +26,34 @@
   }
   const soft = p => p.catch(e => { console.warn('[mlng] 읽기 실패', e.message); return null; });
 
+  // ── 데모 데이터 시연 보정 (데이터 상태 화면에 그대로 밝힌다)
+  //   ① 날짜 이동: 공개 데이터셋(2022년)의 마지막 작업 시각이 «오늘(또는 어제) 같은 시각» 이 되도록 모든 날짜를 같은 일수만큼 옮긴다
+  //      LOT · 작업지시 번호 속 날짜(PR-220718 · WO-220719-0064 · CH-220717-0001)도 같이 옮겨 서로 연결이 유지된다
+  //   ② 프레스 취수 12 → 24: 프레스 일 생산이 열처리 투입보다 적던 물량 역전을 바로잡는다 (취수는 원래 데모 설정값)
+  const pad = n => String(n).padStart(2, '0');
+  const ymd = t => `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+  function calibrate(d) {
+    if (d.press && d.press.cav === 12) {
+      const k = 2; d.press.cav = 24;
+      d.press.lots.forEach(l => { l.qty *= k; l.ppm = l.qty ? +(l.bad / l.qty * 1e6).toFixed(1) : null; });
+      (d.lots || []).filter(l => l.proc === 'press').forEach(l => { l.qty *= k; l.good = l.qty - (l.bad || 0); });
+      ((d.masters || {}).equipment || []).forEach(e => { if (e.meta && e.meta.zones) e.meta.zones = String(e.meta.zones).replace('취수 12', '취수 24'); });
+    }
+    const asof = new Date(String(d.asof).replace(' ', 'T')), now = new Date();
+    let days = Math.round((new Date(ymd(now)) - new Date(ymd(asof))) / 86400000);
+    if (now.getHours() * 60 + now.getMinutes() < asof.getHours() * 60 + asof.getMinutes()) days -= 1;   // 아직 그 시각 전이면 어제로
+    if (days <= 0) return d;
+    const sh = (y, m, dd) => { const t = new Date(+y, +m - 1, +dd); t.setDate(t.getDate() + days); return t; };
+    const txt = JSON.stringify(d)
+      .replace(/\b(202[0-3])-(\d\d)-(\d\d)/g, (x, y, m, dd) => ymd(sh(y, m, dd)))
+      .replace(/\b(PR|WD|MC|IN|WO|CH)-(2[0-3])(\d\d)(\d\d)\b/g, (x, p, y, m, dd) => { if (+m < 1 || +m > 12 || +dd < 1 || +dd > 31) return x; const t = sh('20' + y, m, dd); return `${p}-${String(t.getFullYear()).slice(2)}${pad(t.getMonth() + 1)}${pad(t.getDate())}`; });
+    const out = JSON.parse(txt); out.demo_shift = days; out.demo_from = d.asof; return out;
+  }
   async function loadDemo() {
-    if (window.MLNG_DEMO) return window.MLNG_DEMO;
+    if (window.MLNG_DEMO) return calibrate(JSON.parse(JSON.stringify(window.MLNG_DEMO)));
     const r = await fetch('data/demo.json', { cache: 'no-cache' });
     if (!r.ok) throw new Error('data/demo.json 을 읽지 못했습니다');
-    return r.json();
+    return calibrate(await r.json());
   }
 
   // 실시간: 표 → 데모와 같은 모양으로

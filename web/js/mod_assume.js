@@ -47,6 +47,16 @@
       ['BUY.MACH_WEEKS', '인서트 확보 기간', '주', 'stock', ['buy'], ''],
       ['PLAN.SAFETY_DAYS', '안전재고 비율', '%', 'stock', ['buy'], '예상 수주 대비'],
     ]],
+    ['설비 · OEE', [
+      ['OEE.PLANNED.PR-01', '계획 가동 · 프레스', '분/일', 'ratio', ['oee'], '1교대 8h − 휴식'],
+      ['OEE.PLANNED.SP-01', '계획 가동 · 점용접', '분/일', 'ratio', ['oee'], ''],
+      ['OEE.PLANNED.SB-01', '계획 가동 · 열처리 (최대)', '분/일', 'ratio', ['oee'], '실제 작업 시각 기준, 이 값으로 상한'],
+      ['OEE.PLANNED.MC-01', '계획 가동 · MCT', '분/일', 'ratio', ['oee'], ''],
+      ['OEE.PLANNED.IN-01', '계획 가동 · 검사', '분/일', 'ratio', ['oee'], ''],
+      ['OEE.TARGET', 'OEE 목표', '%', 'rule', ['rule'], '세계 수준 85%'],
+      ['SIGNAL.OEE_GREEN', '신호등 초록 기준', '%', 'rule', ['rule'], ''],
+      ['SIGNAL.OEE_YELLOW', '신호등 노랑 기준', '%', 'rule', ['rule'], ''],
+    ]],
     ['관리 기준', [
       ['PRESS.TARGET_PPM', '프레스 불량률 관리 기준', 'PPM', 'rule', ['rule'], ''],
       ['HEAT.DEVIATION_RATE', '열처리 조건 이탈 판정', '%', 'rule', ['rule', 'gate'], '작업 시간 중 허용 범위 밖 비율'],
@@ -56,8 +66,8 @@
     ]],
   ];
   const ITEMS = [].concat(...DEF.map(([g, xs]) => xs.map(([p, n, u, k, tags, d]) => ({ g, p, n, u, k, tags, d }))));
-  const TAGN = { loss: '손실 금액', gate: '출하 판정', opp: '기회 손실', pcf: '탄소 배출량', buy: '발주 추천', rule: '알람 기준' };
-  const TAGGO = { loss: 'cost', gate: 'gate', opp: 'cost', pcf: 'pass_pcf', buy: 'buy_home', rule: 'alerts' };
+  const TAGN = { oee: 'OEE', loss: '손실 금액', gate: '출하 판정', opp: '기회 손실', pcf: '탄소 배출량', buy: '발주 추천', rule: '알람 기준' };
+  const TAGGO = { oee: 'oee', loss: 'cost', gate: 'gate', opp: 'cost', pcf: 'pass_pcf', buy: 'buy_home', rule: 'alerts' };
   const pct = it => it.u === '%';
 
   // 경로 읽기 · 쓰기 (config 객체를 그 자리에서)
