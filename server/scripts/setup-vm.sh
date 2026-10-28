@@ -9,6 +9,12 @@ echo "[1/5] 패키지 업데이트 · 기본 도구"
 sudo apt-get update -y
 sudo apt-get install -y ca-certificates curl git ufw openssl
 
+echo "[+] 메모리가 2GB 보다 작으면 스왑 2GB 추가 (무료 t3.micro 1GB 에서도 빌드가 멈추지 않게)"
+if [ "$(awk '/MemTotal/{print $2}' /proc/meminfo)" -lt 1900000 ] && ! swapon --show | grep -q swapfile; then
+  sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+fi
+
 echo "[2/5] Docker 설치 (공식 스크립트)"
 if ! command -v docker >/dev/null; then curl -fsSL https://get.docker.com | sudo sh; fi
 sudo usermod -aG docker "$USER"

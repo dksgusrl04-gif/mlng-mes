@@ -1,0 +1,1 @@
+# 이미지 기본 서버(nginx 환영 페이지)를 비운다 — 실제 구성은 mode.conf 가 http/ 또는 https/ 를 불러온다

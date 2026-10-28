@@ -4,6 +4,8 @@
 set -u
 BASE="${1:-http://localhost}"
 KEY="$(grep -E '^PUBLIC_API_KEY=' "$(dirname "$0")/../.env" 2>/dev/null | cut -d= -f2-)"
+# 막 다시 시작한 직후일 수 있으니 /health 가 응답할 때까지 최대 60초 기다린다
+for i in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/health")" = 200 ] && break; sleep 2; done
 pass=0; fail=0
 check() { if [ "$2" = "$3" ]; then echo "✓ $1"; pass=$((pass+1)); else echo "✕ $1 (기대 $2, 실제 $3)"; fail=$((fail+1)); fi; }
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }

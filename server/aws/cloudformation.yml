@@ -1,0 +1,93 @@
+# ═══════════════════════════════════════════════════════════════
+# MLNG MES — AWS 한 번에 만들기 (CloudFormation)
+#   콘솔 → CloudFormation → 스택 생성 → 템플릿 파일 업로드(이 파일) → 값 입력 → «IAM 리소스 생성 승인» 체크 → 제출
+#   10분 뒤 «출력» 탭의 Url 로 접속
+# 만드는 것: 보안 그룹(80·443만, SSH 포트 없음) · EC2 Ubuntu 24.04 · 고정 IP · 접속용 IAM 역할(Session Manager)
+# 비용: t3.micro + 20GB + 공인 IPv4 — Free 플랜 크레딧 안에서 (초과 과금 없음)
+# 지우기: 스택 삭제 → 전부 사라짐 (DB 포함 — 먼저 백업)
+# ═══════════════════════════════════════════════════════════════
+AWSTemplateFormatVersion: '2010-09-09'
+Description: MLNG MES self-hosted server (Nginx + FastAPI + PostgreSQL on Docker)
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues: [t3.micro, t3.small]
+    Description: t3.micro(1GB, 크레딧 가장 적게 씀 — 스왑 자동 추가) / t3.small(2GB, 빠름)
+  DuckDnsSubdomain:
+    Type: String
+    Default: ''
+    Description: (선택) DuckDNS 이름 — 예 mlngmes → https://mlngmes.duckdns.org
+  DuckDnsToken:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: (선택) DuckDNS 토큰
+  RepoUrl:
+    Type: String
+    Default: https://github.com/dksgusrl04-gif/mlng-mes.git
+  UbuntuAmi:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+    Description: 바꾸지 않는다 (최신 Ubuntu 24.04 자동 선택)
+
+Resources:
+  WebSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: MLNG MES - HTTP/HTTPS only (no SSH; use Session Manager)
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0 }
+
+  SsmRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Allow, Principal: { Service: ec2.amazonaws.com }, Action: sts:AssumeRole }]
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore]
+  SsmProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties: { Roles: [!Ref SsmRole] }
+
+  Server:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref UbuntuAmi
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref SsmProfile
+      SecurityGroupIds: [!GetAtt WebSG.GroupId]
+      MetadataOptions: { HttpTokens: required, HttpEndpoint: enabled }
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs: { VolumeSize: 20, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+      Tags: [{ Key: Name, Value: mlng-mes }]
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          exec > >(tee -a /var/log/mlng-setup.log) 2>&1
+          sleep 20   # 고정 IP 연결 대기
+          apt-get update -y && apt-get install -y git
+          sudo -u ubuntu git clone "${RepoUrl}" /home/ubuntu/mlng-mes || sudo -u ubuntu git -C /home/ubuntu/mlng-mes pull --ff-only
+          DUCKDNS_SUBDOMAIN="${DuckDnsSubdomain}" DUCKDNS_TOKEN="${DuckDnsToken}" bash /home/ubuntu/mlng-mes/server/aws/bootstrap.sh
+
+  ServerIp:
+    Type: AWS::EC2::EIP
+    Properties: { Domain: vpc, InstanceId: !Ref Server }
+
+Outputs:
+  Url:
+    Description: 화면 (설치 끝나기까지 약 10분 — 그 전에는 접속 안 됨)
+    Value: !If [HasDuck, !Sub 'https://${DuckDnsSubdomain}.duckdns.org', !Sub 'http://${ServerIp}']
+  HttpUrl:
+    Value: !Sub 'http://${ServerIp}'
+  Health:
+    Value: !Sub 'http://${ServerIp}/health'
+  Connect:
+    Description: 서버 터미널 (브라우저, SSH 키 불필요)
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/systems-manager/session-manager/${Server}?region=${AWS::Region}'
+
+Conditions:
+  HasDuck: !Not [!Equals [!Ref DuckDnsSubdomain, '']]

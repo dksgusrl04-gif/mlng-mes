@@ -24,41 +24,63 @@ Supabase(관리형 서비스)가 해 주던 일을 **내 서버에서 직접** �
 | 자동 배포 | GitHub Actions → SSH → `docker compose up` | `../.github/workflows/deploy.yml` |
 | 백업 · 인증서 | `backup` 컨테이너 · certbot | `docker-compose.yml`, `scripts/` |
 
-## 1. 띄우기 (VM 한 대, 약 15분)
+## 0. 무료로 해 보기 (내 PC · Windows)
 
-1. **VM 만들기** — Ubuntu 24.04, 2 vCPU · 2GB RAM 이상 (AWS Lightsail · 네이버 클라우드 · Oracle 무료 등급 등). 공개 IP 확인.
-2. **접속 후 설치 스크립트**
-   ```bash
-   ssh ubuntu@<VM_IP>
-   curl -fsSL https://raw.githubusercontent.com/dksgusrl04-gif/mlng-mes/main/server/scripts/setup-vm.sh | bash -s -- https://github.com/dksgusrl04-gif/mlng-mes.git
-   exit            # docker 그룹 적용을 위해 다시 접속
-   ssh ubuntu@<VM_IP>
+1. Docker Desktop 설치 (개인 무료): `winget install -e --id Docker.DockerDesktop` → PC 다시 시작 → Docker Desktop 실행
+2. PowerShell (한 줄씩):
    ```
-   Docker 설치 · 방화벽(22/80/443만) · 저장소 받기 · `.env`(무작위 비밀번호) 를 한 번에 한다.
-3. **실행**
-   ```bash
-   cd ~/mlng-mes/server
-   nano .env                         # (선택) ANTHROPIC_API_KEY · DOMAIN
-   docker compose up -d --build
-   bash scripts/smoke.sh             # ✓ 12개
+   cd C:\Users\dksgu\Desktop\code\mlng-mes\mlng-mes\server
+   powershell -ExecutionPolicy Bypass -File scripts\local.ps1
    ```
-4. 브라우저에서 `http://<VM_IP>` → 더보기 › 시스템 › 데이터 상태 화면에 `연결됨` 이 보이면 자체 서버에 붙은 것.
-   (표가 비어 있는 동안은 Supabase 때와 똑같이 데모 스냅샷을 보여 준다)
+   → `.env` 자동 생성 · 컨테이너 빌드 · 요청 시험 12개 · 브라우저로 `http://localhost:8080`
+3. 인터넷에 공개 (무료 · 계정 불필요, 켤 때마다 주소 바뀜): `scripts\local.ps1 -Public` → `https://xxxx.trycloudflare.com`
+4. 멈추기: `scripts\local.ps1 -Stop` (DB 까지 지우기: `-Reset`)
 
-## 2. HTTPS (도메인이 있을 때)
+클라우드 무료: AWS 신규 계정 Free 플랜(6개월 · 크레딧, 초과 과금 없음)으로 EC2 Ubuntu 를 만들면 아래 1번 그대로 된다 (1GB 인스턴스면 setup-vm.sh 가 스왑을 자동 추가).
 
-1. 도메인 DNS 에 A 레코드 → VM IP
-2. `.env` 에 `DOMAIN=mes.example.com`, `LETSENCRYPT_EMAIL=…`
-3. `bash scripts/enable-https.sh` — 인증서 발급, Nginx 를 HTTPS 로 교체(HTTP 는 HTTPS 로 넘김), 매일 자동 갱신 등록
+## 1. AWS Free 플랜으로 띄우기 (무료 · 약 20분)
 
-## 3. 자동 배포 (push → 시험 → 배포)
+비용: t3.micro + 디스크 20GB + 공인 IPv4 ≈ 월 $15 → 6개월 $90 — 가입 크레딧($100) 안. Free 플랜은 크레딧을 넘는 과금이 없다.
+6개월 뒤에는 유료로 바꾸지 않으면 계정이 닫힌다 (그 전에 `backups/` 받아 두기).
 
-1. 내 PC 에서 배포용 키 만들기: `ssh-keygen -t ed25519 -f mlng_deploy -N ""`
-2. VM 의 `~/.ssh/authorized_keys` 에 `mlng_deploy.pub` 내용 추가
-3. GitHub 저장소 → Settings → Secrets and variables → Actions
-   - Secrets: `SSH_HOST`=VM IP · `SSH_USER`=ubuntu · `SSH_KEY`=`mlng_deploy` 파일 내용 전체
-   - Variables: `DEPLOY_ENABLED`=`true`
-4. 이제 `git push` → «MLNG MES 시험» 통과 → «MLNG MES 서버 배포» 가 VM 에서 새 코드로 다시 띄우고 smoke 확인
+**1-1. (선택, HTTPS 용) DuckDNS 무료 도메인** — https://www.duckdns.org → GitHub 로 로그인 → 이름(예 `mlngmes`) 추가 → 위의 token 복사
+
+**1-2. 서버 만들기 — 둘 중 하나**
+
+| A. CloudFormation (한 번에, 추천) | B. EC2 콘솔에서 직접 |
+|---|---|
+| 콘솔 위 리전 **서울** → CloudFormation → 스택 생성 → 새 리소스 사용 | 리전 **서울** → EC2 → 인스턴스 시작 |
+| 템플릿 파일 업로드: `server/aws/cloudformation.yml` | 이름 `mlng-mes` · **Ubuntu 24.04** · **t3.micro** · 키 페어 새로 만들기(.pem) |
+| 스택 이름 `mlng-mes`, (선택) DuckDNS 이름 · 토큰 | 네트워크: **HTTP · HTTPS 허용** 체크, SSH 는 **내 IP** |
+| 마지막 화면 «IAM 리소스 생성 승인» 체크 → 제출 | 스토리지 20GiB gp3 |
+| | 고급 세부 정보 → 사용자 데이터에 `server/aws/user-data.sh` 내용 붙여넣기 (DuckDNS 두 줄은 선택) → 인스턴스 시작 |
+
+**1-3. 기다리기 (약 10분)** — 서버가 스스로 Docker 설치 → 빌드 → 실행 → 요청 시험 12개 → (DuckDNS 면) HTTPS 인증서 → 자동 업데이트 등록
+
+**1-4. 접속**
+- A: 스택 → «출력» 탭 → `Url`
+- B: 인스턴스 → 퍼블릭 IPv4 주소 → 브라우저에 `http://<IP>` (DuckDNS 면 `https://<이름>.duckdns.org`)
+- 확인: 더보기 › 시스템 › 데이터 상태 = «연결됨» · `/health` · `/api/docs`
+
+**1-5. 서버 터미널이 필요할 때** (설치 기록 보기 · .env 고치기)
+- A: «출력» 탭 `Connect` 링크 (Session Manager, 브라우저 터미널 · SSH 키 불필요) → `sudo -iu ubuntu`
+- B: PowerShell `ssh -i C:\Users\dksgu\Downloads\mlng-mes.pem ubuntu@<IP>`
+- 설치 기록 `sudo tail -n 50 /var/log/mlng-setup.log` · 접속 정보 `cat ~/MLNG_접속정보.txt`
+- Claude 질의 켜기: `nano ~/mlng-mes/server/.env` → `ANTHROPIC_API_KEY=` 채우기 → `cd ~/mlng-mes/server && docker compose up -d`
+- DuckDNS 를 나중에 넣기: `.env` 에 `DUCKDNS_SUBDOMAIN=` · `DUCKDNS_TOKEN=` → `sudo bash ~/mlng-mes/server/aws/bootstrap.sh`
+
+**1-6. 크레딧 더 받기 (+$20씩, Free 플랜 활동)** — 콘솔 홈의 «Explore AWS» 활동: EC2 시작(1-2 로 이미 됨) · **AWS Budgets 예산 만들기**(월 $10 알림 추천) 등
+
+## 2. 자동 업데이트 (push → 시험 통과 → 서버 반영)
+
+서버가 5분마다 GitHub 을 확인해 **CI(«MLNG MES 시험») 가 모두 통과한 새 커밋만** 받아 다시 빌드한다 (`scripts/autoupdate.sh`, systemd 타이머).
+배포 뒤 요청 시험이 실패하면 **이전 커밋으로 자동 되돌림**. GitHub 에 SSH 키 · 비밀값을 줄 필요가 없다 (서버가 공개 저장소를 읽기만).
+- 기록: `journalctl -u mlng-update -n 50` · 지금 바로: `sudo systemctl start mlng-update`
+- (대안) GitHub 이 서버로 밀어 넣는 방식: `.github/workflows/deploy.yml` (Secrets: SSH_HOST · SSH_USER · SSH_KEY, Variables: DEPLOY_ENABLED=true)
+
+## 3. HTTPS (내 도메인이 따로 있을 때)
+
+DNS A 레코드 → 서버 IP, `.env` 에 `DOMAIN=` · `LETSENCRYPT_EMAIL=` → `bash scripts/enable-https.sh` (인증서 발급 · `NGINX_MODE=https` · 매일 자동 갱신)
 
 ## 4. 운영
 
@@ -67,7 +89,7 @@ Supabase(관리형 서비스)가 해 주던 일을 **내 서버에서 직접** �
 | 상태 | `docker compose ps` · `curl localhost/health` |
 | 로그 | `docker compose logs -f api` (web · db 도 같음) |
 | 다시 시작 | `docker compose restart api` |
-| 업데이트 (수동) | `git pull && docker compose up -d --build` |
+| 업데이트 (수동) | `git pull && docker compose up -d --build && docker compose up -d --force-recreate web` |
 | 백업 목록 | `ls backups/` (매일 자동, 14일 보관) |
 | 복원 | `bash scripts/restore.sh backups/mlng_YYYYMMDD_HHMM.sql.gz` |
 | DB 직접 보기 | `docker compose exec db psql -U postgres -d mlng` |

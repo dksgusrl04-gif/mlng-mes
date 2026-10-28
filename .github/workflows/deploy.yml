@@ -36,5 +36,6 @@ jobs:
             cd server
             sed -i '/^APP_VERSION=/d' .env && echo APP_VERSION=${SHA::12} >> .env
             docker compose up -d --build --wait --wait-timeout 180
+            docker compose up -d --no-deps --force-recreate --wait web
             docker image prune -f >/dev/null
             bash scripts/smoke.sh http://localhost"

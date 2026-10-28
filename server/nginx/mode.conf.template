@@ -1,0 +1,2 @@
+# .env 의 NGINX_MODE (http · https) 구성을 불러온다 — scripts/enable-https.sh 가 https 로 바꾼다
+include /etc/nginx/conf.d/${NGINX_MODE}/*.conf;

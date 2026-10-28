@@ -1,4 +1,4 @@
-# HTTPS 를 켠 뒤의 HTTP 서버 — 인증서 갱신 경로만 남기고 모두 HTTPS 로 넘긴다 (scripts/enable-https.sh 가 바꿔 넣음)
+# HTTPS 모드의 HTTP 서버 — 인증서 갱신 경로만 남기고 모두 HTTPS 로 넘긴다 (.env NGINX_MODE=https)
 server_tokens off;
 client_max_body_size 1m;
 gzip on;
