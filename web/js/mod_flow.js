@@ -235,9 +235,9 @@
       <div class="pacts" style="margin-top:12px">${o.ls.some(x => ['ready', 'hold_rec', 'held'].includes(x.k)) ? '<button class="btn pri" data-go="gate">출하 승인 화면</button>' : ''}${o.remain > 0 ? '<button class="btn" data-go="plan_wo">작업지시</button>' : ''}</div>`);
   }
 
-  // ── 전체 공정 흐름: 소재 → 프레스 → 점용접 → 열처리 → MCT 가공 → 정밀 검사 → 출하
+  // ── 전체 공정 흐름: 원자재 입고 → 프레스 → 점용접 → 열처리 → MCT 가공 → 정밀 검사 → 출하
   const NODES = [
-    { k: 'mat', nm: '소재', full: '소재 입고', go: 'trace' },
+    { k: 'mat', nm: '원자재', full: '원자재 입고', go: 'trace' },
     { k: 'press', nm: '프레스', full: '프레스 성형', go: 'press_home' },
     { k: 'weld', nm: '점용접', full: '점용접', go: 'weld_home', part: true },
     { k: 'heat', nm: '열처리', full: '염욕 소입 열처리', go: 'heat_home' },
@@ -256,7 +256,7 @@
     const out = {};
     NODES.forEach(n => {
       if (n.k === 'mat') { const ms = L.filter(l => l.kind === 'material' && M.toDate(l.last || l.first).getTime() >= since), last = L.filter(l => l.kind === 'material').slice(-1)[0];
-        out.mat = { eq: '자재 창고', n: ms.length, qty: ms.reduce((s, l) => s + (l.qty || 0), 0), bad: null, last: last ? { id: last.id, t: String(last.last || last.first).slice(5, 10) } : null, st: 'ok', al: [], kpi: `소재 LOT ${ms.length}개` }; return; }
+        out.mat = { eq: '입고 · 자재 창고', n: ms.length, qty: ms.reduce((s, l) => s + (l.qty || 0), 0), bad: null, last: last ? { id: last.id, t: String(last.last || last.first).slice(5, 10) } : null, st: 'ok', al: [], kpi: `원자재 LOT ${ms.length}개` }; return; }
       if (n.k === 'ship') { const ls = [].concat(...B.orders.map(o => o.ls)), cnt = k => ls.filter(x => x.k === k).length, sq = ls.filter(x => (x.k === 'shipped' || x.k === 'claim') && M.toDate(x.l.end).getTime() >= since).reduce((s, x) => s + x.l.qty, 0);
         const al = M.alerts().filter(x => (x.proc === 'gate' || x.proc === 'deal') && x.level !== 'info');
         out.ship = { eq: '출하장', n: cnt('ready') + cnt('hold_rec') + cnt('held'), qty: sq, bad: null, last: null, st: cnt('claim') || cnt('held') ? 'danger' : cnt('hold_rec') ? 'warn' : 'ok', al, kpi: `출하 대기 ${cnt('ready')} · 보류 권고 ${cnt('hold_rec')} LOT` }; return; }
@@ -296,7 +296,7 @@
           return `<tr class="click" data-row="${n.go}"><td><b>${esc(n.full)}</b></td><td class="muted">${esc(d.eq)}</td><td><span class="pst2 ${d.st}">${stT[d.st]}</span></td><td class="n">${f(d.n, 0)}</td><td class="n">${f(d.qty, 0)}</td>
             <td class="n">${d.bad == null ? '—' : f(d.bad, 0)}</td><td class="n">${rateTxt(d.rate)}</td><td class="n">${d.al.length}</td><td>${esc(d.kpi || '—')}</td></tr>`; }).join('')}</tbody></table></div></div>
     <div class="card"><h2>LOT 흐름 <span class="h2sub">최근 열처리 LOT 기준 앞뒤 공정 연결</span><a class="more" href="#" data-go="trace">LOT 추적 →</a></h2>
-      <div class="tbx"><table class="tb lftab"><thead><tr><th>소재 LOT</th><th>프레스</th><th>점용접</th><th>열처리</th><th>MCT 가공</th><th>정밀 검사</th><th>출하</th></tr></thead>
+      <div class="tbx"><table class="tb lftab"><thead><tr><th>원자재 LOT</th><th>프레스</th><th>점용접</th><th>열처리</th><th>MCT 가공</th><th>정밀 검사</th><th>출하</th></tr></thead>
         <tbody>${chain.map(r => `<tr><td>${lc(r.mat)}</td><td>${lc(r.press)}</td><td>${lc(r.weld)}</td>
           <td><a href="#" data-trace="${esc(r.h.id)}"><b>${esc(r.h.id)}</b></a><div class="muted sm1">${f(r.h.qty, 0)}개 · ${f(r.h.ppm, 0)} PPM</div></td>
           <td>${lc(r.mach)}</td><td>${lc(r.insp)}</td><td><span class="ost ${r.ship.lv}">${esc(r.ship.t)}</span></td></tr>`).join('')}</tbody></table></div></div>`;
