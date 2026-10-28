@@ -102,3 +102,5 @@ window.MLNG_CONFIG = {
   ASK_URL: '',
   RETRAIN_MIN_RECORDS: 50,
 };
+// 자체 서버에서 실행 중이면 Nginx 가 내려 준 값으로 덮어쓴다 (js/runtime.js · server/nginx)
+if (window.MLNG_RUNTIME) Object.assign(window.MLNG_CONFIG, window.MLNG_RUNTIME);

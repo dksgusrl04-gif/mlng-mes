@@ -18,3 +18,25 @@ jobs:
       - run: python tools/build_preview.py
       - run: npx playwright install --with-deps chromium
       - run: node tests/e2e.js
+
+  # 자체 서버(server/): API 단위 시험 → 실제 컨테이너 3개(DB · API · Nginx)를 띄워 요청 시험
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: node server/scripts/export_ask_spec.mjs --check
+      - run: pip install -r server/api/requirements.txt pytest
+      - run: cd server/api && python -m pytest -q
+      - name: 컨테이너 실행
+        run: |
+          cd server
+          cp .env.example .env
+          sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci$(openssl rand -hex 8)/; s/^API_DB_PASSWORD=.*/API_DB_PASSWORD=ci$(openssl rand -hex 8)/" .env
+          docker compose up -d --build --wait --wait-timeout 180
+      - run: bash server/scripts/smoke.sh http://localhost
+      - if: failure()
+        run: cd server && docker compose logs --tail 80

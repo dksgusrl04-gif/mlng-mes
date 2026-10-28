@@ -1,0 +1,96 @@
+# ═══════════════════════════════════════════════════════════════
+# MLNG MES 자체 서버 — 한 줄로 실행:  docker compose up -d --build   (server/ 폴더에서, .env 필요)
+#
+#   web     Nginx      :80/:443  화면(web/) + /rest · /functions 를 api 로 전달
+#   api     FastAPI    :8000     표 읽기 · 쓰기(PostgREST 문법) + Claude 질의 중계   (밖으로 열지 않음)
+#   db      PostgreSQL :5432     Supabase 와 같은 스키마 · 권한(RLS)                  (밖으로 열지 않음)
+#   backup  매일 pg_dump → ./backups (14일 보관)
+#   certbot HTTPS 인증서 발급 · 갱신 (scripts/enable-https.sh)
+# ═══════════════════════════════════════════════════════════════
+name: mlng
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mlng
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env 에 POSTGRES_PASSWORD 를 넣으세요}
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?.env 에 API_DB_PASSWORD 를 넣으세요}
+      TZ: Asia/Seoul
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      # 처음 한 번만 이름 순서대로 실행: 호환 준비 → Supabase 와 같은 스키마 → API 계정
+      - ./db/00_compat.sql:/docker-entrypoint-initdb.d/00_compat.sql:ro
+      - ../supabase/new_project_setup.sql:/docker-entrypoint-initdb.d/10_setup.sql:ro
+      - ./db/20_api_role.sh:/docker-entrypoint-initdb.d/20_api_role.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mlng"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://mlng_api:${API_DB_PASSWORD}@db:5432/mlng
+      PUBLIC_API_KEY: ${PUBLIC_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ASK_MODEL: ${ASK_MODEL:-}
+      ALLOW_ORIGINS: ${ALLOW_ORIGINS:-*}
+      APP_VERSION: ${APP_VERSION:-dev}
+      TZ: Asia/Seoul
+
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      api: { condition: service_healthy }
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-_}
+      PUBLIC_API_KEY: ${PUBLIC_API_KEY:-}
+      PLANT_NAME: ${PLANT_NAME:-MLNG}
+    volumes:
+      - ../web:/usr/share/nginx/html:ro
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - certs:/etc/letsencrypt:ro
+      - acme:/var/www/certbot:ro
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Seoul
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          f=/backups/mlng_$$(date +%Y%m%d_%H%M).sql.gz
+          pg_dump -h db -U postgres mlng | gzip > "$$f" && echo "[백업] $$f"
+          find /backups -name 'mlng_*.sql.gz' -mtime +14 -delete
+          sleep 86400
+        done
+
+  certbot:
+    image: certbot/certbot:v3.0.1
+    profiles: ["tools"]          # 평소에는 실행하지 않음 — scripts/enable-https.sh 가 부른다
+    volumes:
+      - certs:/etc/letsencrypt
+      - acme:/var/www/certbot
+
+volumes:
+  dbdata:
+  certs:
+  acme:

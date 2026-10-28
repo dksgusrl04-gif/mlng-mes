@@ -1,0 +1,7 @@
+# 리눅스 서버에서 실행되는 파일은 윈도에서 커밋해도 LF 로 (CRLF 면 bash · nginx 가 깨진다)
+*.sh text eol=lf
+*.sql text eol=lf
+*.template text eol=lf
+*.yml text eol=lf
+Dockerfile text eol=lf
+.env.example text eol=lf

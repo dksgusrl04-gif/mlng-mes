@@ -1,0 +1,15 @@
+# HTTPS 를 켠 뒤의 HTTP 서버 — 인증서 갱신 경로만 남기고 모두 HTTPS 로 넘긴다 (scripts/enable-https.sh 가 바꿔 넣음)
+server_tokens off;
+client_max_body_size 1m;
+gzip on;
+gzip_types text/css application/javascript application/json image/svg+xml;
+gzip_min_length 1024;
+limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
+upstream mlng_api { server api:8000; keepalive 16; }
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://$host$request_uri; }
+}

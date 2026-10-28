@@ -1,0 +1,26 @@
+# ═══════════════════════════════════════════════════════════════
+# MLNG MES — Nginx (HTTP)
+#   /                 web/ 정적 파일 (화면)
+#   /rest/ /functions/ /health  →  FastAPI (api:8000)
+#   /js/runtime.js    화면이 이 서버를 쓰도록 주소 · 공개 키를 내려 준다
+#   /.well-known/acme-challenge/  Let's Encrypt 인증서 발급용
+# ${...} 는 컨테이너 시작 때 .env 값으로 바뀐다 (nginx 이미지의 envsubst)
+# HTTPS 를 켜면 scripts/enable-https.sh 가 https.conf 를 추가하고 이 서버는 HTTPS 로 넘기기만 한다
+# ═══════════════════════════════════════════════════════════════
+server_tokens off;
+client_max_body_size 1m;
+gzip on;
+gzip_types text/css application/javascript application/json image/svg+xml;
+gzip_min_length 1024;
+limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
+
+upstream mlng_api { server api:8000; keepalive 16; }
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+
+    include /etc/nginx/conf.d/mlng-app.inc;
+}

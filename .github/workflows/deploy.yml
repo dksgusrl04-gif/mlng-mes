@@ -1,0 +1,40 @@
+# 시험(ci.yml «MLNG MES 시험»)이 main 에서 모두 통과하면 → VM 에 접속해 새 코드로 다시 띄운다
+#
+# 켜는 법 (GitHub 저장소 → Settings)
+#   Secrets and variables → Actions → Secrets:   SSH_HOST (VM IP) · SSH_USER (예: ubuntu) · SSH_KEY (배포용 개인키 전체)
+#                                    → Variables: DEPLOY_ENABLED = true
+#   VM 의 ~/.ssh/authorized_keys 에 배포용 공개키를 넣어 둔다 (setup-vm.sh 뒤)
+# GitHub Pages 배포(정적 화면)는 지금처럼 그대로 따로 된다.
+name: MLNG MES 서버 배포
+on:
+  workflow_run:
+    workflows: ["MLNG MES 시험"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency: { group: deploy-server, cancel-in-progress: false }
+
+jobs:
+  deploy:
+    if: vars.DEPLOY_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: SSH 준비
+        env: { SSH_KEY: '${{ secrets.SSH_KEY }}', SSH_HOST: '${{ secrets.SSH_HOST }}' }
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+      - name: 서버에서 새 코드 받기 → 다시 빌드 · 실행 → 확인
+        env: { SSH_HOST: '${{ secrets.SSH_HOST }}', SSH_USER: '${{ secrets.SSH_USER }}', SHA: '${{ github.event.workflow_run.head_sha || github.sha }}' }
+        run: |
+          ssh -i ~/.ssh/deploy "$SSH_USER@$SSH_HOST" "set -e
+            cd ~/mlng-mes
+            git fetch --quiet origin main && git checkout --quiet $SHA
+            cd server
+            sed -i '/^APP_VERSION=/d' .env && echo APP_VERSION=${SHA::12} >> .env
+            docker compose up -d --build --wait --wait-timeout 180
+            docker image prune -f >/dev/null
+            bash scripts/smoke.sh http://localhost"

@@ -127,6 +127,12 @@ supabase functions deploy mlng-ask --no-verify-jwt
 - 데모 키는 브라우저에서 만든다. 운영에서는 회사별 키를 서버(HSM/KMS)에 두고 서명 함수로만 서명해야 한다
 - 연합 학습은 시뮬레이션, 탄소 계수는 예시값, 전자 계약의 법적 효력은 별도 검토가 필요하다
 
+## 자체 서버 (server/)
+- Supabase 대신 **내 VM 에서 직접**: Nginx(화면 · HTTPS) + FastAPI(같은 REST 문법 · Claude 중계) + PostgreSQL(같은 스키마 · RLS) + 매일 백업 — `docker compose up -d --build` 한 줄
+- 화면 코드는 그대로: Nginx 가 `js/runtime.js` 로 «이 서버 주소 · 공개 키» 를 내려 주면 `config.js` 값을 덮어쓴다 (GitHub Pages 에서는 빈 파일)
+- push → 시험(화면 · API 단위 · 컨테이너 smoke) → 통과하면 SSH 로 VM 배포 (`.github/workflows/deploy.yml`, 켜는 법은 server/README.md)
+- 자세한 순서 · 보안 설계 · 운영 명령: [server/README.md](server/README.md)
+
 ## 배포·Supabase
 - GitHub Pages: 저장소 Settings → Pages → Branch `main` / `(root)`. 루트 `index.html` 이 `web/` 으로 넘겨 준다
 - Supabase: **MLNG 전용 새 프로젝트** (MCT MES 프로젝트와 섞지 않는다)
