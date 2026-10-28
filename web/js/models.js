@@ -102,7 +102,7 @@
     const zs = (H().heaters || []).map(h => { const x = L.map(l => (l.heater || {})[h.key]), ok = x.map((v, i) => [v, i]).filter(p => p[0] != null), v = ok.map(p => p[0]);
       const cp = ST.changePoint(v, { min: 5 }), cu = ST.cusum(v, { base: 20 }), at = i => i >= 0 && ok[i] ? L[ok[i][1]] : null;
       return { key: h.key, label: h.label, cp, cpLot: cp ? at(cp.i) : null, cuLot: at(cu.at), cuStart: at(cu.start), shift: cp ? cp.after - cp.before : 0 }; });
-    return { v: ML.VERSION.heater, zones: zs, trust: 1, level: 'ok' }; });
+    return { v: ML.VERSION.heater, zones: zs, trust: 0.6, level: 'warn', verified: false, why: '정답 기록(히터 교체 · 점검 이력)이 없어 미검증' }; });
 
   // ── 이슈 유형별 «통계적으로 변하기 시작한 때» (변화점) — 규칙 알람보다 며칠 먼저였나를 재는 기준
   ML.changeFor = tpl => memo('chg.' + tpl, () => {
@@ -117,7 +117,16 @@
     const z = ST.zOf(0.95), items = P.items.map(it => { const ds = P.days.filter(d => d.item === it.code).sort((a, b) => a.date.localeCompare(b.date)), x = ds.map(d => d.order), h = ST.holt(x), last = ds[ds.length - 1] || {};
       const avg7 = ST.mean(x.slice(-7)), ss = h ? z * h.sigma : 0, need = h ? Math.max(0, h.next + ss - (last.inv_close || 0)) : 0;
       return { code: it.code, name: it.name, next: h ? h.next : null, sigma: h ? h.sigma : null, ss, avg7, oldSS: avg7 * ((M.CFG.PLAN || {}).SAFETY_DAYS || 0.5), inv: last.inv_close, need, pShort: h && h.sigma ? 1 - ST.phi(((last.inv_close || 0) - h.next) / h.sigma) : null }; });
-    return { v: ML.VERSION.demand, items, trust: 1, level: 'ok' }; });
+    // 신뢰도 = 1일 앞 롤링 예측(과거 데이터만)의 90% 구간 적중률이 목표 0.9 에 얼마나 가까운가
+    const bt = ML.demandBT(), trust = bt && isFinite(bt.cover) ? Math.max(0, Math.min(1, 1 - Math.abs(0.9 - bt.cover) * 2.5)) : 0.5;
+    return { v: ML.VERSION.demand, items, trust, level: lvl(trust), bt }; });
+  // 수요 예측 백테스트: t 일까지로 holt → t+1 일 예측, 실제와 비교 (최소 14일 학습)
+  ML.demandBT = () => memo('demandBT', () => { const P = M.S.plan; if (!P) return null; const z = ST.zOf(0.95);
+    const items = P.items.map(it => { const ds = P.days.filter(d => d.item === it.code).sort((a, b) => a.date.localeCompare(b.date)), x = ds.map(d => d.order), pred = x.map(() => null), err = [], err0 = [], ape = []; let hit = 0, n = 0;
+      for (let t = 14; t < x.length; t++) { const h = ST.holt(x.slice(0, t)); if (!h) continue; const p = Math.max(0, h.next); pred[t] = p; n++; err.push(Math.abs(p - x[t])); err0.push(Math.abs(x[t - 1] - x[t])); if (x[t] > 0) ape.push(Math.abs(p - x[t]) / x[t]); if (Math.abs(p - x[t]) <= z * h.sigma) hit++; }
+      return { code: it.code, name: it.name, days: ds.map(d => d.date), act: x, pred, n, mae: ST.mean(err), mae0: ST.mean(err0), mape: ST.mean(ape), cover: n ? hit / n : NaN }; }).filter(x => x.n);
+    if (!items.length) return null; const N = items.reduce((s, x) => s + x.n, 0), w = k => items.reduce((s, x) => s + x[k] * x.n, 0) / N;
+    return { items, n: Math.round(N / items.length), mae: w('mae'), mae0: w('mae0'), mape: w('mape'), cover: w('cover'), skill: 1 - w('mae') / w('mae0') }; });
 
   // ── 라인 산출 분포 (몬테카를로)
   ML.lineMC = (mult = {}, target, n = 2000) => { if (!M.lineApi) return null; const m = M.lineApi.model(), r = ST.rng(29), procs = ['press', 'weld', 'heat'], out = [];

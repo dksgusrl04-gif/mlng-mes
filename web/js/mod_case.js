@@ -278,6 +278,7 @@
           ${c.experiment ? `<div class="note" style="margin-top:6px">${M.ic('trace')} <b>원인 확인 실험</b> — «${esc(c.experiment.cause)}»: 지금 데이터는 p 값 = ${f(c.experiment.p, 3)}. 두 조건을 ${c.experiment.n ? `<b>${c.experiment.n}작업씩</b> 번갈아 운전하면` : '충분히 운전하면'} 5% 유의수준 · 80% 검출력으로 가릴 수 있습니다 (작업당 기대 불량 ${f(c.experiment.m1, 1)} vs ${f(c.experiment.m2, 1)}개).${c.st.exp ? ` <span class="tag j-ok">계획 서명 ${esc(c.st.exp.at.slice(5, 16))}</span>` : ''}</div>` : ''}
           <div class="pacts"><button class="btn sm" data-cfirst="${esc(c.id)}">처음 징후는 언제였나? (시점 조회)</button><span id="cfirst" class="muted" style="font-size:12.5px">${c.st.first ? esc(c.st.first) : ''}</span></div>
         </div></div>
+      ${M.spc ? M.spc.caseReport(c) : ''}
       <div class="grid g2" style="margin-top:12px;align-items:start">
         <div><h3 class="dh" style="margin-top:0">묶인 알람</h3><div class="alist">${c.alerts.map(a => { const m = DX.money(a); return `<div class="al ${esc(a.level)} ${a.go ? 'click' : ''}" ${a.go ? `data-row="${esc(a.go)}"` : ''}><div class="lv"></div><div style="min-width:0;flex:1"><div class="tt">${esc(a.title)} ${DX.chip(m)}</div><div class="bd">${esc(a.body || '')}</div></div></div>`; }).join('')}</div></div>
         <div><h3 class="dh" style="margin-top:0">이슈 기록 <a class="more" href="#" data-go="net_ledger">신뢰 원장 →</a></h3>
@@ -293,7 +294,7 @@
       <h2>D2 문제 기술</h2><ul>${c.alerts.map(a => li(`${a.title} — ${a.body || ''} (${a.at || ''})`)).join('')}</ul>
       <h2>D3 봉쇄 조치</h2><ul>${done.filter(a => a.stage === 'contain').map(a => li(`${a.label} → ${c.st.done[a.id].result}`)).join('') || '<li>미실시</li>'}</ul>
       <table><tr><th>LOT</th><th>공정</th><th>수량</th><th>상태</th><th>이유</th></tr>${c.lots.map(l => `<tr><td>${esc(l.id)}</td><td>${esc(M.PROC[l.proc] || l.proc)}</td><td>${f(l.qty, 0)}</td><td>${esc(l.ship.t)}</td><td>${esc(l.why)}</td></tr>`).join('')}</table>
-      <h2>D4 근본 원인</h2>${cause ? `<p><b>확정: ${esc(cause.t)}</b> — ${esc(cause.d)}</p>` : '<p>미확정</p>'}<ul>${c.causes.map(x => li(`${x.t} (연관성 ${DX.STRENGTH[x.strength][1]}) — ${x.d}`)).join('')}</ul>
+      <h2>D4 근본 원인</h2>${M.spc && M.spc.caseLines(c).length ? `<p><b>데이터 분석</b></p><ul>${M.spc.caseLines(c).map(li).join('')}</ul>` : ''}${cause ? `<p><b>확정: ${esc(cause.t)}</b> — ${esc(cause.d)}</p>` : '<p>미확정</p>'}<ul>${c.causes.map(x => li(`${x.t} (연관성 ${DX.STRENGTH[x.strength][1]}) — ${x.d}`)).join('')}</ul>
       <h2>D5·D6 시정 조치</h2><ul>${done.filter(a => a.stage === 'fix').map(a => li(`${a.label} → ${c.st.done[a.id].result}`)).join('') || '<li>미실시</li>'}</ul>
       <h2>D7 재발 방지</h2><ul>${done.filter(a => a.stage === 'prevent').map(a => li(`${a.label} → ${c.st.done[a.id].result}`)).join('') || '<li>미실시</li>'}</ul>
       <h2>D8 비용 · 종결</h2><p>실손 ${DX.won(c.money.loss)} · 위험 ${DX.won(c.money.risk)} · 묶임 ${DX.won(c.money.tied)} · 낭비 ${DX.won(c.money.waste)}/일 (계수는 예시값)</p><ul>${c.money.basis.map(li).join('')}</ul>

@@ -99,6 +99,20 @@ const ok = (c, m) => { if (c) pass++; else fails.push(m); console.log(`${c ? '�
   await go('oee'); await W(); ok(await ev(() => document.querySelectorAll('#view .card .xbtn').length >= 1), '표 카드마다 엑셀 단추');
   await ev(() => MLNG.andon.open()); await W(); ok(await ev(() => document.querySelectorAll('#andon .an-r').length === 5), '현장 모니터(안돈) 설비 5줄'); await ev(() => MLNG.andon.close());
 
+  // 5.6 품질 데이터 분석
+  await go('spc'); await W(); ok(await ev(() => document.querySelectorAll('#view svg.cc').length >= 1 && /Laney/.test(document.querySelector('#view').innerText)), 'SPC 관리도 (열처리 Laney p′)');
+  ok(await ev(() => { const D = MLNG.spc.spcData('heat'); return D.extra.sz > 1 && MLNG.spc.judge(D.x, D.cl, D.s).size < D.extra.plainOut + 30; }), 'Laney σz 과산포 보정');
+  ok(await ev(() => { const v = MLNG.spc.judge([0, 0, 0, 0, 0, 0, 0, 0, 0, 5], 0, 1); return v.get(9).includes(1); }) && await ev(() => MLNG.spc.judge([1, 2, 3, 4, 5, 6].map(x => x * 0.1), 0, 1).get(5).includes(5)), '판정 규칙 ① 3σ · ⑤ 6점 추세');
+  for (const k of ['press', 'weld', 'zone']) { await p.click(`[data-sx="spc|${k}"]`); await W(300); ok(await ev(() => document.querySelectorAll('#view svg.cc').length === 2), `관리도 ${k} + 산포 관리도`); }
+  await go('capa'); await W(); ok(await ev(() => MLNG.spc.capaItems().length >= 10 && MLNG.spc.capaItems().every(c => c.cpkCI[0] <= c.cpk && c.cpk <= c.cpkCI[1] && c.ne <= c.n)), '공정능력 Cp·Cpk·Ppk + 95% 구간');
+  await p.click('[data-sx^="capa|heat"]'); await W(300); ok(await ev(() => /LSL/.test(document.querySelector('#view svg.chart').textContent)), '히스토그램 + 규격선');
+  await go('strat'); await W(); ok(await ev(() => { const r = MLNG.spc.strat('all').rows; return r.length === 7 && r.every(x => x.p > 0 && x.p <= 1) && new Set(r.map(x => x.m4)).size === 4; }), '불량 층별 분석 4M · 순열 검정 p');
+  await p.click('[data-sx="strat|mat"]'); await W(300); ok(await ev(() => /원자재 LOT — 수준별/.test(document.querySelector('#view').innerText)), '층 선택 → 수준별 PPM 구간');
+  await go('mval'); await W(); ok(await ev(() => { const r = MLNG.spc.mvRows(); return r.length === 7 && r.filter(x => x.st === 'none').length >= 3 && r.find(x => x.k === 'heat').st !== 'none'; }), '예측 모델 검증 · 미검증 표시');
+  for (const k of ['tool', 'vb', 'demand']) { await p.click(`[data-sx="mv|${k}"]`); await W(300); ok(await ev(() => document.querySelectorAll('#view .card:last-child svg, #view .card:last-child .ivl').length >= 1), `모델 검증 상세 ${k}`); }
+  ok(await ev(() => MLNG.ml.trustOf('heater').level !== 'ok' && MLNG.ml.demand().bt && MLNG.ml.demand().bt.n > 10), '미검증 모델 신뢰 낮춤 · 수요 백테스트');
+  await go('cases'); await W(); await p.click('[data-csel^="CS-HEAT"]'); await W(); ok(await ev(() => document.querySelectorAll('.cdet .arpt .ar-s').length === 6 && !!document.querySelector('.cdet .arpt svg.cc')), '품질 이슈 상세 — 분석 보고서 6단계');
+
   // 끝: 모든 동작 뒤에도 원장이 온전한가
   await go('net_ledger'); await W(); await p.click('#lg-verify'); await W(1000); ok(/모두 사슬과 서명이 맞습니다/.test(await note()), '모든 시나리오 뒤 원장 검증');
   ok(!errs.length, `페이지 오류 ${errs.length}건 ${errs.slice(0, 3).join(' / ')}`);

@@ -1038,3 +1038,73 @@ ul.plain.cbasis{font-size:12px;color:var(--ink-2);margin:8px 0 0;padding-left:16
 .an-tick{display:flex;flex-direction:column;justify-content:center;gap:4px;overflow:hidden}.an-tick span{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#E5E7EB}.an-tick .gA{color:#FCA5A5}.an-tick .gB{color:#FDE68A}
 @media(max-width:1100px){.an-hd,.an-r{grid-template-columns:120px 80px 1fr 1fr 1.4fr 80px}.an-msg,.an-hd span:last-child{display:none}}
 @media(max-width:1280px){.palbtn{font-size:0!important;gap:0!important;padding:0 9px!important;min-width:36px;justify-content:center}.palbtn svg{width:16px;height:16px}.palbtn kbd{display:none}#top .upd{font-size:11.5px}}
+
+/* ── 5.6 품질 데이터 분석 (SPC · 공정능력 · 층별 · 모델 검증 · 분석 보고서) */
+.chart .ucl{fill:none;stroke:var(--danger);stroke-width:1.3;stroke-dasharray:6 4}
+.chart line.ucl{fill:none}
+.chart .clc{fill:none;stroke:var(--ok-fill);stroke-width:1.4}
+.chart .zl{fill:none;stroke:var(--chart-axis);stroke-width:.8;stroke-dasharray:2 3;opacity:.5}
+.chart .phase{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}
+.chart .lbl{font-size:11px;fill:var(--ink-2);font-weight:650;font-variant-numeric:tabular-nums}
+.chart .lbl.dg{fill:var(--danger-ink)}
+.chart .ln.thin{stroke-width:1.1;opacity:.85}
+.chart .ln.dash{stroke-dasharray:5 4}
+.chart.sq{max-width:420px;margin:0 auto;display:block}
+.legend i.sw-ucl{height:0;border-top:2px dashed var(--danger);border-radius:0;vertical-align:3px}
+.legend i.sw-cl{height:2px;background:var(--ok-fill);vertical-align:3px}
+.legend i.sw-zl{height:0;border-top:1.5px dotted var(--chart-axis);border-radius:0;vertical-align:3px}
+.legend i.sw-bad{width:9px;height:9px;border-radius:50%;background:var(--danger)}
+.legend i.sw-bar{background:var(--chart-bar)}
+.legend i.sw-over{background:var(--warn)}
+.legend i.sw-s1{height:2px;background:var(--c1);vertical-align:3px}
+.legend i.sw-s2{height:0;border-top:2px dashed var(--c2);border-radius:0;vertical-align:3px}
+.legend i.sw-s4{height:2px;background:var(--c4);vertical-align:3px}
+.legend i.sw-rg{background:var(--brand-soft);border:1px solid var(--brand)}
+.legend i.sw-md{width:3px;background:var(--brand)}
+.legend i.sw-ac{width:9px;height:9px;border-radius:50%;background:var(--ink)}
+.kpi .val.sm{font-size:19px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spc-ctl{display:flex;gap:8px;align-items:center}
+.spc-sub{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px}
+.tag.j-none{background:var(--surface-2,transparent);color:var(--muted);border:1px dashed var(--line)}
+.tb tr.dim td{color:var(--muted)}
+.ci{color:var(--muted);font-size:11.5px;margin-left:4px;white-space:nowrap}
+.ci.sig{color:var(--danger-ink);font-weight:650}
+.stab{table-layout:fixed;width:100%}.stab col.c-r{width:130px}.stab col.c-n{width:76px}
+.stab td{height:44px}
+.it2{font-size:11.5px;color:var(--muted)}
+.ptab2{table-layout:fixed;width:100%;min-width:720px}
+.ptab2 col.c-p{width:84px}.ptab2 col.c-s{width:112px}.ptab2 col.c-n{width:76px}.ptab2 col.c-ci{width:150px}.ptab2 col.c-ci2{width:118px}.ptab2 col.c-g{width:96px}
+.ptab2 col.c-m4{width:64px}.ptab2 col.c-mn{width:170px}.ptab2 col.c-goal{width:180px}
+.ptab2 td{height:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ptab2.mini{min-width:0}.ptab2.mini td{height:34px}
+.ktab{width:100%}.ktab th{width:42%;text-align:left;font-weight:600;color:var(--ink-2);background:transparent}.ktab td{height:34px}
+.ktab tr.hl0 td b{font-size:15px}
+.grid.capg{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:16px;align-items:stretch}
+.grid.mvg{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,1fr);gap:20px;align-items:start}
+@media(max-width:1100px){.grid.capg,.grid.mvg{grid-template-columns:1fr}}
+.m4{display:inline-block;min-width:36px;text-align:center;font-size:11.5px;font-weight:650;padding:1px 6px;border-radius:4px;background:var(--brand-soft);color:var(--brand)}
+.m4.m4-설비{background:var(--warn-soft,#FEF0C7);color:var(--warn-ink)}
+.m4.m4-자재{background:var(--ok-soft);color:var(--ok)}
+.m4.m4-방법{background:transparent;border:1px solid var(--line);color:var(--ink-2)}
+.ivl{display:flex;flex-direction:column;gap:6px}
+.iv{display:grid;grid-template-columns:48px minmax(0,1fr) 70px;gap:10px;align-items:center;font-size:12.5px}
+.iv > div{position:relative;height:18px;background:var(--chart-grid);border-radius:3px}
+.iv i{position:absolute;top:0;bottom:0}
+.iv i.rg{background:var(--brand-soft);border:1px solid var(--brand);border-radius:3px}
+.iv i.md{width:2px;background:var(--brand);margin-left:-1px}
+.iv i.ac{width:10px;height:10px;top:4px;border-radius:50%;background:var(--ink);margin-left:-5px}
+.iv i.ac.miss{background:var(--danger)}
+.iv b{text-align:right;font-variant-numeric:tabular-nums}
+.unv{display:flex;gap:14px;align-items:center;padding:18px 4px}
+.arpt{margin-top:16px;border-top:1px solid var(--line);padding-top:4px}
+.ar-s{display:grid;grid-template-columns:28px 120px minmax(0,1fr);gap:12px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line)}
+.ar-s:last-child{border-bottom:0}
+.ar-n{width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.ar-t{font-weight:700;padding-top:2px}
+.ar-b{min-width:0;font-size:13px}
+.ar-l{margin-top:6px;font-size:12.5px;color:var(--ink-2)}
+.ar-c{margin:0;padding-left:0}.ar-c li{padding:2px 0}
+.chart .ucl.var{stroke-width:1;opacity:.5;stroke-dasharray:none}
+.ptab2.wr td{white-space:normal;height:auto;padding-top:9px;padding-bottom:9px;line-height:1.45}
+.ptab2 col.c-how{width:230px}
+.ptab2.lv{min-width:0}.ptab2.lv col.c-n{width:58px}.ptab2.lv col.c-ci2{width:96px}
