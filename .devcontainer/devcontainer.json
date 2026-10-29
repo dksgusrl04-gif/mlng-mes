@@ -1,0 +1,17 @@
+// GitHub Codespaces — 카드 없이 클라우드에서 MLNG MES 서버 실행 (개인 계정 월 무료 사용량 안)
+//   저장소 → Code → Codespaces → Create codespace on main → 3~5분 뒤 «포트» 탭 8080 의 주소로 접속
+//   시작할 때마다 server/scripts/up.sh 가 docker compose 로 DB · API · Nginx 를 띄운다
+//   쓰지 않으면 30분 뒤 자동 정지 (무료 사용량 절약) · 데이터는 codespace 를 지우기 전까지 남는다
+{
+  "name": "MLNG MES 서버",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" }
+  },
+  "hostRequirements": { "cpus": 2, "memory": "4gb" },
+  "forwardPorts": [8080],
+  "portsAttributes": { "8080": { "label": "MLNG MES", "onAutoForward": "openBrowser" } },
+  "postStartCommand": "bash server/scripts/up.sh"
+}

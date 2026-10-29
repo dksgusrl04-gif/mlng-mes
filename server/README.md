@@ -24,21 +24,33 @@ Supabase(관리형 서비스)가 해 주던 일을 **내 서버에서 직접** �
 | 자동 배포 | GitHub Actions → SSH → `docker compose up` | `../.github/workflows/deploy.yml` |
 | 백업 · 인증서 | `backup` 컨테이너 · certbot | `docker-compose.yml`, `scripts/` |
 
-## 0. 무료로 해 보기 (내 PC · Windows)
+## 0. 카드 없이 띄우기 (무료)
 
-1. Docker Desktop 설치 (개인 무료): `winget install -e --id Docker.DockerDesktop` → PC 다시 시작 → Docker Desktop 실행
-2. PowerShell (한 줄씩):
+| | A. 내 PC (Windows) | B. GitHub Codespaces (클라우드) |
+|---|---|---|
+| 필요한 것 | Docker Desktop (개인 무료) | GitHub 계정만 (개인 월 무료 사용량 안) |
+| 주소 | `http://localhost:8080` (+ `-Public` 이면 `https://xxxx.trycloudflare.com`) | `https://<codespace>-8080.app.github.dev` |
+| 켜져 있는 시간 | PC 가 켜져 있는 동안 | 쓰는 동안 (30분 안 쓰면 자동 정지 → 다시 열면 재개) |
+
+**A. 내 PC**
+1. `winget install -e --id Docker.DockerDesktop` → PC 다시 시작 → Docker Desktop 실행 (고래 아이콘 «Engine running»)
+2. PowerShell (한 줄씩)
    ```
    cd C:\Users\dksgu\Desktop\code\mlng-mes\mlng-mes\server
    powershell -ExecutionPolicy Bypass -File scripts\local.ps1
    ```
-   → `.env` 자동 생성 · 컨테이너 빌드 · 요청 시험 12개 · 브라우저로 `http://localhost:8080`
-3. 인터넷에 공개 (무료 · 계정 불필요, 켤 때마다 주소 바뀜): `scripts\local.ps1 -Public` → `https://xxxx.trycloudflare.com`
-4. 멈추기: `scripts\local.ps1 -Stop` (DB 까지 지우기: `-Reset`)
+   → `.env` 자동 생성 · 빌드 · 요청 시험 12개 · 브라우저 열림
+3. 인터넷 공개: `scripts\local.ps1 -Public` · 멈추기: `-Stop` · DB 까지 지우기: `-Reset`
 
-클라우드 무료: AWS 신규 계정 Free 플랜(6개월 · 크레딧, 초과 과금 없음)으로 EC2 Ubuntu 를 만들면 아래 1번 그대로 된다 (1GB 인스턴스면 setup-vm.sh 가 스왑을 자동 추가).
+**B. GitHub Codespaces**
+1. https://github.com/dksgusrl04-gif/mlng-mes → 초록 **Code** 단추 → **Codespaces** 탭 → **Create codespace on main**
+2. 3~5분 기다리면 (`.devcontainer` 가 `scripts/up.sh` 자동 실행) 아래 **포트** 탭에 `8080 MLNG MES` → 지구본 아이콘으로 열기
+3. 다른 사람에게 보여 주려면: 포트 탭 8080 우클릭 → **포트 표시 유형 → Public**
+4. 끝나면: github.com/codespaces 에서 **Stop** (무료 사용량 절약) · 다시 쓸 때 같은 codespace 열기
 
-## 1. AWS Free 플랜으로 띄우기 (무료 · 약 20분)
+Linux · Mac 에서는 `bash server/scripts/up.sh` (`--public` · `--stop`).
+
+## 1. AWS Free 플랜으로 띄우기 (카드 등록 필요 · 과금 없음 · 약 20분)
 
 비용: t3.micro + 디스크 20GB + 공인 IPv4 ≈ 월 $15 → 6개월 $90 — 가입 크레딧($100) 안. Free 플랜은 크레딧을 넘는 과금이 없다.
 6개월 뒤에는 유료로 바꾸지 않으면 계정이 닫힌다 (그 전에 `backups/` 받아 두기).
